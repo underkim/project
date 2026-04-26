@@ -19,6 +19,6 @@
 
 ## 빠른 진입
 
-- 프로젝트 개요: [requirements/overview.md](./requirements/overview.md)
-- 시스템 구조: [architecture/system.md](./architecture/system.md)
+- 프로젝트 개요: [requirements/overview.md](./requirements/overview.md) (작성 예정)
+- 시스템 구조: [architecture/system.md](./architecture/system.md) (작성 예정)
 - 최근 작업: [dev-log](./dev-log)
