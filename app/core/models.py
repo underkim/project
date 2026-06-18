@@ -16,7 +16,7 @@ class Phase(Base):
     color: Mapped[str] = mapped_column(String(20))
 
     categories: Mapped[list["Category"]] = relationship(
-        back_populates="phase", order_by="Category.order_index"
+        back_populates="phase", order_by="Category.order_index", cascade="all, delete-orphan",
     )
 
 
@@ -32,7 +32,7 @@ class Category(Base):
 
     phase: Mapped["Phase"] = relationship(back_populates="categories")
     items: Mapped[list["RoadmapItem"]] = relationship(
-        back_populates="category", order_by="RoadmapItem.offset"
+        back_populates="category", order_by="RoadmapItem.offset",cascade="all, delete-orphan",
     )
 
 
