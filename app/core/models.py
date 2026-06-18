@@ -52,4 +52,4 @@ class RoadmapSettings(Base):
     __tablename__ = "roadmap_settings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    start_date: Mapped[date] = mapped_column(Date)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
