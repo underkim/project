@@ -1,9 +1,15 @@
 import pytest
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
-from app.main import app
+from app.main import create_app
+
 
 @pytest.fixture
-def client() -> TestClient:
-    """FastAPI 앱을 감싼 테스트 클라이언트. 모든 테스트에서 재사용."""
-    return TestClient(app)
+def app():
+    return create_app()
+
+
+@pytest.fixture
+async def client(app):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac

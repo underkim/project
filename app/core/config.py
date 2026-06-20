@@ -7,13 +7,25 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
-        )
-    
+    )
+
     # 앱 메타
     app_name: str = "Life Dashboard"
     debug: bool = False
 
-    # DB (추후 사용)
-    database_url: str = "postgresql+asyncpg://localhost/lifedash"
+    # DB
+    database_url: str = "sqlite+aiosqlite:///./lifedash.db"
+
+    # JWT
+    jwt_secret: str = "change-me-in-production-use-env-var"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24 * 7  # 1주일
+
+    # 단일 사용자 인증
+    admin_username: str = "admin"
+    admin_password: str = "password"
+
+    # AI
+    gemini_api_key: str = ""
 
 settings = Settings()

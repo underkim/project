@@ -1,0 +1,68 @@
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.security import get_current_user
+from app.modules.finance import service
+from app.modules.finance.schemas import (
+    AssetRecordCreate,
+    AssetRecordResponse,
+    AssetRecordUpdate,
+    FinanceSummaryResponse,
+)
+
+router = APIRouter(prefix="/api/v1/finance", tags=["finance"])
+CurrentUser = Annotated[str, Depends(get_current_user)]
+
+
+@router.get("/summary", response_model=FinanceSummaryResponse)
+async def get_summary(session: AsyncSession = Depends(get_db)):
+    return await service.get_summary(session)
+
+
+@router.get("/records", response_model=list[AssetRecordResponse])
+async def list_records(session: AsyncSession = Depends(get_db)):
+    return await service.list_records(session)
+
+
+@router.get("/records/{record_id}", response_model=AssetRecordResponse)
+async def get_record(record_id: int, session: AsyncSession = Depends(get_db)):
+    result = await service.get_record(session, record_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
+    return result
+
+
+@router.post("/records", response_model=AssetRecordResponse, status_code=status.HTTP_201_CREATED)
+async def create_record(
+    data: AssetRecordCreate,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    return await service.create_record(session, data)
+
+
+@router.put("/records/{record_id}", response_model=AssetRecordResponse)
+async def update_record(
+    record_id: int,
+    data: AssetRecordUpdate,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    result = await service.update_record(session, record_id, data)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
+    return result
+
+
+@router.delete("/records/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_record(
+    record_id: int,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    deleted = await service.delete_record(session, record_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")

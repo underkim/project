@@ -1,0 +1,36 @@
+from datetime import date
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database import Base
+
+
+class Trip(Base):
+    __tablename__ = "trips"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    destination: Mapped[str] = mapped_column(String(100), nullable=False)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="planned")
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    checklist_items: Mapped[list["TripChecklistItem"]] = relationship(
+        "TripChecklistItem",
+        back_populates="trip",
+        cascade="all, delete-orphan",
+        order_by="TripChecklistItem.order_index",
+    )
+
+
+class TripChecklistItem(Base):
+    __tablename__ = "trip_checklist_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    trip_id: Mapped[int] = mapped_column(ForeignKey("trips.id"), nullable=False)
+    text: Mapped[str] = mapped_column(String(200), nullable=False)
+    is_checked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    trip: Mapped["Trip"] = relationship("Trip", back_populates="checklist_items")

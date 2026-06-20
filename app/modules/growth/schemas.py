@@ -1,0 +1,78 @@
+from datetime import date
+from enum import Enum
+from pydantic import BaseModel, field_validator
+
+
+class BookStatus(str, Enum):
+    planned = "planned"
+    reading = "reading"
+    completed = "completed"
+
+
+class BookRecordCreate(BaseModel):
+    title: str
+    author: str | None = None
+    status: BookStatus = BookStatus.planned
+    start_date: date | None = None
+    end_date: date | None = None
+    rating: int | None = None
+    note: str | None = None
+
+    @field_validator("rating")
+    @classmethod
+    def rating_range(cls, v: int | None) -> int | None:
+        if v is not None and not 1 <= v <= 5:
+            raise ValueError("평점은 1~5 사이여야 합니다")
+        return v
+
+
+class BookRecordUpdate(BaseModel):
+    title: str | None = None
+    author: str | None = None
+    status: BookStatus | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    rating: int | None = None
+    note: str | None = None
+
+
+class BookRecordResponse(BaseModel):
+    id: int
+    title: str
+    author: str | None
+    status: BookStatus
+    start_date: date | None
+    end_date: date | None
+    rating: int | None
+    note: str | None
+    model_config = {"from_attributes": True}
+
+
+class EnglishLogCreate(BaseModel):
+    log_date: date
+    activity_type: str
+    duration_minutes: int
+    note: str | None = None
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def must_be_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("학습 시간은 1분 이상이어야 합니다")
+        return v
+
+
+class EnglishLogResponse(BaseModel):
+    id: int
+    log_date: date
+    activity_type: str
+    duration_minutes: int
+    note: str | None
+    model_config = {"from_attributes": True}
+
+
+class GrowthSummaryResponse(BaseModel):
+    books_completed_this_year: int
+    books_reading: int
+    english_days_this_month: int
+    english_minutes_this_month: int

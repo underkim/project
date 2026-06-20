@@ -1,4 +1,33 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# 환경변수 (API 키, DB 비밀번호 등 절대 커밋 금지)
 .env
+.env.*
+!.env.example
+
+# DB 파일 (로컬 데이터)
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+
+# 빌드 캐시
+.turbo/

@@ -20,10 +20,15 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
 from app.core.models import Base
+from app.core.config import settings
+
 target_metadata = Base.metadata
+
+# async 드라이버(+aiosqlite, +asyncpg)를 alembic 동기 URL로 변환
+_sync_url = settings.database_url.replace("+aiosqlite", "").replace("+asyncpg", "+psycopg2")
+config.set_main_option("sqlalchemy.url", _sync_url)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
