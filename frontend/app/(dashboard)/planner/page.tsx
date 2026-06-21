@@ -6,6 +6,13 @@ import { Plus, Trash2, Check, X, Pencil, AlertTriangle, Settings2, Loader2, Cale
 import { plannerApi } from '@/lib/api';
 import type { PhaseResponse, RoadmapItemResponse, ItemStatus } from '@/types';
 
+// ─── offset ↔ date 변환 유틸 ─────────────────────────────
+function calcDateToOffset(phaseStartDate: string, dateStr: string): number {
+  const diffMs = new Date(dateStr).getTime() - new Date(phaseStartDate).getTime();
+  if (diffMs <= 0) return 0;
+  return Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30.44)));
+}
+
 // ─── 상태 계산 ──────────────────────────────────────────
 function computeStatus(deadline: string | null, isCompleted: boolean): ItemStatus | null {
   if (!deadline) return null;
@@ -58,17 +65,9 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
   const dateRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // offset ↔ date 변환 유틸
-  function dateToOffset(dateStr: string): number {
-    if (!phaseStartDate) return 0;
-    const start = new Date(phaseStartDate);
-    const end = new Date(dateStr);
-    return Math.max(0, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
-  }
-
   function handleDeadlineChange(val: string) {
-    if (!val) return;
-    onEditSave(item.id, { offset: dateToOffset(val) });
+    if (!val || !phaseStartDate) return;
+    onEditSave(item.id, { offset: calcDateToOffset(phaseStartDate, val) });
     setEditingDeadline(false);
   }
 
@@ -238,14 +237,6 @@ function AddItemForm({ categoryId: _cid, phaseStartDate, onSave, onCancel }: Add
 
   useEffect(() => { ref.current?.focus(); }, []);
 
-  // 날짜 → offset
-  function dateToOffset(dateStr: string): number {
-    if (!phaseStartDate || !dateStr) return Number(offset);
-    const start = new Date(phaseStartDate);
-    const end = new Date(dateStr);
-    return Math.max(0, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
-  }
-
   // offset → 날짜
   function offsetToDate(val: string): string {
     if (!phaseStartDate || !val) return '';
@@ -261,14 +252,14 @@ function AddItemForm({ categoryId: _cid, phaseStartDate, onSave, onCancel }: Add
 
   function handleDateChange(val: string) {
     setDeadlineDate(val);
-    if (val) setOffset(String(dateToOffset(val)));
+    if (val && phaseStartDate) setOffset(String(calcDateToOffset(phaseStartDate, val)));
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
     setSaving(true);
-    await onSave(text.trim(), deadlineDate ? dateToOffset(deadlineDate) : Number(offset));
+    await onSave(text.trim(), deadlineDate && phaseStartDate ? calcDateToOffset(phaseStartDate, deadlineDate) : Number(offset));
     setSaving(false);
   }
 

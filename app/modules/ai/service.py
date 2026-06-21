@@ -355,10 +355,14 @@ async def parse_and_save(
 
 
 async def execute_delete(session: AsyncSession, module: str, filter_: dict) -> bool:
-    result = await _delete(session, module, filter_)
-    if result:
-        await session.commit()
-    return result
+    try:
+        result = await _delete(session, module, filter_)
+        if result:
+            await session.commit()
+        return result
+    except Exception:
+        await session.rollback()
+        raise
 
 
 async def _update(session: AsyncSession, module: str, filter_: dict, data: dict) -> bool:

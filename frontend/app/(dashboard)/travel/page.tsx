@@ -623,7 +623,7 @@ export default function TravelPage() {
       const item = await travelApi.addPlanItem(tripId, data);
       setTrips(prev => prev.map(t =>
         t.id === tripId
-          ? { ...t, plan_items: [...t.plan_items, item] }
+          ? { ...t, plan_items: [...(t.plan_items ?? []), item] }
           : t
       ));
     } catch { /* silent */ }
@@ -632,7 +632,7 @@ export default function TravelPage() {
   const handleDeletePlanItem = async (tripId: number, itemId: number) => {
     setTrips(prev => prev.map(t =>
       t.id === tripId
-        ? { ...t, plan_items: t.plan_items.filter(p => p.id !== itemId) }
+        ? { ...t, plan_items: (t.plan_items ?? []).filter(p => p.id !== itemId) }
         : t
     ));
     try { await travelApi.deletePlanItem(itemId); }

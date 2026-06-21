@@ -66,7 +66,10 @@ export default function AiModal() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const toSave = messages.slice(-30).map(m => ({
-      ...m, confirmLoading: false, pendingFilter: null,
+      ...m,
+      confirmLoading: false,
+      pendingFilter: null,
+      action: m.action === 'delete_pending' ? null : m.action,
     }));
     localStorage.setItem('ai-chat-history', JSON.stringify(toSave));
   }, [messages]);

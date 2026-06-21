@@ -21,12 +21,14 @@ class Trip(Base):
         back_populates="trip",
         cascade="all, delete-orphan",
         order_by="TripChecklistItem.order_index",
+        passive_deletes=True,
     )
     plan_items: Mapped[list["TripPlanItem"]] = relationship(
         "TripPlanItem",
         back_populates="trip",
         cascade="all, delete-orphan",
         order_by="(TripPlanItem.day, TripPlanItem.sort_order)",
+        passive_deletes=True,
     )
 
 

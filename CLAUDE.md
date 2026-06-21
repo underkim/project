@@ -2,19 +2,29 @@
 
 ## 프로젝트 개요
 
-5년 라이프 로드맵을 4개 도메인(커리어·재테크·건강·자기계발)으로 관리하는 FastAPI 백엔드.
-단일 사용자 기준, 학습 목적 겸 포트폴리오 프로젝트.
+5년 라이프 로드맵을 7개 도메인(플래너·재테크·건강·자기계발·커리어·여행·AI)으로 관리하는
+풀스택 개인 대시보드. FastAPI 백엔드 + Next.js 프론트엔드, 단일 사용자 기준, 학습 목적 겸 포트폴리오.
 
 ## 기술 스택
 
+### 백엔드
 - **Python 3.12+**, 패키지 관리: `uv` (`pyproject.toml` + `uv.lock`)
 - **FastAPI** + **uvicorn** (ASGI)
 - **SQLAlchemy 2.0 async** + **asyncpg** (PostgreSQL 드라이버)
 - **Alembic** (마이그레이션)
 - **pydantic-settings** (환경설정, `.env` 자동 로드)
-- **pytest** + **httpx** (테스트)
+- **pytest** + **httpx** (테스트, 60개)
 - **PyJWT** (JWT 인증)
 - **python-multipart** (OAuth2 폼 데이터)
+- **google-genai** (Gemini AI — gemini-2.0-flash-lite 모델)
+
+### 프론트엔드
+- **Next.js** (App Router, `frontend/`)
+- **TypeScript**
+- **Tailwind CSS**
+- **axios** (API 클라이언트, JWT 인터셉터 포함)
+- **recharts** (차트)
+- **lucide-react** (아이콘)
 
 
 ## 작업 방식 (효율 + 품질)
@@ -43,10 +53,13 @@
 ## 명령어
 
 ```bash
-# 서버 실행
+# 백엔드 서버 실행
 uv run uvicorn app.main:app --reload
 
-# 테스트
+# 프론트엔드 개발 서버
+cd frontend && npm run dev   # http://localhost:3000
+
+# 테스트 (60개)
 uv run pytest
 
 # 마이그레이션
@@ -63,39 +76,69 @@ project/
 │   ├── core/
 │   │   ├── config.py        # Settings (pydantic-settings, .env 로드)
 │   │   ├── database.py      # async 엔진·세션·Base·get_db DI
-│   │   └── models.py        # Phase, Category, RoadmapItem, RoadmapSettings
+│   │   ├── models.py        # Phase, Category, RoadmapItem, RoadmapSettings
+│   │   └── security.py      # JWT 생성·검증, get_current_user
 │   ├── api/v1/
 │   │   └── health.py        # GET /api/v1/health
-│   ├── modules/             # 향후 기능 모듈 위치 (현재 비어 있음)
-│   └── shared/              # 공통 유틸 (현재 비어 있음)
+│   └── modules/
+│       ├── auth/            # POST /api/v1/auth/token (JWT, secrets.compare_digest)
+│       ├── planner/         # GET /roadmap, GET|PUT /settings, PATCH /items/{id}/toggle
+│       ├── finance/         # /api/v1/finance/records CRUD + /summary
+│       ├── health/          # /api/v1/health/exercise & /sleep CRUD + /summary
+│       ├── growth/          # /api/v1/growth/books & /english CRUD + /summary
+│       ├── career/          # /api/v1/career/settings + /cf-ratings CRUD + /summary
+│       ├── travel/          # /api/v1/travel/trips CRUD + checklist + plan(일정)
+│       ├── ai/              # /api/v1/ai/chat (Gemini), /execute (삭제 확인)
+│       └── dashboard/       # GET /api/v1/dashboard/overview (BFF 집계)
 ├── alembic/
 │   ├── env.py
 │   └── versions/
-│       └── 4bbb978ce5a7_create_roadmap_tables.py
+│       ├── 4bbb978ce5a7_create_roadmap_tables.py
+│       ├── a1b2c3d4e5f6_seed_planner_data.py
+│       ├── b2c3d4e5f6a7_create_domain_tables.py
+│       ├── c3d4e5f6a7b8_create_travel_tables.py   # ON DELETE CASCADE 포함
+│       └── 4fbe97fa41c1_add_trip_plan_items.py    # ON DELETE CASCADE 포함
 ├── tests/
-│   ├── conftest.py          # TestClient fixture
-│   └── test_health.py       # health 엔드포인트 테스트
+│   ├── conftest.py
+│   ├── test_health.py
+│   ├── test_planner.py
+│   ├── test_finance.py
+│   ├── test_growth.py
+│   ├── test_career.py
+│   ├── test_ai.py
+│   └── test_travel.py
+├── frontend/
+│   ├── app/
+│   │   ├── (auth)/          # 로그인 페이지
+│   │   └── (dashboard)/
+│   │       ├── layout.tsx   # Sidebar + AiModal(FAB) 레이아웃
+│   │       ├── page.tsx     # 대시보드 홈 (overview)
+│   │       ├── planner/     # 로드맵, Phase, 항목 관리 (마감일 날짜 피커 포함)
+│   │       ├── finance/
+│   │       ├── health/
+│   │       ├── growth/
+│   │       ├── career/
+│   │       └── travel/      # 여행 CRUD + 체크리스트 탭 + 일정(plan) 탭
+│   ├── components/
+│   │   ├── AiModal.tsx      # AI 채팅 FAB 모달 (localStorage 이력 저장)
+│   │   ├── Sidebar.tsx
+│   │   └── Toast.tsx
+│   ├── hooks/
+│   │   └── useAiRefresh.ts  # ai-data-saved 이벤트 구독 → 페이지 데이터 리프레시
+│   ├── lib/
+│   │   └── api.ts           # axios 클라이언트 (JWT 인터셉터) + 모듈별 API 함수
+│   └── types/
+│       └── index.ts         # 모든 TypeScript 인터페이스
 └── docs/
-    ├── adr/                 # 아키텍처 결정 기록
-    ├── architecture/        # 데이터 모델, ASGI 흐름 문서
-    └── requirements/        # 모듈별 요구사항
+    ├── adr/
+    ├── architecture/
+    └── requirements/
 ```
 
 ## 아키텍처 원칙 (ADR 요약)
 
 ### Modular Monolith (ADR-0001)
-코드는 도메인(기능) 단위로 묶는다. 계획된 모듈 구조:
-
-```
-app/modules/
-├── auth/        # JWT 인증
-├── planner/     # 로드맵·Phase·Item 관리  ← 첫 번째 구현 대상
-├── career/      # CF·GitHub·블로그 RSS
-├── finance/     # 자산·저축률
-├── health/      # 운동·수면
-├── growth/      # 독서·영어
-└── dashboard/   # 집계 BFF (read-only)
-```
+코드는 도메인(기능) 단위로 묶는다.
 
 **모듈 간 통신 규칙**: 다른 모듈의 `service layer`만 호출한다. 다른 모듈의 model·repository를 직접 import하지 않는다.
 
@@ -111,34 +154,43 @@ app/modules/
 - 세션은 요청당 1개, DI(`Depends(get_db)`)로 주입; service가 자체 생성 금지
 - 트랜잭션은 service layer에서 `async with session.begin():` 관리
 - Alembic 마이그레이션은 **동기** 엔진 사용 (alembic/env.py)
+- FK에 `ON DELETE CASCADE` 있을 때는 relationship에 `passive_deletes=True` 추가 권장
 
-## 데이터 모델 (Planner)
+### AI 서비스 트랜잭션 패턴
+`ai/service.py`의 `parse_and_save` / `execute_delete`는 중첩 트랜잭션 방지를 위해
+`_create` / `_update` / `_delete` 내부에서 `session.begin()`을 사용하지 않고,
+최상위 함수에서 `await session.commit()` / `await session.rollback()`으로 관리한다.
+다른 모듈 서비스를 호출하지 않고 직접 ORM 객체를 `session.add()`한다.
 
+## 데이터 모델
+
+### Planner
 ```
-RoadmapSettings (단일 row)
-    └── start_date
-
-Phase (4개)
-    ├── order_index, months, color
-    └── Category (Phase당 4개)
-            ├── icon, title, subtitle
-            └── RoadmapItem (N개)
-                    ├── text, offset (float, Phase 시작 기준 오프셋 개월 수)
-                    └── is_completed (bool)
+RoadmapSettings (단일 row) → start_date
+Phase (4개) → order_index, months, color
+  └── Category (Phase당 4개) → icon, title, subtitle
+        └── RoadmapItem → text, offset(float), is_completed
 ```
+- `Phase.start_date` = `RoadmapSettings.start_date + 이전 Phase months 합` (파생, DB 저장 X)
+- `Item.deadline` = `Phase.start_date + offset개월` (파생, DB 저장 X)
 
-**파생값 — DB에 저장하지 않음**:
-- `Phase.start_date` = `RoadmapSettings.start_date + 이전 Phase들의 months 합`
-- `Item.deadline` = `Phase.start_date + offset`
-- `Item.status` = 완료 / 임박(≤30일) / 정상 / 지연
+### Travel
+```
+Trip → name, destination, start_date, end_date, status, note
+  ├── TripChecklistItem → text, is_checked, order_index
+  └── TripPlanItem     → day, sort_order, time, title, description
+```
+- FK에 `ON DELETE CASCADE` 적용 (migration)
+- `TripResponse`는 항상 `checklist_items`와 `plan_items`를 `selectinload`로 eager load
 
-현재 모델(`app/core/models.py`)과 ADR-0005의 설계 사이에 일부 차이가 있다. ADR에는 `key`, `bg` 컬럼과 `RoadmapItem.order`가 있지만 실제 모델에는 없다. 구현 시 ADR을 목표 스펙으로 참고하되, 실제 모델 파일을 우선으로 한다.
+## 알려진 문제 / 수정 필요
 
-## 알려진 문제
-
-- [app/core/models.py:5](app/core/models.py) — `from core.database import Base` 가 `from app.core.database import Base`여야 함. alembic/env.py에서 sys.path를 조작해 우회하고 있으나, 앱 실행 컨텍스트에서 임포트 오류 가능성 있음.
-- [app/main.py:9](app/main.py) — `FastAPI(tile=...)` 오타. `title=`이어야 함.
-- `tests/conftest.py`의 `TestClient` fixture가 `tests/test_health.py`에서는 사용되지 않고 각 테스트가 독립적으로 `AsyncClient`를 생성하고 있어 fixture 중복 정의 상태.
+- **[app/modules/ai/service.py:357]** `execute_delete`가 `_delete` 예외 시 `session.rollback()` 미호출 → PendingRollbackError 가능
+- **[frontend/components/AiModal.tsx:68]** localStorage 직렬화 시 `pendingFilter: null`로 초기화 → 새로고침 후 `delete_pending` 메시지의 확인 버튼 소멸
+- **[frontend/app/(dashboard)/planner/page.tsx:66]** `dateToOffset`이 Phase 시작일로부터 15일 이내 날짜를 offset=0으로 반올림 → 마감일이 Phase 시작일로 잘못 설정됨
+- **[frontend/app/(dashboard)/travel/page.tsx:649]** `handleAddPlanItem`에서 `t.plan_items` null guard 없음 → 엣지 케이스에서 TypeError
+- **[app/modules/travel/models.py:19]** `checklist_items` / `plan_items` relationship에 `passive_deletes=True` 미설정 (DB에는 ON DELETE CASCADE 있음)
+- **[app/modules/ai/service.py:374]** `_update`/`_delete`에서 WHERE 없이 전체 테이블 fetch 후 Python 필터링 (성능 문제, 데이터 증가 시)
 
 ## 현재 구현 상태
 
@@ -147,21 +199,22 @@ Phase (4개)
 | FastAPI 앱 골격 (팩토리 패턴) | 완료 |
 | `GET /api/v1/health` | 완료 |
 | DB 설정 (async 엔진·세션·DI) | 완료 |
-| Alembic 마이그레이션 (테이블 생성 + seed 데이터 + 도메인 테이블) | 완료 |
-| Planner 모델 (Phase·Category·RoadmapItem·RoadmapSettings) | 완료 |
-| Planner API (`GET /roadmap`, `GET/PUT /settings`, `PATCH /items/{id}/toggle`) | 완료 |
-| Auth 모듈 (`POST /api/v1/auth/token`, JWT, 단일 사용자) | 완료 |
-| Finance 모듈 (`/api/v1/finance/records` CRUD + `/summary`) | 완료 |
-| Health 모듈 (`/api/v1/health/exercise` & `/sleep` CRUD + `/summary`) | 완료 |
-| Growth 모듈 (`/api/v1/growth/books` & `/english` CRUD + `/summary`) | 완료 |
-| Career 모듈 (`/api/v1/career/settings` + `/cf-ratings` CRUD + `/summary`) | 완료 |
+| Alembic 마이그레이션 (5개 버전) | 완료 |
+| Auth 모듈 (`POST /api/v1/auth/token`, JWT, `secrets.compare_digest`) | 완료 |
+| Planner 모듈 (로드맵 CRUD + 마감일 날짜 피커) | 완료 |
+| Finance 모듈 (자산 기록 CRUD + 요약) | 완료 |
+| Health 모듈 (운동/수면 CRUD + 요약) | 완료 |
+| Growth 모듈 (독서/영어 CRUD + 요약) | 완료 |
+| Career 모듈 (CF 레이팅 CRUD + 요약) | 완료 |
+| Travel 모듈 (여행 CRUD + 체크리스트 + 일정 탭) | 완료 |
+| AI 모듈 (Gemini 자연어 기록/수정/삭제, gemini-2.0-flash-lite) | 완료 |
 | Dashboard 모듈 (`GET /api/v1/dashboard/overview` BFF 집계) | 완료 |
-| 테스트 (27개, 순수 함수 + 스키마 검증 + 라우터 등록) | 완료 |
+| Next.js 프론트엔드 (7개 페이지 + AI FAB 모달 + Toast) | 완료 |
+| 테스트 (60개) | 완료 |
 
 ## 새 모듈 추가 패턴
 
-각 모듈은 아래 구조를 따른다:
-
+### 백엔드
 ```
 app/modules/<name>/
 ├── __init__.py
@@ -170,8 +223,15 @@ app/modules/<name>/
 ├── models.py    # SQLAlchemy 모델 (필요 시)
 └── schemas.py   # Pydantic 요청/응답 스키마
 ```
-
 `app/main.py`의 `create_app()`에서 `app.include_router()`로 등록.
+
+### 프론트엔드
+```
+frontend/app/(dashboard)/<name>/
+└── page.tsx     # 'use client' 컴포넌트, travelApi 패턴 참고
+frontend/lib/api.ts   # <name>Api 객체 추가
+frontend/types/index.ts # 응답 인터페이스 추가
+```
 
 ## 환경변수
 
@@ -181,4 +241,13 @@ app/modules/<name>/
 APP_NAME=Life Dashboard
 DEBUG=false
 DATABASE_URL=postgresql+asyncpg://user:pass@host/lifedash
+JWT_SECRET=<안전한 랜덤 문자열>
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=<비밀번호>
+GEMINI_API_KEY=<Google AI Studio 키>
+```
+
+프론트엔드 `.env.local`:
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```

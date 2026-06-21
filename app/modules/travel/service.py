@@ -24,26 +24,8 @@ def _trip_to_response(trip: Trip) -> TripResponse:
         end_date=trip.end_date,
         status=trip.status,
         note=trip.note,
-        checklist_items=[
-            ChecklistItemResponse(
-                id=item.id,
-                text=item.text,
-                is_checked=item.is_checked,
-                order_index=item.order_index,
-            )
-            for item in trip.checklist_items
-        ],
-        plan_items=[
-            PlanItemResponse(
-                id=p.id,
-                day=p.day,
-                sort_order=p.sort_order,
-                time=p.time,
-                title=p.title,
-                description=p.description,
-            )
-            for p in trip.plan_items
-        ],
+        checklist_items=[ChecklistItemResponse.model_validate(item) for item in trip.checklist_items],
+        plan_items=[PlanItemResponse.model_validate(p) for p in trip.plan_items],
     )
 
 
@@ -120,12 +102,7 @@ async def add_checklist_item(
         )
         session.add(item)
         await session.flush()
-        return ChecklistItemResponse(
-            id=item.id,
-            text=item.text,
-            is_checked=item.is_checked,
-            order_index=item.order_index,
-        )
+        return ChecklistItemResponse.model_validate(item)
 
 
 async def toggle_checklist_item(
@@ -136,12 +113,7 @@ async def toggle_checklist_item(
         if item is None:
             return None
         item.is_checked = not item.is_checked
-    return ChecklistItemResponse(
-        id=item.id,
-        text=item.text,
-        is_checked=item.is_checked,
-        order_index=item.order_index,
-    )
+    return ChecklistItemResponse.model_validate(item)
 
 
 async def delete_checklist_item(session: AsyncSession, item_id: int) -> bool:
@@ -170,14 +142,7 @@ async def add_plan_item(
         )
         session.add(item)
         await session.flush()
-        return PlanItemResponse(
-            id=item.id,
-            day=item.day,
-            sort_order=item.sort_order,
-            time=item.time,
-            title=item.title,
-            description=item.description,
-        )
+        return PlanItemResponse.model_validate(item)
 
 
 async def delete_plan_item(session: AsyncSession, item_id: int) -> bool:
