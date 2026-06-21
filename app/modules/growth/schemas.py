@@ -71,6 +71,19 @@ class EnglishLogResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class EnglishLogUpdate(BaseModel):
+    activity_type: str | None = None
+    duration_minutes: int | None = None
+    note: str | None = None
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def must_be_positive(cls, v: int | None) -> int | None:
+        if v is not None and v <= 0:
+            raise ValueError("학습 시간은 1분 이상이어야 합니다")
+        return v
+
+
 class GrowthSummaryResponse(BaseModel):
     books_completed_this_year: int
     books_reading: int

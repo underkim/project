@@ -57,12 +57,9 @@ async def create_trip(session: AsyncSession, data: TripCreate) -> TripResponse:
     async with session.begin():
         trip = Trip(**data.model_dump())
         session.add(trip)
-    result = await session.execute(
-        select(Trip)
-        .options(selectinload(Trip.checklist_items))
-        .where(Trip.id == trip.id)
-    )
-    return _trip_to_response(result.scalar_one())
+        await session.flush()
+        await session.refresh(trip, attribute_names=["checklist_items"])
+    return _trip_to_response(trip)
 
 
 async def update_trip(
@@ -79,12 +76,7 @@ async def update_trip(
             return None
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(trip, field, value)
-    result = await session.execute(
-        select(Trip)
-        .options(selectinload(Trip.checklist_items))
-        .where(Trip.id == trip_id)
-    )
-    return _trip_to_response(result.scalar_one())
+    return _trip_to_response(trip)
 
 
 async def delete_trip(session: AsyncSession, trip_id: int) -> bool:

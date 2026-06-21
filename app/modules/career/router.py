@@ -19,12 +19,12 @@ CurrentUser = Annotated[str, Depends(get_current_user)]
 
 
 @router.get("/summary", response_model=CareerSummaryResponse)
-async def get_summary(session: AsyncSession = Depends(get_db)):
+async def get_summary(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.get_summary(session)
 
 
 @router.get("/settings", response_model=CareerSettingsResponse)
-async def get_settings(session: AsyncSession = Depends(get_db)):
+async def get_settings(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.get_settings(session)
 
 
@@ -38,7 +38,7 @@ async def update_settings(
 
 
 @router.get("/cf-ratings", response_model=list[CFRatingLogResponse])
-async def list_cf_ratings(session: AsyncSession = Depends(get_db)):
+async def list_cf_ratings(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.list_cf_ratings(session)
 
 
@@ -54,4 +54,4 @@ async def create_cf_rating(
 @router.delete("/cf-ratings/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_cf_rating(log_id: int, _: CurrentUser, session: AsyncSession = Depends(get_db)):
     if not await service.delete_cf_rating(session, log_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating log not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="레이팅 기록을 찾을 수 없습니다.")

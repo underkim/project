@@ -7,9 +7,11 @@ from app.modules.health.models import ExerciseLog, SleepLog
 from app.modules.health.schemas import (
     ExerciseLogCreate,
     ExerciseLogResponse,
+    ExerciseLogUpdate,
     HealthSummaryResponse,
     SleepLogCreate,
     SleepLogResponse,
+    SleepLogUpdate,
 )
 
 
@@ -26,6 +28,16 @@ async def create_exercise(
     async with session.begin():
         log = ExerciseLog(**data.model_dump())
         session.add(log)
+    return ExerciseLogResponse.model_validate(log)
+
+
+async def update_exercise(session: AsyncSession, log_id: int, data: ExerciseLogUpdate) -> ExerciseLogResponse | None:
+    async with session.begin():
+        log = await session.get(ExerciseLog, log_id)
+        if log is None:
+            return None
+        for field, value in data.model_dump(exclude_none=True).items():
+            setattr(log, field, value)
     return ExerciseLogResponse.model_validate(log)
 
 
@@ -51,6 +63,16 @@ async def create_sleep(
     async with session.begin():
         log = SleepLog(**data.model_dump())
         session.add(log)
+    return SleepLogResponse.model_validate(log)
+
+
+async def update_sleep(session: AsyncSession, log_id: int, data: SleepLogUpdate) -> SleepLogResponse | None:
+    async with session.begin():
+        log = await session.get(SleepLog, log_id)
+        if log is None:
+            return None
+        for field, value in data.model_dump(exclude_none=True).items():
+            setattr(log, field, value)
     return SleepLogResponse.model_validate(log)
 
 

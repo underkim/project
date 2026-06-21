@@ -77,6 +77,10 @@ export const financeApi = {
     monthly_income: number; monthly_expense: number; note?: string;
   }): Promise<AssetRecordResponse> =>
     (await client.post('/api/v1/finance/records', data)).data,
+  updateRecord: async (id: number, data: Partial<{
+    total_assets: number; monthly_income: number; monthly_expense: number; note: string;
+  }>): Promise<AssetRecordResponse> =>
+    (await client.put(`/api/v1/finance/records/${id}`, data)).data,
   deleteRecord: async (id: number): Promise<void> => {
     await client.delete(`/api/v1/finance/records/${id}`);
   },
@@ -92,6 +96,10 @@ export const healthApi = {
   }): Promise<ExerciseLogResponse> =>
     (await client.post('/api/v1/health/exercise', data)).data,
   deleteExercise: async (id: number) => { await client.delete(`/api/v1/health/exercise/${id}`); },
+  updateExercise: async (id: number, data: Partial<{
+    exercise_type: string; duration_minutes: number; note: string;
+  }>): Promise<ExerciseLogResponse> =>
+    (await client.put(`/api/v1/health/exercise/${id}`, data)).data,
   listSleep: async (): Promise<SleepLogResponse[]> =>
     (await client.get('/api/v1/health/sleep')).data,
   createSleep: async (data: {
@@ -99,6 +107,10 @@ export const healthApi = {
   }): Promise<SleepLogResponse> =>
     (await client.post('/api/v1/health/sleep', data)).data,
   deleteSleep: async (id: number) => { await client.delete(`/api/v1/health/sleep/${id}`); },
+  updateSleep: async (id: number, data: Partial<{
+    sleep_hours: number; quality: number; note: string;
+  }>): Promise<SleepLogResponse> =>
+    (await client.put(`/api/v1/health/sleep/${id}`, data)).data,
 };
 
 export const growthApi = {
@@ -177,7 +189,24 @@ export const travelApi = {
 };
 
 
+export type AiChatResponse = {
+  reply: string;
+  saved: boolean;
+  module: string | null;
+  action: string | null;
+  pending_filter?: Record<string, unknown> | null;
+};
+
 export const aiApi = {
-  chat: async (message: string): Promise<{ message: string; saved: boolean; module: string | null }> =>
-    (await client.post('/api/v1/ai/chat', { message })).data,
+  chat: async (
+    message: string,
+    history: { role: string; text: string }[] = [],
+  ): Promise<AiChatResponse> =>
+    (await client.post('/api/v1/ai/chat', { message, history })).data,
+
+  execute: async (
+    module: string,
+    filter: Record<string, unknown>,
+  ): Promise<AiChatResponse> =>
+    (await client.post('/api/v1/ai/execute', { module, filter })).data,
 };

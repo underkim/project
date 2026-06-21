@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
   Plane, MapPin, Calendar, Plus, Trash2, Pencil, Check, X,
   ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle,
@@ -383,6 +384,8 @@ export default function TravelPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useAiRefresh(['travel'], load);
 
   // 요약 (클라이언트 계산)
   const summary = {

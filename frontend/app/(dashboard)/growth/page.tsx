@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAiRefresh } from '@/hooks/useAiRefresh';
+import { showToast } from '@/lib/toast';
 import { growthApi } from '@/lib/api';
 import type { BookRecordResponse, EnglishLogResponse, GrowthSummaryResponse, BookStatus } from '@/types';
+import { Trash2 } from 'lucide-react';
 
 const statusConfig: Record<BookStatus, { label: string; color: string }> = {
   planned:   { label: '예정',   color: 'bg-slate-100 text-slate-600' },
@@ -10,46 +13,58 @@ const statusConfig: Record<BookStatus, { label: string; color: string }> = {
   completed: { label: '완독',   color: 'bg-slate-900 text-white' },
 };
 
+function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <span className="flex items-center gap-1 ml-auto">
+      <button onClick={onConfirm} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">확인</button>
+      <button onClick={onCancel} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 transition-colors">취소</button>
+    </span>
+  );
+}
+
 export default function GrowthPage() {
   const [summary, setSummary] = useState<GrowthSummaryResponse | null>(null);
   const [books, setBooks] = useState<BookRecordResponse[]>([]);
   const [englishLogs, setEnglishLogs] = useState<EnglishLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showBookForm, setShowBookForm] = useState(false);
   const [showEngForm, setShowEngForm] = useState(false);
+  const [deletingBook, setDeletingBook] = useState<number | null>(null);
+  const [deletingEng, setDeletingEng] = useState<number | null>(null);
 
-  const [bookForm, setBookForm] = useState({ title: '', author: '', status: 'planned' as BookStatus, note: '' });
+  const [bookForm, setBookForm] = useState({ title: '', author: '', status: 'planned' as BookStatus });
   const [engForm, setEngForm] = useState({ log_date: '', activity_type: 'reading', duration_minutes: '', note: '' });
 
   async function load() {
-    setError(null);
     try {
       const [s, b, e] = await Promise.all([
         growthApi.getSummary(), growthApi.listBooks(), growthApi.listEnglish(),
       ]);
       setSummary(s); setBooks(b); setEnglishLogs(e);
     } catch {
-      setError('데이터를 불러오지 못했습니다.');
+      showToast('데이터를 불러오지 못했습니다.', 'error');
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    setEngForm(f => ({ ...f, log_date: today }));
+    setEngForm(f => ({ ...f, log_date: new Date().toISOString().slice(0, 10) }));
     load();
   }, []);
+
+  useAiRefresh(['growth'], load);
 
   async function submitBook(e: React.FormEvent) {
     e.preventDefault();
     try {
       await growthApi.createBook({ ...bookForm, author: bookForm.author || undefined });
-      setBookForm({ title: '', author: '', status: 'planned', note: '' });
-      setShowBookForm(false); await load();
+      setBookForm({ title: '', author: '', status: 'planned' });
+      setShowBookForm(false);
+      showToast('책 추가됨');
+      await load();
     } catch {
-      setError('책 저장에 실패했습니다.');
+      showToast('저장에 실패했습니다.', 'error');
     }
   }
 
@@ -60,15 +75,22 @@ export default function GrowthPage() {
       if (status === 'reading') updates.start_date = today;
       if (status === 'completed') updates.end_date = today;
       await growthApi.updateBook(id, updates);
+      showToast(status === 'completed' ? '완독 달성! 🎉' : '상태 변경됨');
       await load();
     } catch {
-      setError('상태 변경에 실패했습니다.');
+      showToast('상태 변경에 실패했습니다.', 'error');
     }
   }
 
   async function deleteBook(id: number) {
-    try { await growthApi.deleteBook(id); await load(); }
-    catch { setError('삭제에 실패했습니다.'); }
+    try {
+      await growthApi.deleteBook(id);
+      setDeletingBook(null);
+      showToast('책 삭제됨');
+      await load();
+    } catch {
+      showToast('삭제에 실패했습니다.', 'error');
+    }
   }
 
   async function submitEng(e: React.FormEvent) {
@@ -79,15 +101,23 @@ export default function GrowthPage() {
         duration_minutes: Number(engForm.duration_minutes), note: engForm.note || undefined,
       });
       setEngForm(f => ({ ...f, duration_minutes: '', note: '' }));
-      setShowEngForm(false); await load();
+      setShowEngForm(false);
+      showToast('영어 학습 기록 저장됨');
+      await load();
     } catch {
-      setError('영어 학습 저장에 실패했습니다.');
+      showToast('저장에 실패했습니다.', 'error');
     }
   }
 
   async function deleteEnglish(id: number) {
-    try { await growthApi.deleteEnglish(id); await load(); }
-    catch { setError('삭제에 실패했습니다.'); }
+    try {
+      await growthApi.deleteEnglish(id);
+      setDeletingEng(null);
+      showToast('영어 기록 삭제됨');
+      await load();
+    } catch {
+      showToast('삭제에 실패했습니다.', 'error');
+    }
   }
 
   const inputCls = 'w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white';
@@ -102,13 +132,6 @@ export default function GrowthPage() {
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-900">자기계발</h1>
 
-      {error && (
-        <div className="flex items-center justify-between border border-red-100 bg-red-50 rounded-lg px-4 py-2.5 text-red-600 text-sm">
-          {error}
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-4 text-xs">✕</button>
-        </div>
-      )}
-
       {/* 요약 */}
       <div className="grid grid-cols-2 gap-3">
         <div className="border border-slate-100 rounded-xl px-5 py-4">
@@ -117,7 +140,7 @@ export default function GrowthPage() {
           <p className="text-xs text-slate-400 mt-1">읽는 중 {summary?.books_reading ?? 0}권</p>
         </div>
         <div className="border border-slate-100 rounded-xl px-5 py-4">
-          <p className="text-xs text-slate-400 mb-1.5">이번 달 영어 학습</p>
+          <p className="text-xs text-slate-400 mb-1.5">이번 달 영어</p>
           <p className="text-2xl font-semibold text-slate-900">{summary?.english_days_this_month ?? 0}일</p>
           <p className="text-xs text-slate-400 mt-1">{summary?.english_minutes_this_month ?? 0}분</p>
         </div>
@@ -134,18 +157,18 @@ export default function GrowthPage() {
         </div>
         {showBookForm && (
           <form onSubmit={submitBook} className="px-5 py-4 bg-slate-50 border-b border-slate-100">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2">
                 <label className="text-xs text-slate-500 mb-1 block">제목</label>
                 <input type="text" value={bookForm.title}
                   onChange={e => setBookForm({ ...bookForm, title: e.target.value })}
-                  className={inputCls} required />
+                  className={inputCls} required placeholder="책 제목" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">저자</label>
                 <input type="text" value={bookForm.author}
                   onChange={e => setBookForm({ ...bookForm, author: e.target.value })}
-                  className={inputCls} />
+                  className={inputCls} placeholder="저자명" />
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">상태</label>
@@ -165,27 +188,35 @@ export default function GrowthPage() {
           </form>
         )}
         <div className="divide-y divide-slate-50">
-          {books.length === 0
-            ? <p className="text-slate-400 text-sm text-center py-8">등록된 책이 없습니다</p>
-            : books.map(book => (
-              <div key={book.id} className="flex items-center px-5 py-3 gap-3 hover:bg-slate-50 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-slate-800 truncate">{book.title}</p>
-                  {book.author && <p className="text-xs text-slate-400">{book.author}</p>}
-                </div>
-                <select
-                  value={book.status}
-                  onChange={e => updateBookStatus(book.id, e.target.value as BookStatus)}
-                  className={`text-xs px-2 py-1 rounded-lg border-0 font-medium cursor-pointer ${statusConfig[book.status].color}`}
-                >
-                  <option value="planned">예정</option>
-                  <option value="reading">읽는 중</option>
-                  <option value="completed">완독</option>
-                </select>
-                <button onClick={() => deleteBook(book.id)}
-                  className="text-slate-300 hover:text-red-400 text-xs transition-colors">삭제</button>
+          {books.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-slate-400 text-sm">아직 등록된 책이 없어요</p>
+              <button onClick={() => setShowBookForm(true)} className="mt-2 text-xs text-slate-500 underline underline-offset-2">첫 책 추가하기</button>
+            </div>
+          ) : books.map(book => (
+            <div key={book.id} className="flex items-center px-5 py-3 gap-3 hover:bg-slate-50 transition-colors">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm text-slate-800 truncate">{book.title}</p>
+                {book.author && <p className="text-xs text-slate-400">{book.author}</p>}
               </div>
-            ))}
+              <select
+                value={book.status}
+                onChange={e => updateBookStatus(book.id, e.target.value as BookStatus)}
+                className={`text-xs px-2 py-1 rounded-lg border-0 font-medium cursor-pointer ${statusConfig[book.status].color}`}
+              >
+                <option value="planned">예정</option>
+                <option value="reading">읽는 중</option>
+                <option value="completed">완독</option>
+              </select>
+              {deletingBook === book.id ? (
+                <DeleteConfirm onConfirm={() => deleteBook(book.id)} onCancel={() => setDeletingBook(null)} />
+              ) : (
+                <button onClick={() => setDeletingBook(book.id)} className="text-slate-300 hover:text-red-400 transition-colors">
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -200,7 +231,7 @@ export default function GrowthPage() {
         </div>
         {showEngForm && (
           <form onSubmit={submitEng} className="px-5 py-4 bg-slate-50 border-b border-slate-100">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">날짜</label>
                 <input type="date" value={engForm.log_date}
@@ -233,18 +264,26 @@ export default function GrowthPage() {
           </form>
         )}
         <div className="divide-y divide-slate-50">
-          {englishLogs.length === 0
-            ? <p className="text-slate-400 text-sm text-center py-8">기록이 없습니다</p>
-            : englishLogs.slice(0, 10).map(log => (
-              <div key={log.id} className="flex items-center px-5 py-3 gap-4 hover:bg-slate-50 transition-colors">
-                <span className="text-slate-400 text-xs w-24 shrink-0">{log.log_date}</span>
-                <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-medium">{log.activity_type}</span>
-                <span className="text-sm text-slate-700">{log.duration_minutes}분</span>
-                {log.note && <span className="text-slate-400 text-xs truncate">{log.note}</span>}
-                <button onClick={() => deleteEnglish(log.id)}
-                  className="ml-auto text-slate-300 hover:text-red-400 text-xs transition-colors">삭제</button>
-              </div>
-            ))}
+          {englishLogs.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-slate-400 text-sm">아직 영어 학습 기록이 없어요</p>
+              <button onClick={() => setShowEngForm(true)} className="mt-2 text-xs text-slate-500 underline underline-offset-2">첫 기록 추가하기</button>
+            </div>
+          ) : englishLogs.slice(0, 20).map(log => (
+            <div key={log.id} className="flex items-center px-5 py-3 gap-4 hover:bg-slate-50 transition-colors">
+              <span className="text-slate-400 text-xs w-24 shrink-0">{log.log_date}</span>
+              <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-medium">{log.activity_type}</span>
+              <span className="text-sm text-slate-700">{log.duration_minutes}분</span>
+              {log.note && <span className="text-slate-400 text-xs hidden sm:block truncate">{log.note}</span>}
+              {deletingEng === log.id ? (
+                <DeleteConfirm onConfirm={() => deleteEnglish(log.id)} onCancel={() => setDeletingEng(null)} />
+              ) : (
+                <button onClick={() => setDeletingEng(log.id)} className="ml-auto text-slate-300 hover:text-red-400 transition-colors">
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useAiRefresh } from '@/hooks/useAiRefresh';
 import { Plus, Trash2, Check, X, Pencil, AlertTriangle, Settings2, Loader2 } from 'lucide-react';
 import { plannerApi } from '@/lib/api';
 import type { PhaseResponse, RoadmapItemResponse, ItemStatus } from '@/types';
@@ -617,6 +618,8 @@ export default function PlannerPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useAiRefresh(['planner'], loadRoadmap);
+
   async function handleSaveDate() {
     setSaving(true);
     try {
@@ -842,10 +845,13 @@ export default function PlannerPage() {
           const pTotal = phase.categories.flatMap(c => c.items).length;
           const isActive = activeTab === idx;
           return (
-            <button
+            <div
               key={phase.id}
+              role="button"
+              tabIndex={0}
               onClick={() => { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); }}
-              className={`flex-1 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 relative group ${
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); } }}
+              className={`flex-1 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 relative group cursor-pointer select-none ${
                 isActive
                   ? 'bg-white text-slate-800 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
@@ -866,7 +872,7 @@ export default function PlannerPage() {
               </div>
               <div className="text-[11px] font-normal text-slate-400">{phase.label}</div>
               <div className="text-[11px] font-normal opacity-60">{pDone}/{pTotal}</div>
-            </button>
+            </div>
           );
         })}
       </div>

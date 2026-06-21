@@ -1,4 +1,7 @@
+import warnings
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     """애플리케이션 환경설정 - .env 파일에서 자동 로드"""
@@ -25,7 +28,21 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = "password"
 
+    # CORS (쉼표 구분 문자열 → 리스트)
+    cors_origins: str = "http://localhost:3000"
+
     # AI
     gemini_api_key: str = ""
 
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+
 settings = Settings()
+
+# 기본 비밀값 사용 시 경고
+if settings.jwt_secret == "change-me-in-production-use-env-var":
+    warnings.warn("⚠️  JWT_SECRET이 기본값입니다. .env에서 안전한 값으로 변경하세요.", stacklevel=1)
+if settings.admin_password == "password":
+    warnings.warn("⚠️  ADMIN_PASSWORD가 기본값(password)입니다. .env에서 변경하세요.", stacklevel=1)

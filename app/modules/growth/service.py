@@ -10,6 +10,7 @@ from app.modules.growth.schemas import (
     BookRecordUpdate,
     EnglishLogCreate,
     EnglishLogResponse,
+    EnglishLogUpdate,
     GrowthSummaryResponse,
 )
 
@@ -60,6 +61,18 @@ async def create_english(
     async with session.begin():
         log = EnglishLog(**data.model_dump())
         session.add(log)
+    return EnglishLogResponse.model_validate(log)
+
+
+async def update_english(
+    session: AsyncSession, log_id: int, data: EnglishLogUpdate
+) -> EnglishLogResponse | None:
+    async with session.begin():
+        log = await session.get(EnglishLog, log_id)
+        if log is None:
+            return None
+        for field, value in data.model_dump(exclude_none=True).items():
+            setattr(log, field, value)
     return EnglishLogResponse.model_validate(log)
 
 

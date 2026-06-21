@@ -18,20 +18,20 @@ CurrentUser = Annotated[str, Depends(get_current_user)]
 
 
 @router.get("/summary", response_model=FinanceSummaryResponse)
-async def get_summary(session: AsyncSession = Depends(get_db)):
+async def get_summary(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.get_summary(session)
 
 
 @router.get("/records", response_model=list[AssetRecordResponse])
-async def list_records(session: AsyncSession = Depends(get_db)):
+async def list_records(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.list_records(session)
 
 
 @router.get("/records/{record_id}", response_model=AssetRecordResponse)
-async def get_record(record_id: int, session: AsyncSession = Depends(get_db)):
+async def get_record(record_id: int, _: CurrentUser, session: AsyncSession = Depends(get_db)):
     result = await service.get_record(session, record_id)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="재테크 기록을 찾을 수 없습니다.")
     return result
 
 
@@ -53,7 +53,7 @@ async def update_record(
 ):
     result = await service.update_record(session, record_id, data)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="재테크 기록을 찾을 수 없습니다.")
     return result
 
 
@@ -65,4 +65,4 @@ async def delete_record(
 ):
     deleted = await service.delete_record(session, record_id)
     if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="재테크 기록을 찾을 수 없습니다.")

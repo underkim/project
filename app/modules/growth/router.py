@@ -12,6 +12,7 @@ from app.modules.growth.schemas import (
     BookRecordUpdate,
     EnglishLogCreate,
     EnglishLogResponse,
+    EnglishLogUpdate,
     GrowthSummaryResponse,
 )
 
@@ -20,12 +21,12 @@ CurrentUser = Annotated[str, Depends(get_current_user)]
 
 
 @router.get("/summary", response_model=GrowthSummaryResponse)
-async def get_summary(session: AsyncSession = Depends(get_db)):
+async def get_summary(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.get_summary(session)
 
 
 @router.get("/books", response_model=list[BookRecordResponse])
-async def list_books(session: AsyncSession = Depends(get_db)):
+async def list_books(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.list_books(session)
 
 
@@ -40,18 +41,18 @@ async def update_book(
 ):
     result = await service.update_book(session, book_id, data)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="도서 기록을 찾을 수 없습니다.")
     return result
 
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_book(book_id: int, _: CurrentUser, session: AsyncSession = Depends(get_db)):
     if not await service.delete_book(session, book_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="도서 기록을 찾을 수 없습니다.")
 
 
 @router.get("/english", response_model=list[EnglishLogResponse])
-async def list_english(session: AsyncSession = Depends(get_db)):
+async def list_english(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.list_english(session)
 
 
@@ -60,7 +61,17 @@ async def create_english(data: EnglishLogCreate, _: CurrentUser, session: AsyncS
     return await service.create_english(session, data)
 
 
+@router.put("/english/{log_id}", response_model=EnglishLogResponse)
+async def update_english(
+    log_id: int, data: EnglishLogUpdate, _: CurrentUser, session: AsyncSession = Depends(get_db)
+):
+    result = await service.update_english(session, log_id, data)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="영어 학습 기록을 찾을 수 없습니다.")
+    return result
+
+
 @router.delete("/english/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_english(log_id: int, _: CurrentUser, session: AsyncSession = Depends(get_db)):
     if not await service.delete_english(session, log_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Log not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="영어 학습 기록을 찾을 수 없습니다.")

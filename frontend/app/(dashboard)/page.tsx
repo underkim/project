@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAiRefresh } from '@/hooks/useAiRefresh';
 import Link from 'next/link';
 import {
   CalendarDays, TrendingUp, Activity, BookOpen,
@@ -64,12 +65,16 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  function load() {
     dashboardApi.getOverview()
       .then(setData)
       .catch(() => setError('데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  useAiRefresh([], load);
 
   if (loading) {
     return (
@@ -113,7 +118,7 @@ export default function DashboardPage() {
       )}
 
       {/* 핵심 지표 4개 */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           {
             label: '로드맵 진행률',
@@ -151,7 +156,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 스냅샷 그리드 */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card title="플래너" icon={<CalendarDays size={14} />} href="/planner">
           <Stat label="완료" value={`${planner?.completed_items ?? 0}개`} />
           <Stat label="임박 (30일)" value={`${planner?.urgent_items ?? 0}개`} />
