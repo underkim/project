@@ -22,6 +22,12 @@ class Trip(Base):
         cascade="all, delete-orphan",
         order_by="TripChecklistItem.order_index",
     )
+    plan_items: Mapped[list["TripPlanItem"]] = relationship(
+        "TripPlanItem",
+        back_populates="trip",
+        cascade="all, delete-orphan",
+        order_by="(TripPlanItem.day, TripPlanItem.sort_order)",
+    )
 
 
 class TripChecklistItem(Base):
@@ -34,3 +40,17 @@ class TripChecklistItem(Base):
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="checklist_items")
+
+
+class TripPlanItem(Base):
+    __tablename__ = "trip_plan_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    trip_id: Mapped[int] = mapped_column(ForeignKey("trips.id"), nullable=False)
+    day: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    time: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    trip: Mapped["Trip"] = relationship("Trip", back_populates="plan_items")

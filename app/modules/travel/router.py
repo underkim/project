@@ -9,6 +9,8 @@ from app.modules.travel import service
 from app.modules.travel.schemas import (
     ChecklistItemCreate,
     ChecklistItemResponse,
+    PlanItemCreate,
+    PlanItemResponse,
     TravelSummaryResponse,
     TripCreate,
     TripResponse,
@@ -20,20 +22,20 @@ CurrentUser = Annotated[str, Depends(get_current_user)]
 
 
 @router.get("/summary", response_model=TravelSummaryResponse)
-async def get_summary(session: AsyncSession = Depends(get_db)):
+async def get_summary(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.get_summary(session)
 
 
 @router.get("/trips", response_model=list[TripResponse])
-async def list_trips(session: AsyncSession = Depends(get_db)):
+async def list_trips(_: CurrentUser, session: AsyncSession = Depends(get_db)):
     return await service.list_trips(session)
 
 
 @router.get("/trips/{trip_id}", response_model=TripResponse)
-async def get_trip(trip_id: int, session: AsyncSession = Depends(get_db)):
+async def get_trip(trip_id: int, _: CurrentUser, session: AsyncSession = Depends(get_db)):
     result = await service.get_trip(session, trip_id)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
     return result
 
 
@@ -55,7 +57,7 @@ async def update_trip(
 ):
     result = await service.update_trip(session, trip_id, data)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
     return result
 
 
@@ -67,7 +69,7 @@ async def delete_trip(
 ):
     deleted = await service.delete_trip(session, trip_id)
     if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
 
 
 @router.post(
@@ -83,7 +85,7 @@ async def add_checklist_item(
 ):
     result = await service.add_checklist_item(session, trip_id, data)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trip not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
     return result
 
 
@@ -95,7 +97,7 @@ async def toggle_checklist_item(
 ):
     result = await service.toggle_checklist_item(session, item_id)
     if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="체크리스트 항목을 찾을 수 없습니다.")
     return result
 
 
@@ -107,4 +109,32 @@ async def delete_checklist_item(
 ):
     deleted = await service.delete_checklist_item(session, item_id)
     if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="체크리스트 항목을 찾을 수 없습니다.")
+
+
+@router.post(
+    "/trips/{trip_id}/plan",
+    response_model=PlanItemResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_plan_item(
+    trip_id: int,
+    data: PlanItemCreate,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    result = await service.add_plan_item(session, trip_id, data)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
+    return result
+
+
+@router.delete("/plan/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_plan_item(
+    item_id: int,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    deleted = await service.delete_plan_item(session, item_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="일정 항목을 찾을 수 없습니다.")

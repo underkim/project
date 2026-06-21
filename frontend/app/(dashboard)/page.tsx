@@ -6,55 +6,91 @@ import Link from 'next/link';
 import {
   CalendarDays, TrendingUp, Activity, BookOpen,
   Briefcase, AlertTriangle, ChevronRight, Plane,
+  Star, MapPin, Dumbbell,
 } from 'lucide-react';
 import { dashboardApi } from '@/lib/api';
 import type { OverviewResponse } from '@/types';
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+// SVG 원형 진행률 링
+function RingProgress({ pct, size = 96, stroke = 8, color = '#0f172a' }: {
+  pct: number; size?: number; stroke?: number; color?: string;
+}) {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-slate-50 last:border-0">
-      <span className="text-sm text-slate-500">{label}</span>
-      <span className="text-sm font-medium text-slate-900">{value}</span>
+    <svg width={size} height={size} className="-rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={stroke} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={color} strokeWidth={stroke}
+        strokeDasharray={circ} strokeDashoffset={offset}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dashoffset 0.7s ease' }}
+      />
+    </svg>
+  );
+}
+
+// 가는 수평 진행 바
+function ProgressBar({ value, max, color = 'bg-slate-900' }: { value: number; max: number; color?: string }) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  return (
+    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+      <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
     </div>
   );
 }
 
-function Bar({ value, max }: { value: number; max: number }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+// 별점 표시
+function Stars({ value, max = 5 }: { value: number; max?: number }) {
   return (
-    <div className="mt-3">
-      <div className="flex justify-between text-xs text-slate-400 mb-1.5">
-        <span>{value} / {max}</span>
-        <span>{pct}%</span>
-      </div>
-      <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-        <div className="h-full bg-slate-900 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-      </div>
+    <div className="flex gap-0.5">
+      {Array.from({ length: max }, (_, i) => (
+        <Star key={i} size={11} className={i < Math.round(value) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'} />
+      ))}
     </div>
   );
 }
 
-interface CardProps {
+// 주간 운동 도트 (월~일)
+function WeekDots({ days }: { days: number }) {
+  return (
+    <div className="flex gap-1 mt-1">
+      {Array.from({ length: 7 }, (_, i) => (
+        <div
+          key={i}
+          className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium ${
+            i < days ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-300'
+          }`}
+        >
+          {['월', '화', '수', '목', '금', '토', '일'][i]}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+interface ModuleCardProps {
   title: string;
   icon: React.ReactNode;
   href: string;
+  accent?: string;
   children: React.ReactNode;
 }
 
-function Card({ title, icon, href, children }: CardProps) {
+function ModuleCard({ title, icon, href, accent = 'bg-slate-50', children }: ModuleCardProps) {
   return (
     <Link href={href} className="block group">
-      <div className="border border-slate-100 rounded-xl hover:border-slate-200 transition-colors">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
-          <div className="flex items-center gap-2 text-slate-500">
+      <div className="border border-slate-100 rounded-2xl hover:border-slate-200 hover:shadow-sm transition-all overflow-hidden">
+        <div className={`flex items-center justify-between px-5 py-3 ${accent}`}>
+          <div className="flex items-center gap-2 text-slate-600">
             {icon}
-            <span className="text-xs font-medium uppercase tracking-wide">{title}</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">{title}</span>
           </div>
-          <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-400 transition-colors" />
+          <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
         </div>
-        <div className="px-5 py-4">
-          {children}
-        </div>
+        <div className="px-5 py-4">{children}</div>
       </div>
     </Link>
   );
@@ -73,7 +109,6 @@ export default function DashboardPage() {
   }
 
   useEffect(() => { load(); }, []);
-
   useAiRefresh([], load);
 
   if (loading) {
@@ -83,126 +118,224 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  if (error) {
-    return <p className="text-sm text-red-500 py-4">{error}</p>;
-  }
+  if (error) return <p className="text-sm text-red-500 py-4">{error}</p>;
 
   const { planner, finance, health, growth, career, travel } = data ?? {};
+
   const completionRate = planner && planner.total_items > 0
     ? Math.round((planner.completed_items / planner.total_items) * 100)
     : 0;
+
+  const savingsRate = finance?.avg_savings_rate ?? 0;
+  const exerciseDays = health?.exercise_days_this_week ?? 0;
+  const sleepQuality = health?.avg_sleep_quality_this_week ?? 0;
+  const booksThisYear = growth?.books_completed_this_year ?? 0;
 
   const today = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
   });
 
+  const hasAlert = planner && (planner.urgent_items > 0 || planner.overdue_items > 0);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-lg font-semibold text-slate-900">대시보드</h1>
-        <p className="text-sm text-slate-400 mt-0.5">{today}</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">오늘의 현황</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{today}</p>
+        </div>
+        {hasAlert && (
+          <Link href="/planner">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl hover:bg-amber-100 transition-colors font-medium">
+              <AlertTriangle size={12} />
+              지연 {planner!.overdue_items} · 임박 {planner!.urgent_items}
+            </span>
+          </Link>
+        )}
       </div>
 
-      {/* 경고 */}
-      {planner && (planner.urgent_items > 0 || planner.overdue_items > 0) && (
-        <Link href="/planner">
-          <div className="flex items-center gap-3 border border-amber-200 bg-amber-50 rounded-lg px-4 py-3 hover:bg-amber-100 transition-colors">
-            <AlertTriangle size={15} className="text-amber-500 shrink-0" />
-            <p className="text-sm text-amber-800">
-              주의 필요한 항목 — 지연 {planner.overdue_items}개 · 임박 {planner.urgent_items}개
-            </p>
+      {/* 히어로: 로드맵 링 + 핵심 지표 */}
+      <div className="bg-slate-900 text-white rounded-2xl px-6 py-6 flex items-center gap-6">
+        {/* 링 */}
+        <Link href="/planner" className="relative shrink-0">
+          <RingProgress pct={completionRate} size={96} stroke={8} color="#94a3b8" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-xl font-bold leading-none">{completionRate}%</span>
+            <span className="text-[9px] text-slate-400 mt-0.5">로드맵</span>
           </div>
         </Link>
-      )}
 
-      {/* 핵심 지표 4개 */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          {
-            label: '로드맵 진행률',
-            value: `${completionRate}%`,
-            sub: `${planner?.completed_items ?? 0}/${planner?.total_items ?? 0}`,
-            href: '/planner',
-          },
-          {
-            label: '총 자산',
-            value: finance?.latest_total_assets != null ? `${finance.latest_total_assets.toLocaleString()}만` : '—',
-            sub: finance?.avg_savings_rate != null ? `저축률 ${finance.avg_savings_rate}%` : '',
-            href: '/finance',
-          },
-          {
-            label: '이번 주 운동',
-            value: `${health?.exercise_days_this_week ?? 0}일`,
-            sub: health?.avg_sleep_quality_this_week != null ? `수면 ${health.avg_sleep_quality_this_week}/5` : '',
-            href: '/health',
-          },
-          {
-            label: '올해 완독',
-            value: `${growth?.books_completed_this_year ?? 0}권`,
-            sub: `영어 ${growth?.english_days_this_month ?? 0}일/월`,
-            href: '/growth',
-          },
-        ].map(item => (
-          <Link key={item.href} href={item.href} className="block group">
-            <div className="border border-slate-100 rounded-xl px-4 py-4 hover:border-slate-200 transition-colors">
-              <p className="text-2xl font-semibold text-slate-900 leading-none">{item.value}</p>
-              <p className="text-xs text-slate-400 mt-2">{item.label}</p>
-              {item.sub && <p className="text-xs text-slate-400 mt-0.5">{item.sub}</p>}
-            </div>
-          </Link>
-        ))}
+        {/* 핵심 지표 */}
+        <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3 min-w-0">
+          {[
+            {
+              href: '/finance',
+              label: '총 자산',
+              value: finance?.latest_total_assets != null ? `${finance.latest_total_assets.toLocaleString()}만` : '—',
+              sub: savingsRate > 0 ? `저축률 ${savingsRate}%` : '미입력',
+            },
+            {
+              href: '/health',
+              label: '이번 주 운동',
+              value: `${exerciseDays}일`,
+              sub: sleepQuality > 0 ? `수면 ${sleepQuality}/5` : '수면 미입력',
+            },
+            {
+              href: '/growth',
+              label: '올해 완독',
+              value: `${booksThisYear}권`,
+              sub: `영어 ${growth?.english_days_this_month ?? 0}일/월`,
+            },
+            {
+              href: '/travel',
+              label: '여행',
+              value: travel?.ongoing && travel.ongoing > 0 ? '진행 중' : `예정 ${travel?.upcoming ?? 0}개`,
+              sub: travel?.next_trip_name ?? '없음',
+            },
+          ].map(item => (
+            <Link key={item.href} href={item.href} className="block hover:opacity-80 transition-opacity">
+              <p className="text-lg font-bold leading-none">{item.value}</p>
+              <p className="text-[10px] text-slate-400 mt-1">{item.label}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5 truncate">{item.sub}</p>
+            </Link>
+          ))}
+        </div>
       </div>
 
-      {/* 스냅샷 그리드 */}
+      {/* 모듈 카드 그리드 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card title="플래너" icon={<CalendarDays size={14} />} href="/planner">
-          <Stat label="완료" value={`${planner?.completed_items ?? 0}개`} />
-          <Stat label="임박 (30일)" value={`${planner?.urgent_items ?? 0}개`} />
-          <Stat label="지연" value={`${planner?.overdue_items ?? 0}개`} />
-          {planner && <Bar value={planner.completed_items} max={planner.total_items} />}
-        </Card>
 
-        <Card title="커리어" icon={<Briefcase size={14} />} href="/career">
-          <Stat label="CF 핸들" value={career?.cf_handle ?? '미설정'} />
-          <Stat label="최근 레이팅" value={career?.latest_cf_rating ?? '미입력'} />
-        </Card>
+        {/* 플래너 */}
+        <ModuleCard title="플래너" icon={<CalendarDays size={14} />} href="/planner" accent="bg-slate-50">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-2xl font-bold text-slate-900">{completionRate}%</p>
+              <p className="text-xs text-slate-400 mt-0.5">전체 {planner?.total_items ?? 0}개 중 {planner?.completed_items ?? 0}개 완료</p>
+            </div>
+            <RingProgress pct={completionRate} size={52} stroke={5} color="#0f172a" />
+          </div>
+          <ProgressBar value={planner?.completed_items ?? 0} max={planner?.total_items ?? 1} />
+          <div className="flex gap-4 mt-3">
+            {planner?.urgent_items != null && planner.urgent_items > 0 && (
+              <span className="text-xs text-amber-600 font-medium">⚡ 임박 {planner.urgent_items}개</span>
+            )}
+            {planner?.overdue_items != null && planner.overdue_items > 0 && (
+              <span className="text-xs text-red-500 font-medium">⚠️ 지연 {planner.overdue_items}개</span>
+            )}
+            {(!planner?.urgent_items && !planner?.overdue_items) && (
+              <span className="text-xs text-slate-400">일정 순조로움</span>
+            )}
+          </div>
+        </ModuleCard>
 
-        <Card title="재테크" icon={<TrendingUp size={14} />} href="/finance">
-          <Stat
-            label="총 자산"
-            value={finance?.latest_total_assets != null ? `${finance.latest_total_assets.toLocaleString()}만원` : '미입력'}
-          />
-          <Stat
-            label="평균 저축률"
-            value={finance?.avg_savings_rate != null ? `${finance.avg_savings_rate}%` : '미입력'}
-          />
-          {finance?.avg_savings_rate != null && (
-            <Bar value={finance.avg_savings_rate} max={100} />
-          )}
-        </Card>
+        {/* 건강 */}
+        <ModuleCard title="건강" icon={<Activity size={14} />} href="/health" accent="bg-emerald-50">
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-slate-500 flex items-center gap-1"><Dumbbell size={11} /> 이번 주 운동</span>
+                <span className="text-sm font-bold text-slate-900">{exerciseDays} / 7일</span>
+              </div>
+              <WeekDots days={exerciseDays} />
+            </div>
+            {sleepQuality > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">평균 수면 품질</span>
+                <Stars value={sleepQuality} />
+              </div>
+            )}
+          </div>
+        </ModuleCard>
 
-        <Card title="자기계발" icon={<BookOpen size={14} />} href="/growth">
-          <Stat label="올해 완독" value={`${growth?.books_completed_this_year ?? 0}권`} />
-          <Stat label="이번 달 영어" value={`${growth?.english_days_this_month ?? 0}일`} />
-        </Card>
+        {/* 재테크 */}
+        <ModuleCard title="재테크" icon={<TrendingUp size={14} />} href="/finance" accent="bg-blue-50">
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-slate-400 mb-0.5">총 자산</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {finance?.latest_total_assets != null
+                  ? `${finance.latest_total_assets.toLocaleString()}만원`
+                  : <span className="text-slate-300 text-base">미입력</span>}
+              </p>
+            </div>
+            {savingsRate > 0 && (
+              <div>
+                <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+                  <span>저축률</span>
+                  <span className="font-medium text-slate-700">{savingsRate}%</span>
+                </div>
+                <ProgressBar
+                  value={savingsRate}
+                  max={100}
+                  color={savingsRate >= 30 ? 'bg-emerald-500' : savingsRate >= 15 ? 'bg-amber-400' : 'bg-red-400'}
+                />
+              </div>
+            )}
+          </div>
+        </ModuleCard>
 
-        <Card title="여행" icon={<Plane size={14} />} href="/travel">
-          <Stat label="총 여행" value={`${travel?.total ?? 0}개`} />
-          <Stat label="예정" value={`${travel?.upcoming ?? 0}개`} />
-          {travel?.next_trip_name && (
-            <p className="text-sm font-medium text-slate-900 mt-3 truncate">{travel.next_trip_name}</p>
-          )}
-        </Card>
+        {/* 자기계발 */}
+        <ModuleCard title="자기계발" icon={<BookOpen size={14} />} href="/growth" accent="bg-violet-50">
+          <div className="space-y-2">
+            <div className="flex items-end gap-2">
+              <p className="text-3xl font-bold text-slate-900">{booksThisYear}</p>
+              <p className="text-sm text-slate-400 mb-1">권 (올해 완독)</p>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500">읽는 중</span>
+              <span className="text-xs font-medium text-slate-700">{growth?.books_reading ?? 0}권</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500">이번 달 영어</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-medium text-slate-700">{growth?.english_days_this_month ?? 0}일</span>
+                <span className="text-[10px] text-slate-300">/ 30일</span>
+              </div>
+            </div>
+            <ProgressBar value={growth?.english_days_this_month ?? 0} max={30} color="bg-violet-500" />
+          </div>
+        </ModuleCard>
 
-        <Card title="건강" icon={<Activity size={14} />} href="/health">
-          <Stat label="이번 주 운동" value={`${health?.exercise_days_this_week ?? 0}일`} />
-          <Stat
-            label="수면 품질"
-            value={health?.avg_sleep_quality_this_week != null ? `${health.avg_sleep_quality_this_week}/5` : '—'}
-          />
-        </Card>
+        {/* 여행 */}
+        <ModuleCard title="여행" icon={<Plane size={14} />} href="/travel" accent="bg-sky-50">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <p className="text-3xl font-bold text-slate-900">{travel?.total ?? 0}</p>
+              <div className="text-xs text-slate-400 space-y-0.5">
+                <p>진행 중 {travel?.ongoing ?? 0}개</p>
+                <p>예정 {travel?.upcoming ?? 0}개</p>
+              </div>
+            </div>
+            {travel?.next_trip_name && (
+              <div className="flex items-center gap-1.5 mt-1 px-3 py-2 bg-sky-50 rounded-xl">
+                <MapPin size={12} className="text-sky-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-700 truncate">{travel.next_trip_name}</p>
+                  {travel.next_trip_destination && (
+                    <p className="text-[10px] text-slate-400 truncate">{travel.next_trip_destination}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </ModuleCard>
+
+        {/* 커리어 */}
+        <ModuleCard title="커리어" icon={<Briefcase size={14} />} href="/career" accent="bg-orange-50">
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs text-slate-400 mb-1">Codeforces</p>
+              <p className="text-lg font-bold text-slate-900">{career?.cf_handle ?? <span className="text-slate-300 text-sm">미설정</span>}</p>
+            </div>
+            {career?.latest_cf_rating != null && (
+              <div className="flex items-center justify-between px-3 py-2 bg-orange-50 rounded-xl">
+                <span className="text-xs text-slate-500">최근 레이팅</span>
+                <span className="text-sm font-bold text-slate-900">{career.latest_cf_rating}</span>
+              </div>
+            )}
+          </div>
+        </ModuleCard>
       </div>
     </div>
   );

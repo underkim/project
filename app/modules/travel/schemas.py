@@ -44,6 +44,25 @@ class TripUpdate(BaseModel):
     note: str | None = None
 
 
+class PlanItemCreate(BaseModel):
+    day: int = 1
+    sort_order: int = 0
+    time: str | None = None
+    title: str
+    description: str | None = None
+
+
+class PlanItemResponse(BaseModel):
+    id: int
+    day: int
+    sort_order: int
+    time: str | None
+    title: str
+    description: str | None
+
+    model_config = {"from_attributes": True}
+
+
 class TripResponse(BaseModel):
     id: int
     name: str
@@ -53,6 +72,7 @@ class TripResponse(BaseModel):
     status: str
     note: str | None
     checklist_items: list[ChecklistItemResponse]
+    plan_items: list[PlanItemResponse]
 
     model_config = {"from_attributes": True}
 

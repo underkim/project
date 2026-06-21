@@ -5,7 +5,7 @@ import type {
   BookRecordResponse, EnglishLogResponse, GrowthSummaryResponse,
   CareerSettingsResponse, CFRatingLogResponse, CareerSummaryResponse,
   OverviewResponse,
-  TripResponse, ChecklistItemResponse, TravelSummaryResponse,
+  TripResponse, ChecklistItemResponse, TravelSummaryResponse, TripPlanItemResponse,
 } from '@/types';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -185,6 +185,13 @@ export const travelApi = {
     (await client.patch(`/api/v1/travel/checklist/${itemId}/toggle`)).data,
   deleteChecklistItem: async (itemId: number): Promise<void> => {
     await client.delete(`/api/v1/travel/checklist/${itemId}`);
+  },
+  addPlanItem: async (tripId: number, data: {
+    day: number; title: string; time?: string; description?: string; sort_order?: number;
+  }): Promise<TripPlanItemResponse> =>
+    (await client.post(`/api/v1/travel/trips/${tripId}/plan`, data)).data,
+  deletePlanItem: async (itemId: number): Promise<void> => {
+    await client.delete(`/api/v1/travel/plan/${itemId}`);
   },
 };
 

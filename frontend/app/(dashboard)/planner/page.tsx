@@ -504,6 +504,23 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
   const [color, setColor] = useState(phase.color);
   const [saving, setSaving] = useState(false);
 
+  // 종료일 파생: phase.start_date + months
+  const computedEndDate = (() => {
+    if (!phase.start_date || !months || isNaN(Number(months))) return null;
+    const d = new Date(phase.start_date);
+    d.setMonth(d.getMonth() + Number(months));
+    return d.toISOString().split('T')[0];
+  })();
+
+  function handleEndDateChange(val: string) {
+    if (!val || !phase.start_date) return;
+    const start = new Date(phase.start_date);
+    const end = new Date(val);
+    const diffMs = end.getTime() - start.getTime();
+    const diffMonths = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30.44)));
+    setMonths(String(diffMonths));
+  }
+
   async function handleSave() {
     if (!name.trim() || !label.trim() || !months) return;
     setSaving(true);
@@ -546,13 +563,26 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
           <input
             type="number"
             min="1"
-            max="60"
+            max="120"
             value={months}
             onChange={e => setMonths(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
           />
         </div>
         <div>
+          <label className="text-xs text-slate-500 mb-1 block">
+            종료일 {phase.start_date ? <span className="text-slate-400">(자동 계산)</span> : <span className="text-slate-300">(시작일 미설정)</span>}
+          </label>
+          <input
+            type="date"
+            value={computedEndDate ?? ''}
+            min={phase.start_date ?? undefined}
+            disabled={!phase.start_date}
+            onChange={e => handleEndDateChange(e.target.value)}
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
+          />
+        </div>
+        <div className="col-span-2">
           <label className="text-xs text-slate-500 mb-1 block">색상</label>
           <div className="flex items-center gap-2">
             <input
@@ -888,12 +918,22 @@ export default function PlannerPage() {
 
       {/* Phase 메타 정보 */}
       {activePhase && editingPhaseId !== activePhase.id && (
-        <div className="flex items-center gap-4 text-sm text-slate-500 px-1">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 px-1">
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: activePhase.color }} />
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: activePhase.color }} />
             <span>{activePhase.months}개월</span>
           </span>
-          {activePhase.start_date && <span>시작 {activePhase.start_date}</span>}
+          {activePhase.start_date && (
+            <span>
+              {activePhase.start_date}
+              {' → '}
+              {(() => {
+                const d = new Date(activePhase.start_date);
+                d.setMonth(d.getMonth() + activePhase.months);
+                return d.toISOString().split('T')[0];
+              })()}
+            </span>
+          )}
           <span className="font-medium text-slate-600">
             {activePhase.categories.flatMap(c => c.items).filter(i => i.is_completed).length}
             /{activePhase.categories.flatMap(c => c.items).length} 완료

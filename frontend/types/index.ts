@@ -182,6 +182,15 @@ export interface ChecklistItemResponse {
   order_index: number;
 }
 
+export interface TripPlanItemResponse {
+  id: number;
+  day: number;
+  sort_order: number;
+  time: string | null;
+  title: string;
+  description: string | null;
+}
+
 export interface TripResponse {
   id: number;
   name: string;
@@ -191,6 +200,7 @@ export interface TripResponse {
   status: TripStatus;
   note: string | null;
   checklist_items: ChecklistItemResponse[];
+  plan_items: TripPlanItemResponse[];
 }
 
 export interface TravelSummaryResponse {

@@ -2,10 +2,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.modules.travel.models import Trip, TripChecklistItem
+from app.modules.travel.models import Trip, TripChecklistItem, TripPlanItem
 from app.modules.travel.schemas import (
     ChecklistItemCreate,
     ChecklistItemResponse,
+    PlanItemCreate,
+    PlanItemResponse,
     TravelSummaryResponse,
     TripCreate,
     TripResponse,
@@ -31,13 +33,28 @@ def _trip_to_response(trip: Trip) -> TripResponse:
             )
             for item in trip.checklist_items
         ],
+        plan_items=[
+            PlanItemResponse(
+                id=p.id,
+                day=p.day,
+                sort_order=p.sort_order,
+                time=p.time,
+                title=p.title,
+                description=p.description,
+            )
+            for p in trip.plan_items
+        ],
     )
+
+
+def _trip_opts():
+    return [selectinload(Trip.checklist_items), selectinload(Trip.plan_items)]
 
 
 async def list_trips(session: AsyncSession) -> list[TripResponse]:
     result = await session.execute(
         select(Trip)
-        .options(selectinload(Trip.checklist_items))
+        .options(*_trip_opts())
         .order_by(Trip.start_date.desc())
     )
     return [_trip_to_response(t) for t in result.scalars().all()]
@@ -46,7 +63,7 @@ async def list_trips(session: AsyncSession) -> list[TripResponse]:
 async def get_trip(session: AsyncSession, trip_id: int) -> TripResponse | None:
     result = await session.execute(
         select(Trip)
-        .options(selectinload(Trip.checklist_items))
+        .options(*_trip_opts())
         .where(Trip.id == trip_id)
     )
     trip = result.scalar_one_or_none()
@@ -58,7 +75,7 @@ async def create_trip(session: AsyncSession, data: TripCreate) -> TripResponse:
         trip = Trip(**data.model_dump())
         session.add(trip)
         await session.flush()
-        await session.refresh(trip, attribute_names=["checklist_items"])
+        await session.refresh(trip, attribute_names=["checklist_items", "plan_items"])
     return _trip_to_response(trip)
 
 
@@ -68,7 +85,7 @@ async def update_trip(
     async with session.begin():
         result = await session.execute(
             select(Trip)
-            .options(selectinload(Trip.checklist_items))
+            .options(*_trip_opts())
             .where(Trip.id == trip_id)
         )
         trip = result.scalar_one_or_none()
@@ -83,7 +100,7 @@ async def delete_trip(session: AsyncSession, trip_id: int) -> bool:
     async with session.begin():
         result = await session.execute(
             select(Trip)
-            .options(selectinload(Trip.checklist_items))
+            .options(*_trip_opts())
             .where(Trip.id == trip_id)
         )
         trip = result.scalar_one_or_none()
@@ -134,6 +151,41 @@ async def toggle_checklist_item(
 async def delete_checklist_item(session: AsyncSession, item_id: int) -> bool:
     async with session.begin():
         item = await session.get(TripChecklistItem, item_id)
+        if item is None:
+            return False
+        await session.delete(item)
+    return True
+
+
+async def add_plan_item(
+    session: AsyncSession, trip_id: int, data: PlanItemCreate
+) -> PlanItemResponse | None:
+    async with session.begin():
+        trip = await session.get(Trip, trip_id)
+        if trip is None:
+            return None
+        item = TripPlanItem(
+            trip_id=trip_id,
+            day=data.day,
+            sort_order=data.sort_order,
+            time=data.time,
+            title=data.title,
+            description=data.description,
+        )
+        session.add(item)
+    return PlanItemResponse(
+        id=item.id,
+        day=item.day,
+        sort_order=item.sort_order,
+        time=item.time,
+        title=item.title,
+        description=item.description,
+    )
+
+
+async def delete_plan_item(session: AsyncSession, item_id: int) -> bool:
+    async with session.begin():
+        item = await session.get(TripPlanItem, item_id)
         if item is None:
             return False
         await session.delete(item)

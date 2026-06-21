@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Toast from '@/components/Toast';
+import AiModal from '@/components/AiModal';
 import { Menu } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -62,6 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
 
       <Toast />
+      <AiModal />
     </div>
   );
 }

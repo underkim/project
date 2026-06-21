@@ -4,10 +4,10 @@ import { useEffect, useState, useRef } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
   Plane, MapPin, Calendar, Plus, Trash2, Pencil, Check, X,
-  ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle,
+  ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered,
 } from 'lucide-react';
 import { travelApi } from '@/lib/api';
-import type { TripResponse, TripStatus, ChecklistItemResponse } from '@/types';
+import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse } from '@/types';
 
 // ── 상태 배지 ──────────────────────────────────────────────
 const STATUS_META: Record<TripStatus, { label: string; cls: string }> = {
@@ -195,12 +195,15 @@ interface TripCardProps {
   onToggleChecklist: (tripId: number, itemId: number) => void;
   onDeleteChecklist: (tripId: number, itemId: number) => void;
   onAddChecklist: (tripId: number, text: string) => void;
+  onAddPlanItem: (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => void;
+  onDeletePlanItem: (tripId: number, itemId: number) => void;
 }
 
 function TripCard({
   trip, expanded, onToggleExpand,
   onDelete, onUpdate,
   onToggleChecklist, onDeleteChecklist, onAddChecklist,
+  onAddPlanItem, onDeletePlanItem,
 }: TripCardProps) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(trip.name);
@@ -208,9 +211,37 @@ function TripCard({
   const [editStatus, setEditStatus] = useState<TripStatus>(trip.status as TripStatus);
   const [editNote, setEditNote] = useState(trip.note ?? '');
   const [checkText, setCheckText] = useState('');
+  const [activeTab, setActiveTab] = useState<'checklist' | 'plan'>('checklist');
+  const [planDay, setPlanDay] = useState(1);
+  const [planTime, setPlanTime] = useState('');
+  const [planTitle, setPlanTitle] = useState('');
+  const [planDesc, setPlanDesc] = useState('');
 
   const checked = trip.checklist_items.filter(i => i.is_checked).length;
   const total = trip.checklist_items.length;
+
+  const tripDays = Math.max(1, Math.round(
+    (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000
+  ) + 1);
+
+  const planByDay = trip.plan_items.reduce((acc, item) => {
+    if (!acc[item.day]) acc[item.day] = [];
+    acc[item.day].push(item);
+    return acc;
+  }, {} as Record<number, TripPlanItemResponse[]>);
+
+  const handleAddPlan = () => {
+    if (!planTitle.trim()) return;
+    onAddPlanItem(trip.id, {
+      day: planDay,
+      title: planTitle.trim(),
+      time: planTime || undefined,
+      description: planDesc.trim() || undefined,
+    });
+    setPlanTitle('');
+    setPlanTime('');
+    setPlanDesc('');
+  };
 
   const saveEdit = () => {
     onUpdate(trip.id, {
@@ -333,30 +364,168 @@ function TripCard({
         )}
       </div>
 
-      {/* 체크리스트 패널 (확장 시) */}
+      {/* 확장 패널 */}
       {expanded && (
-        <div className="border-t border-slate-50 bg-slate-50/50 px-5 py-4 space-y-2">
-          <p className="text-xs font-semibold text-slate-500 mb-2">준비물 체크리스트</p>
-          {trip.checklist_items.length === 0 && (
-            <p className="text-xs text-slate-400">아직 항목이 없습니다.</p>
-          )}
-          {trip.checklist_items.map(item => (
-            <ChecklistRow
-              key={item.id}
-              item={item}
-              onToggle={() => onToggleChecklist(trip.id, item.id)}
-              onDelete={() => onDeleteChecklist(trip.id, item.id)}
-            />
-          ))}
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              value={checkText}
-              onChange={e => setCheckText(e.target.value)}
-              onKeyDown={handleAddChecklist}
-              placeholder="항목 추가 후 Enter"
-              className="flex-1 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-            />
+        <div className="border-t border-slate-100">
+          {/* 탭 헤더 */}
+          <div className="flex border-b border-slate-100">
+            <button
+              onClick={() => setActiveTab('checklist')}
+              className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-medium transition-colors ${
+                activeTab === 'checklist'
+                  ? 'text-slate-900 border-b-2 border-slate-900'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <CheckSquare size={13} />
+              준비물
+              {total > 0 && (
+                <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 rounded-full px-1.5 py-0.5">
+                  {checked}/{total}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('plan')}
+              className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-medium transition-colors ${
+                activeTab === 'plan'
+                  ? 'text-slate-900 border-b-2 border-slate-900'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <ListOrdered size={13} />
+              일정
+              {trip.plan_items.length > 0 && (
+                <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 rounded-full px-1.5 py-0.5">
+                  {trip.plan_items.length}
+                </span>
+              )}
+            </button>
           </div>
+
+          {/* 체크리스트 탭 */}
+          {activeTab === 'checklist' && (
+            <div className="bg-slate-50/50 px-5 py-4 space-y-2">
+              {trip.checklist_items.length === 0 && (
+                <p className="text-xs text-slate-400">아직 준비물이 없습니다.</p>
+              )}
+              {trip.checklist_items.map(item => (
+                <ChecklistRow
+                  key={item.id}
+                  item={item}
+                  onToggle={() => onToggleChecklist(trip.id, item.id)}
+                  onDelete={() => onDeleteChecklist(trip.id, item.id)}
+                />
+              ))}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  value={checkText}
+                  onChange={e => setCheckText(e.target.value)}
+                  onKeyDown={handleAddChecklist}
+                  placeholder="항목 추가 후 Enter"
+                  className="flex-1 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 일정 탭 */}
+          {activeTab === 'plan' && (
+            <div className="bg-slate-50/50 px-5 py-4 space-y-4">
+              {trip.plan_items.length === 0 && (
+                <p className="text-xs text-slate-400">아직 일정이 없습니다. 아래에서 추가하세요.</p>
+              )}
+
+              {/* Day별 그룹 */}
+              {Object.entries(planByDay)
+                .sort(([a], [b]) => Number(a) - Number(b))
+                .map(([day, items]) => (
+                  <div key={day}>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+                      Day {day}
+                    </p>
+                    <div className="space-y-1.5">
+                      {items.map((item: TripPlanItemResponse) => (
+                        <div key={item.id} className="flex items-start gap-2 group">
+                          {item.time && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-slate-400 mt-0.5 shrink-0 w-10">
+                              <Clock size={9} />
+                              {item.time}
+                            </span>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-slate-700">{item.title}</p>
+                            {item.description && (
+                              <p className="text-[10px] text-slate-400 mt-0.5">{item.description}</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => onDeletePlanItem(trip.id, item.id)}
+                            className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-all shrink-0 mt-0.5"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+              {/* 일정 추가 폼 */}
+              <div className="border border-slate-200 rounded-xl p-3 bg-white space-y-2">
+                <p className="text-[10px] font-semibold text-slate-500">일정 추가</p>
+                <div className="flex gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Day</label>
+                    <select
+                      value={planDay}
+                      onChange={e => setPlanDay(Number(e.target.value))}
+                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white w-16"
+                    >
+                      {Array.from({ length: tripDays }, (_, i) => i + 1).map(d => (
+                        <option key={d} value={d}>Day {d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">시간 (선택)</label>
+                    <input
+                      type="time"
+                      value={planTime}
+                      onChange={e => setPlanTime(e.target.value)}
+                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 w-28"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-0.5">제목 *</label>
+                  <input
+                    value={planTitle}
+                    onChange={e => setPlanTitle(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddPlan()}
+                    placeholder="예: 도쿄 타워 방문"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-0.5">메모 (선택)</label>
+                  <input
+                    value={planDesc}
+                    onChange={e => setPlanDesc(e.target.value)}
+                    placeholder="간단한 메모"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+                <button
+                  onClick={handleAddPlan}
+                  disabled={!planTitle.trim()}
+                  className="w-full py-1.5 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-40 transition-colors font-medium"
+                >
+                  일정 추가
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -447,6 +616,27 @@ export default function TravelPage() {
           : t
       ));
     } catch { /* silent */ }
+  };
+
+  const handleAddPlanItem = async (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => {
+    try {
+      const item = await travelApi.addPlanItem(tripId, data);
+      setTrips(prev => prev.map(t =>
+        t.id === tripId
+          ? { ...t, plan_items: [...t.plan_items, item] }
+          : t
+      ));
+    } catch { /* silent */ }
+  };
+
+  const handleDeletePlanItem = async (tripId: number, itemId: number) => {
+    setTrips(prev => prev.map(t =>
+      t.id === tripId
+        ? { ...t, plan_items: t.plan_items.filter(p => p.id !== itemId) }
+        : t
+    ));
+    try { await travelApi.deletePlanItem(itemId); }
+    catch { await load(); }
   };
 
   if (loading) {
@@ -541,6 +731,8 @@ export default function TravelPage() {
               onToggleChecklist={handleToggleChecklist}
               onDeleteChecklist={handleDeleteChecklist}
               onAddChecklist={handleAddChecklist}
+              onAddPlanItem={handleAddPlanItem}
+              onDeletePlanItem={handleDeletePlanItem}
             />
           ))}
         </div>
