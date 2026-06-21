@@ -224,7 +224,7 @@ function TripCard({
     (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000
   ) + 1);
 
-  const planByDay = trip.plan_items.reduce((acc, item) => {
+  const planByDay = (trip.plan_items ?? []).reduce((acc, item) => {
     if (!acc[item.day]) acc[item.day] = [];
     acc[item.day].push(item);
     return acc;
@@ -395,9 +395,9 @@ function TripCard({
             >
               <ListOrdered size={13} />
               일정
-              {trip.plan_items.length > 0 && (
+              {(trip.plan_items ?? []).length > 0 && (
                 <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 rounded-full px-1.5 py-0.5">
-                  {trip.plan_items.length}
+                  {(trip.plan_items ?? []).length}
                 </span>
               )}
             </button>
@@ -432,7 +432,7 @@ function TripCard({
           {/* 일정 탭 */}
           {activeTab === 'plan' && (
             <div className="bg-slate-50/50 px-5 py-4 space-y-4">
-              {trip.plan_items.length === 0 && (
+              {(trip.plan_items ?? []).length === 0 && (
                 <p className="text-xs text-slate-400">아직 일정이 없습니다. 아래에서 추가하세요.</p>
               )}
 
