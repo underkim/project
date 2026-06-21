@@ -63,6 +63,8 @@ async def _health_snapshot(session: AsyncSession) -> HealthSnapshot | None:
         summary = await health_svc.get_summary(session)
         return HealthSnapshot(
             exercise_days_this_week=summary.exercise_days_this_week,
+            total_exercise_minutes_this_week=summary.total_exercise_minutes_this_week,
+            avg_sleep_hours_this_week=summary.avg_sleep_hours_this_week,
             avg_sleep_quality_this_week=summary.avg_sleep_quality_this_week,
         )
     except Exception:
@@ -74,7 +76,9 @@ async def _growth_snapshot(session: AsyncSession) -> GrowthSnapshot | None:
         summary = await growth_svc.get_summary(session)
         return GrowthSnapshot(
             books_completed_this_year=summary.books_completed_this_year,
+            books_reading=summary.books_reading,
             english_days_this_month=summary.english_days_this_month,
+            english_minutes_this_month=summary.english_minutes_this_month,
         )
     except Exception:
         return None

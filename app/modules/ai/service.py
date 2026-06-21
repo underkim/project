@@ -366,7 +366,8 @@ async def execute_delete(session: AsyncSession, module: str, filter_: dict) -> b
 
 
 async def _update(session: AsyncSession, module: str, filter_: dict, data: dict) -> bool:
-    """filter로 대상을 찾아 data의 필드만 부분 수정."""
+    """filter로 대상을 찾아 data의 필드만 부분 수정. WHERE 절로 직접 필터링."""
+    from sqlalchemy import or_
     from app.modules.health.models import ExerciseLog, SleepLog
     from app.modules.finance.models import AssetRecord
     from app.modules.growth.models import BookRecord, EnglishLog
@@ -376,47 +377,56 @@ async def _update(session: AsyncSession, module: str, filter_: dict, data: dict)
     record = None
 
     if module == "health_exercise":
-        rows = (await session.execute(
-            select(ExerciseLog).order_by(ExerciseLog.log_date.desc())
-        )).scalars().all()
-        record = _find_orm(rows, filter_, date_key="log_date", type_key="exercise_type")
+        q = select(ExerciseLog)
+        if d := filter_.get("log_date"):
+            q = q.where(ExerciseLog.log_date == date.fromisoformat(d))
+        if t := filter_.get("exercise_type"):
+            q = q.where(ExerciseLog.exercise_type.ilike(f"%{t}%"))
+        record = (await session.execute(q.order_by(ExerciseLog.log_date.desc()).limit(1))).scalars().first()
 
     elif module == "health_sleep":
-        rows = (await session.execute(
-            select(SleepLog).order_by(SleepLog.log_date.desc())
-        )).scalars().all()
-        record = _find_orm(rows, filter_, date_key="log_date")
+        q = select(SleepLog)
+        if d := filter_.get("log_date"):
+            q = q.where(SleepLog.log_date == date.fromisoformat(d))
+        record = (await session.execute(q.order_by(SleepLog.log_date.desc()).limit(1))).scalars().first()
 
     elif module == "finance_record":
-        rows = (await session.execute(
-            select(AssetRecord).order_by(AssetRecord.record_date.desc())
-        )).scalars().all()
-        record = _find_orm(rows, filter_, date_key="record_date")
+        q = select(AssetRecord)
+        if d := filter_.get("record_date"):
+            q = q.where(AssetRecord.record_date == date.fromisoformat(d))
+        record = (await session.execute(q.order_by(AssetRecord.record_date.desc()).limit(1))).scalars().first()
 
     elif module == "growth_book":
-        rows = (await session.execute(
-            select(BookRecord).order_by(BookRecord.id.desc())
-        )).scalars().all()
-        title_q = filter_.get("title", "").lower()
-        record = next((r for r in rows if title_q and title_q in r.title.lower()), None)
+        title_q = filter_.get("title", "")
+        if not title_q:
+            return False
+        q = select(BookRecord).where(BookRecord.title.ilike(f"%{title_q}%"))
+        record = (await session.execute(q.order_by(BookRecord.id.desc()).limit(1))).scalars().first()
 
     elif module == "growth_english":
-        rows = (await session.execute(
-            select(EnglishLog).order_by(EnglishLog.log_date.desc())
-        )).scalars().all()
-        record = _find_orm(rows, filter_, date_key="log_date", type_key="activity_type")
+        q = select(EnglishLog)
+        if d := filter_.get("log_date"):
+            q = q.where(EnglishLog.log_date == date.fromisoformat(d))
+        if t := filter_.get("activity_type"):
+            q = q.where(EnglishLog.activity_type.ilike(f"%{t}%"))
+        record = (await session.execute(q.order_by(EnglishLog.log_date.desc()).limit(1))).scalars().first()
 
     elif module == "career_cf_rating":
-        rows = (await session.execute(
-            select(CFRatingLog).order_by(CFRatingLog.log_date.desc())
-        )).scalars().all()
-        record = _find_orm(rows, filter_, date_key="log_date")
+        q = select(CFRatingLog)
+        if d := filter_.get("log_date"):
+            q = q.where(CFRatingLog.log_date == date.fromisoformat(d))
+        record = (await session.execute(q.order_by(CFRatingLog.log_date.desc()).limit(1))).scalars().first()
 
     elif module == "travel_trip":
-        rows = (await session.execute(
-            select(Trip).order_by(Trip.start_date.desc())
-        )).scalars().all()
-        record = _find_trip(rows, filter_)
+        conditions = []
+        if n := filter_.get("name", ""):
+            conditions.append(Trip.name.ilike(f"%{n}%"))
+        if dest := filter_.get("destination", ""):
+            conditions.append(Trip.destination.ilike(f"%{dest}%"))
+        if not conditions:
+            return False
+        q = select(Trip).where(or_(*conditions))
+        record = (await session.execute(q.order_by(Trip.start_date.desc()).limit(1))).scalars().first()
 
     else:
         return False
@@ -492,7 +502,8 @@ async def _create(session: AsyncSession, module: str, data: dict) -> None:
 
 
 async def _delete(session: AsyncSession, module: str, filter_: dict) -> bool:
-    """filter로 대상을 찾아 삭제. 커밋은 호출부(execute_delete)에서 처리."""
+    """filter로 대상을 찾아 삭제. 커밋은 호출부(execute_delete)에서 처리. WHERE 절로 직접 필터링."""
+    from sqlalchemy import or_
     from app.modules.health.models import ExerciseLog, SleepLog
     from app.modules.finance.models import AssetRecord
     from app.modules.growth.models import BookRecord, EnglishLog
@@ -502,47 +513,56 @@ async def _delete(session: AsyncSession, module: str, filter_: dict) -> bool:
     match = None
 
     if module == "health_exercise":
-        rows = (await session.execute(
-            select(ExerciseLog).order_by(ExerciseLog.log_date.desc())
-        )).scalars().all()
-        match = _find_orm(rows, filter_, date_key="log_date", type_key="exercise_type")
+        q = select(ExerciseLog)
+        if d := filter_.get("log_date"):
+            q = q.where(ExerciseLog.log_date == date.fromisoformat(d))
+        if t := filter_.get("exercise_type"):
+            q = q.where(ExerciseLog.exercise_type.ilike(f"%{t}%"))
+        match = (await session.execute(q.order_by(ExerciseLog.log_date.desc()).limit(1))).scalars().first()
 
     elif module == "health_sleep":
-        rows = (await session.execute(
-            select(SleepLog).order_by(SleepLog.log_date.desc())
-        )).scalars().all()
-        match = _find_orm(rows, filter_, date_key="log_date")
+        q = select(SleepLog)
+        if d := filter_.get("log_date"):
+            q = q.where(SleepLog.log_date == date.fromisoformat(d))
+        match = (await session.execute(q.order_by(SleepLog.log_date.desc()).limit(1))).scalars().first()
 
     elif module == "finance_record":
-        rows = (await session.execute(
-            select(AssetRecord).order_by(AssetRecord.record_date.desc())
-        )).scalars().all()
-        match = _find_orm(rows, filter_, date_key="record_date")
+        q = select(AssetRecord)
+        if d := filter_.get("record_date"):
+            q = q.where(AssetRecord.record_date == date.fromisoformat(d))
+        match = (await session.execute(q.order_by(AssetRecord.record_date.desc()).limit(1))).scalars().first()
 
     elif module == "growth_book":
-        rows = (await session.execute(
-            select(BookRecord).order_by(BookRecord.id.desc())
-        )).scalars().all()
-        title_q = filter_.get("title", "").lower()
-        match = next((r for r in rows if title_q and title_q in r.title.lower()), None)
+        title_q = filter_.get("title", "")
+        if not title_q:
+            return False
+        q = select(BookRecord).where(BookRecord.title.ilike(f"%{title_q}%"))
+        match = (await session.execute(q.order_by(BookRecord.id.desc()).limit(1))).scalars().first()
 
     elif module == "growth_english":
-        rows = (await session.execute(
-            select(EnglishLog).order_by(EnglishLog.log_date.desc())
-        )).scalars().all()
-        match = _find_orm(rows, filter_, date_key="log_date", type_key="activity_type")
+        q = select(EnglishLog)
+        if d := filter_.get("log_date"):
+            q = q.where(EnglishLog.log_date == date.fromisoformat(d))
+        if t := filter_.get("activity_type"):
+            q = q.where(EnglishLog.activity_type.ilike(f"%{t}%"))
+        match = (await session.execute(q.order_by(EnglishLog.log_date.desc()).limit(1))).scalars().first()
 
     elif module == "career_cf_rating":
-        rows = (await session.execute(
-            select(CFRatingLog).order_by(CFRatingLog.log_date.desc())
-        )).scalars().all()
-        match = _find_orm(rows, filter_, date_key="log_date")
+        q = select(CFRatingLog)
+        if d := filter_.get("log_date"):
+            q = q.where(CFRatingLog.log_date == date.fromisoformat(d))
+        match = (await session.execute(q.order_by(CFRatingLog.log_date.desc()).limit(1))).scalars().first()
 
     elif module == "travel_trip":
-        rows = (await session.execute(
-            select(Trip).order_by(Trip.start_date.desc())
-        )).scalars().all()
-        match = _find_trip(rows, filter_)
+        conditions = []
+        if n := filter_.get("name", ""):
+            conditions.append(Trip.name.ilike(f"%{n}%"))
+        if dest := filter_.get("destination", ""):
+            conditions.append(Trip.destination.ilike(f"%{dest}%"))
+        if not conditions:
+            return False
+        q = select(Trip).where(or_(*conditions))
+        match = (await session.execute(q.order_by(Trip.start_date.desc()).limit(1))).scalars().first()
 
     else:
         return False
@@ -551,36 +571,3 @@ async def _delete(session: AsyncSession, module: str, filter_: dict) -> bool:
         return False
     await session.delete(match)
     return True
-
-
-def _find_trip(rows: list, filter_: dict):
-    name_q = filter_.get("name", "").lower()
-    dest_q = filter_.get("destination", "").lower()
-    for r in rows:
-        if name_q and name_q in r.name.lower():
-            return r
-        if dest_q and dest_q in r.destination.lower():
-            return r
-    return None
-
-
-def _find_orm(
-    records: list,
-    filter_: dict,
-    date_key: str = "log_date",
-    type_key: str | None = None,
-):
-    date_q = (
-        filter_.get(date_key)
-        or filter_.get("log_date")
-        or filter_.get("record_date")
-    )
-    type_q = filter_.get(type_key, "").lower() if type_key else None
-
-    candidates = records
-    if date_q:
-        candidates = [r for r in candidates if str(getattr(r, date_key, "")) == str(date_q)]
-    if type_q and type_key:
-        candidates = [r for r in candidates if type_q in getattr(r, type_key, "").lower()]
-
-    return candidates[0] if candidates else None

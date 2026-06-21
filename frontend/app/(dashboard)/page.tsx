@@ -179,7 +179,9 @@ export default function DashboardPage() {
               href: '/health',
               label: '이번 주 운동',
               value: `${exerciseDays}일`,
-              sub: sleepQuality > 0 ? `수면 ${sleepQuality}/5` : '수면 미입력',
+              sub: (health?.total_exercise_minutes_this_week ?? 0) > 0
+                ? `총 ${health!.total_exercise_minutes_this_week}분`
+                : sleepQuality > 0 ? `수면 ${sleepQuality}/5` : '수면 미입력',
             },
             {
               href: '/growth',
@@ -238,10 +240,19 @@ export default function DashboardPage() {
                 <span className="text-sm font-bold text-slate-900">{exerciseDays} / 7일</span>
               </div>
               <WeekDots days={exerciseDays} />
+              {(health?.total_exercise_minutes_this_week ?? 0) > 0 && (
+                <p className="text-[11px] text-slate-400 mt-1.5">총 {health!.total_exercise_minutes_this_week}분</p>
+              )}
             </div>
+            {health?.avg_sleep_hours_this_week && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">평균 수면</span>
+                <span className="text-xs font-medium text-slate-700">{health.avg_sleep_hours_this_week}시간</span>
+              </div>
+            )}
             {sleepQuality > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">평균 수면 품질</span>
+                <span className="text-xs text-slate-500">수면 품질</span>
                 <Stars value={sleepQuality} />
               </div>
             )}

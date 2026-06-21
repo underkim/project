@@ -142,12 +142,16 @@ export interface FinanceSnapshot {
 
 export interface HealthSnapshot {
   exercise_days_this_week: number;
+  total_exercise_minutes_this_week: number;
+  avg_sleep_hours_this_week: number | null;
   avg_sleep_quality_this_week: number | null;
 }
 
 export interface GrowthSnapshot {
   books_completed_this_year: number;
+  books_reading: number;
   english_days_this_month: number;
+  english_minutes_this_month: number;
 }
 
 export interface CareerSnapshot {

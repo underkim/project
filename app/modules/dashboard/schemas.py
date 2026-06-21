@@ -17,12 +17,16 @@ class FinanceSnapshot(BaseModel):
 
 class HealthSnapshot(BaseModel):
     exercise_days_this_week: int
+    total_exercise_minutes_this_week: int
+    avg_sleep_hours_this_week: float | None
     avg_sleep_quality_this_week: float | None
 
 
 class GrowthSnapshot(BaseModel):
     books_completed_this_year: int
+    books_reading: int
     english_days_this_month: int
+    english_minutes_this_month: int
 
 
 class CareerSnapshot(BaseModel):
