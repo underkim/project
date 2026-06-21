@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
-import { Plus, Trash2, Check, X, Pencil, AlertTriangle, Settings2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Check, X, Pencil, AlertTriangle, Settings2, Loader2, CalendarClock } from 'lucide-react';
 import { plannerApi } from '@/lib/api';
 import type { PhaseResponse, RoadmapItemResponse, ItemStatus } from '@/types';
 
@@ -42,18 +42,35 @@ function Badge({ status }: { status: ItemStatus | null }) {
 // ─── 개별 항목 행 ────────────────────────────────────────
 interface ItemRowProps {
   item: RoadmapItemResponse;
+  phaseStartDate: string | null;
   onToggle: (id: number) => void;
   onDelete: (id: number) => Promise<void>;
-  onEditSave: (id: number, text: string) => void;
+  onEditSave: (id: number, data: { text?: string; offset?: number }) => void;
 }
 
-function ItemRow({ item, onToggle, onDelete, onEditSave }: ItemRowProps) {
+function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemRowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.text);
+  const [editingDeadline, setEditingDeadline] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // offset ↔ date 변환 유틸
+  function dateToOffset(dateStr: string): number {
+    if (!phaseStartDate) return 0;
+    const start = new Date(phaseStartDate);
+    const end = new Date(dateStr);
+    return Math.max(0, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+  }
+
+  function handleDeadlineChange(val: string) {
+    if (!val) return;
+    onEditSave(item.id, { offset: dateToOffset(val) });
+    setEditingDeadline(false);
+  }
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
@@ -64,7 +81,7 @@ function ItemRow({ item, onToggle, onDelete, onEditSave }: ItemRowProps) {
   }
 
   function save() {
-    if (draft.trim() && draft.trim() !== item.text) onEditSave(item.id, draft.trim());
+    if (draft.trim() && draft.trim() !== item.text) onEditSave(item.id, { text: draft.trim() });
     setEditing(false);
   }
 
@@ -128,8 +145,35 @@ function ItemRow({ item, onToggle, onDelete, onEditSave }: ItemRowProps) {
         </span>
       )}
 
-      {item.deadline && !editing && !pendingDelete && (
-        <span className="text-[11px] text-slate-400 shrink-0">{item.deadline}</span>
+      {/* 마감일 표시 & 편집 */}
+      {!editing && !pendingDelete && (
+        <div className="shrink-0 relative">
+          {editingDeadline ? (
+            <input
+              ref={dateRef}
+              type="date"
+              defaultValue={item.deadline ?? ''}
+              min={phaseStartDate ?? undefined}
+              autoFocus
+              onChange={e => handleDeadlineChange(e.target.value)}
+              onBlur={() => setEditingDeadline(false)}
+              className="text-[11px] border border-slate-300 rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white w-32"
+            />
+          ) : (
+            <button
+              onClick={() => phaseStartDate && setEditingDeadline(true)}
+              title={phaseStartDate ? '클릭해서 마감일 변경' : '로드맵 시작일을 먼저 설정하세요'}
+              className={`flex items-center gap-0.5 text-[11px] rounded px-1 py-0.5 transition-colors group/dl ${
+                item.deadline
+                  ? 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                  : 'text-slate-300 hover:text-slate-400 hover:bg-slate-50'
+              } ${!phaseStartDate ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+              <CalendarClock size={10} className="opacity-0 group-hover/dl:opacity-100 transition-opacity" />
+              <span>{item.deadline ?? '—'}</span>
+            </button>
+          )}
+        </div>
       )}
 
       {!editing && !pendingDelete && <Badge status={item.status} />}
@@ -180,55 +224,101 @@ function ItemRow({ item, onToggle, onDelete, onEditSave }: ItemRowProps) {
 // ─── 항목 추가 폼 ────────────────────────────────────────
 interface AddItemFormProps {
   categoryId: number;
+  phaseStartDate: string | null;
   onSave: (text: string, offset: number) => Promise<void>;
   onCancel: () => void;
 }
 
-function AddItemForm({ categoryId: _cid, onSave, onCancel }: AddItemFormProps) {
+function AddItemForm({ categoryId: _cid, phaseStartDate, onSave, onCancel }: AddItemFormProps) {
   const [text, setText] = useState('');
   const [offset, setOffset] = useState('6');
+  const [deadlineDate, setDeadlineDate] = useState('');
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => { ref.current?.focus(); }, []);
 
+  // 날짜 → offset
+  function dateToOffset(dateStr: string): number {
+    if (!phaseStartDate || !dateStr) return Number(offset);
+    const start = new Date(phaseStartDate);
+    const end = new Date(dateStr);
+    return Math.max(0, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+  }
+
+  // offset → 날짜
+  function offsetToDate(val: string): string {
+    if (!phaseStartDate || !val) return '';
+    const d = new Date(phaseStartDate);
+    d.setDate(d.getDate() + Math.round(Number(val) * 30.44));
+    return d.toISOString().split('T')[0];
+  }
+
+  function handleOffsetChange(val: string) {
+    setOffset(val);
+    setDeadlineDate(offsetToDate(val));
+  }
+
+  function handleDateChange(val: string) {
+    setDeadlineDate(val);
+    if (val) setOffset(String(dateToOffset(val)));
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
     setSaving(true);
-    await onSave(text.trim(), Number(offset));
+    await onSave(text.trim(), deadlineDate ? dateToOffset(deadlineDate) : Number(offset));
     setSaving(false);
   }
 
   return (
-    <form onSubmit={submit} className="flex items-center gap-2 py-2 px-2 bg-slate-50 rounded-lg border border-slate-200">
-      <input
-        ref={ref}
-        value={text}
-        onChange={e => setText(e.target.value)}
-        placeholder="항목 내용..."
-        className="flex-1 text-sm bg-transparent border-0 outline-none placeholder-slate-400 text-slate-700"
-        onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
-      />
-      <div className="flex items-center gap-1 shrink-0" title="Phase 시작 후 몇 개월 뒤 마감">
+    <form onSubmit={submit} className="py-2 px-2 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+      <div className="flex items-center gap-2">
         <input
-          type="number"
-          value={offset}
-          onChange={e => setOffset(e.target.value)}
-          min="0"
-          step="0.5"
-          className="w-12 text-sm text-center bg-white border border-slate-200 rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-slate-900"
+          ref={ref}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="항목 내용..."
+          className="flex-1 text-sm bg-white border border-slate-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-slate-900 placeholder-slate-400 text-slate-700"
+          onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
         />
-        <span className="text-xs text-slate-400">개월 후</span>
+        <button type="submit" disabled={saving || !text.trim()}
+          className="p-1.5 rounded-md bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-50 transition-colors shrink-0">
+          <Check size={13} strokeWidth={3} />
+        </button>
+        <button type="button" onClick={onCancel}
+          className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0">
+          <X size={13} />
+        </button>
       </div>
-      <button type="submit" disabled={saving || !text.trim()}
-        className="p-1.5 rounded-md bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-50 transition-colors">
-        <Check size={13} strokeWidth={3} />
-      </button>
-      <button type="button" onClick={onCancel}
-        className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
-        <X size={13} />
-      </button>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-slate-400 shrink-0">마감일</span>
+        {phaseStartDate ? (
+          <input
+            type="date"
+            value={deadlineDate}
+            min={phaseStartDate}
+            onChange={e => handleDateChange(e.target.value)}
+            className="flex-1 text-xs border border-slate-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-900 bg-white"
+          />
+        ) : (
+          <>
+            <input
+              type="number"
+              value={offset}
+              onChange={e => handleOffsetChange(e.target.value)}
+              min="0"
+              step="0.5"
+              className="w-14 text-xs text-center bg-white border border-slate-200 rounded-md px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-slate-900"
+            />
+            <span className="text-[10px] text-slate-400">개월 후</span>
+          </>
+        )}
+        {phaseStartDate && (
+          <span className="text-[10px] text-slate-400 shrink-0">({offset}개월 후)</span>
+        )}
+      </div>
     </form>
   );
 }
@@ -236,15 +326,16 @@ function AddItemForm({ categoryId: _cid, onSave, onCancel }: AddItemFormProps) {
 // ─── 카테고리 카드 ────────────────────────────────────────
 interface CategoryCardProps {
   cat: PhaseResponse['categories'][0];
+  phaseStartDate: string | null;
   onToggle: (id: number) => void;
   onDelete: (id: number) => Promise<void>;
-  onEditSave: (id: number, text: string) => void;
+  onEditSave: (id: number, data: { text?: string; offset?: number }) => void;
   onAddItem: (categoryId: number, text: string, offset: number) => Promise<void>;
   onCategoryUpdate: (id: number, icon: string, title: string, subtitle: string) => Promise<void>;
   onCategoryDelete: (id: number) => Promise<void>;
 }
 
-function CategoryCard({ cat, onToggle, onDelete, onEditSave, onAddItem, onCategoryUpdate, onCategoryDelete }: CategoryCardProps) {
+function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onAddItem, onCategoryUpdate, onCategoryDelete }: CategoryCardProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingMeta, setEditingMeta] = useState(false);
   const [metaIcon, setMetaIcon] = useState(cat.icon);
@@ -406,6 +497,7 @@ function CategoryCard({ cat, onToggle, onDelete, onEditSave, onAddItem, onCatego
           <ItemRow
             key={item.id}
             item={item}
+            phaseStartDate={phaseStartDate}
             onToggle={onToggle}
             onDelete={onDelete}
             onEditSave={onEditSave}
@@ -414,6 +506,7 @@ function CategoryCard({ cat, onToggle, onDelete, onEditSave, onAddItem, onCatego
         {showAdd && (
           <AddItemForm
             categoryId={cat.id}
+            phaseStartDate={phaseStartDate}
             onSave={async (text, offset) => {
               await onAddItem(cat.id, text, offset);
               setShowAdd(false);
@@ -697,9 +790,9 @@ export default function PlannerPage() {
     }
   }
 
-  async function handleEditSave(id: number, text: string) {
+  async function handleEditSave(id: number, data: { text?: string; offset?: number }) {
     try {
-      await plannerApi.updateItem(id, { text });
+      await plannerApi.updateItem(id, data);
       setPhases(prev => prev.map(p => ({
         ...p,
         categories: p.categories.map(c => ({
@@ -948,6 +1041,7 @@ export default function PlannerPage() {
             <CategoryCard
               key={cat.id}
               cat={cat}
+              phaseStartDate={activePhase.start_date}
               onToggle={handleToggle}
               onDelete={handleDelete}
               onEditSave={handleEditSave}

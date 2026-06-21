@@ -124,12 +124,13 @@ async def add_checklist_item(
             order_index=data.order_index,
         )
         session.add(item)
-    return ChecklistItemResponse(
-        id=item.id,
-        text=item.text,
-        is_checked=item.is_checked,
-        order_index=item.order_index,
-    )
+        await session.flush()
+        return ChecklistItemResponse(
+            id=item.id,
+            text=item.text,
+            is_checked=item.is_checked,
+            order_index=item.order_index,
+        )
 
 
 async def toggle_checklist_item(
@@ -173,14 +174,15 @@ async def add_plan_item(
             description=data.description,
         )
         session.add(item)
-    return PlanItemResponse(
-        id=item.id,
-        day=item.day,
-        sort_order=item.sort_order,
-        time=item.time,
-        title=item.title,
-        description=item.description,
-    )
+        await session.flush()
+        return PlanItemResponse(
+            id=item.id,
+            day=item.day,
+            sort_order=item.sort_order,
+            time=item.time,
+            title=item.title,
+            description=item.description,
+        )
 
 
 async def delete_plan_item(session: AsyncSession, item_id: int) -> bool:

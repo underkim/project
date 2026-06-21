@@ -115,12 +115,11 @@ async def _load_categories_context(session: AsyncSession) -> str:
         .options(selectinload(Phase.categories))
         .order_by(Phase.order_index)
     )
-    async with session.begin():
-        phases = (await session.execute(stmt)).scalars().all()
-        lines = []
-        for phase in phases:
-            for cat in sorted(phase.categories, key=lambda c: c.order_index):
-                lines.append(f"  - category_id={cat.id}: [{phase.name}] {cat.title}")
+    phases = (await session.execute(stmt)).scalars().all()
+    lines = []
+    for phase in phases:
+        for cat in sorted(phase.categories, key=lambda c: c.order_index):
+            lines.append(f"  - category_id={cat.id}: [{phase.name}] {cat.title}")
 
     if not lines:
         return "  (카테고리 없음 — planner_item 추가 불가, 먼저 플래너 페이지에서 카테고리 생성 필요)"
@@ -140,103 +139,100 @@ async def _load_user_context(session: AsyncSession) -> str:
     week_ago = today - timedelta(days=7)
     lines = []
 
-    async with session.begin():
-        # 이번 달 운동
-        ex_rows = (await session.execute(
-            select(ExerciseLog)
-            .where(ExerciseLog.log_date >= month_start)
-            .order_by(ExerciseLog.log_date.desc())
-        )).scalars().all()
-        if ex_rows:
-            total_min = sum(r.duration_minutes for r in ex_rows)
-            ex_types = list(dict.fromkeys(r.exercise_type for r in ex_rows))
-            lines.append(f"- 이번 달 운동: {len(ex_rows)}회 / 총 {total_min}분 (종류: {', '.join(ex_types[:3])})")
-            if ex_rows:
-                latest_ex = ex_rows[0]
-                lines.append(f"  → 최근: {latest_ex.log_date} {latest_ex.exercise_type} {latest_ex.duration_minutes}분")
-        else:
-            lines.append("- 이번 달 운동: 기록 없음")
+    # 이번 달 운동
+    ex_rows = (await session.execute(
+        select(ExerciseLog)
+        .where(ExerciseLog.log_date >= month_start)
+        .order_by(ExerciseLog.log_date.desc())
+    )).scalars().all()
+    if ex_rows:
+        total_min = sum(r.duration_minutes for r in ex_rows)
+        ex_types = list(dict.fromkeys(r.exercise_type for r in ex_rows))
+        lines.append(f"- 이번 달 운동: {len(ex_rows)}회 / 총 {total_min}분 (종류: {', '.join(ex_types[:3])})")
+        latest_ex = ex_rows[0]
+        lines.append(f"  → 최근: {latest_ex.log_date} {latest_ex.exercise_type} {latest_ex.duration_minutes}분")
+    else:
+        lines.append("- 이번 달 운동: 기록 없음")
 
-        # 최근 7일 수면
-        sl_rows = (await session.execute(
-            select(SleepLog)
-            .where(SleepLog.log_date >= week_ago)
-            .order_by(SleepLog.log_date.desc())
-        )).scalars().all()
-        if sl_rows:
-            avg_sleep = sum(r.sleep_hours for r in sl_rows) / len(sl_rows)
-            avg_q = sum(r.quality for r in sl_rows) / len(sl_rows)
-            lines.append(f"- 최근 7일 수면: 평균 {avg_sleep:.1f}시간 (품질 {avg_q:.1f}/5, {len(sl_rows)}일 기록)")
-        else:
-            lines.append("- 최근 7일 수면: 기록 없음")
+    # 최근 7일 수면
+    sl_rows = (await session.execute(
+        select(SleepLog)
+        .where(SleepLog.log_date >= week_ago)
+        .order_by(SleepLog.log_date.desc())
+    )).scalars().all()
+    if sl_rows:
+        avg_sleep = sum(r.sleep_hours for r in sl_rows) / len(sl_rows)
+        avg_q = sum(r.quality for r in sl_rows) / len(sl_rows)
+        lines.append(f"- 최근 7일 수면: 평균 {avg_sleep:.1f}시간 (품질 {avg_q:.1f}/5, {len(sl_rows)}일 기록)")
+    else:
+        lines.append("- 최근 7일 수면: 기록 없음")
 
-        # 최신 자산
-        asset = (await session.execute(
-            select(AssetRecord).order_by(AssetRecord.record_date.desc()).limit(1)
-        )).scalar_one_or_none()
-        if asset:
-            savings_rate = 0
-            if asset.monthly_income > 0:
-                savings_rate = round((asset.monthly_income - asset.monthly_expense) / asset.monthly_income * 100)
-            lines.append(
-                f"- 자산: {asset.total_assets:,}만원 / 월수입 {asset.monthly_income:,}만원 "
-                f"/ 저축률 {savings_rate}% ({asset.record_date})"
-            )
-        else:
-            lines.append("- 자산: 기록 없음")
+    # 최신 자산
+    asset = (await session.execute(
+        select(AssetRecord).order_by(AssetRecord.record_date.desc()).limit(1)
+    )).scalar_one_or_none()
+    if asset:
+        savings_rate = 0
+        if asset.monthly_income > 0:
+            savings_rate = round((asset.monthly_income - asset.monthly_expense) / asset.monthly_income * 100)
+        lines.append(
+            f"- 자산: {asset.total_assets:,}만원 / 월수입 {asset.monthly_income:,}만원 "
+            f"/ 저축률 {savings_rate}% ({asset.record_date})"
+        )
+    else:
+        lines.append("- 자산: 기록 없음")
 
-        # 독서 현황
-        book_rows = (await session.execute(select(BookRecord))).scalars().all()
-        if book_rows:
-            reading = [b.title for b in book_rows if b.status == "reading"]
-            completed_cnt = sum(1 for b in book_rows if b.status == "completed")
-            planned_cnt = sum(1 for b in book_rows if b.status == "planned")
-            reading_str = f" (읽는 중: {reading[0][:20]})" if reading else ""
-            lines.append(f"- 독서: 완독 {completed_cnt}권 / 예정 {planned_cnt}권{reading_str}")
-        else:
-            lines.append("- 독서: 기록 없음")
+    # 독서 현황
+    book_rows = (await session.execute(select(BookRecord))).scalars().all()
+    if book_rows:
+        reading = [b.title for b in book_rows if b.status == "reading"]
+        completed_cnt = sum(1 for b in book_rows if b.status == "completed")
+        planned_cnt = sum(1 for b in book_rows if b.status == "planned")
+        reading_str = f" (읽는 중: {reading[0][:20]})" if reading else ""
+        lines.append(f"- 독서: 완독 {completed_cnt}권 / 예정 {planned_cnt}권{reading_str}")
+    else:
+        lines.append("- 독서: 기록 없음")
 
-        # 이번 달 영어
-        eng_rows = (await session.execute(
-            select(EnglishLog).where(EnglishLog.log_date >= month_start)
-        )).scalars().all()
-        if eng_rows:
-            eng_min = sum(r.duration_minutes for r in eng_rows)
-            lines.append(f"- 이번 달 영어: {len(eng_rows)}회 / {eng_min}분")
-        else:
-            lines.append("- 이번 달 영어: 기록 없음")
+    # 이번 달 영어
+    eng_rows = (await session.execute(
+        select(EnglishLog).where(EnglishLog.log_date >= month_start)
+    )).scalars().all()
+    if eng_rows:
+        eng_min = sum(r.duration_minutes for r in eng_rows)
+        lines.append(f"- 이번 달 영어: {len(eng_rows)}회 / {eng_min}분")
+    else:
+        lines.append("- 이번 달 영어: 기록 없음")
 
-        # 최근 CF 레이팅
-        cf = (await session.execute(
-            select(CFRatingLog).order_by(CFRatingLog.log_date.desc()).limit(1)
-        )).scalar_one_or_none()
-        if cf:
-            lines.append(f"- CF 레이팅: {cf.rating} ({cf.rank_name}, {cf.log_date})")
-        else:
-            lines.append("- CF 레이팅: 기록 없음")
+    # 최근 CF 레이팅
+    cf = (await session.execute(
+        select(CFRatingLog).order_by(CFRatingLog.log_date.desc()).limit(1)
+    )).scalar_one_or_none()
+    if cf:
+        lines.append(f"- CF 레이팅: {cf.rating} ({cf.rank_name}, {cf.log_date})")
+    else:
+        lines.append("- CF 레이팅: 기록 없음")
 
-        # 여행 현황
-        trip_rows = (await session.execute(
-            select(Trip).order_by(Trip.start_date.desc()).limit(5)
-        )).scalars().all()
-        if trip_rows:
-            ongoing = [t for t in trip_rows if t.status == "ongoing"]
-            planned = [t for t in trip_rows if t.status == "planned"]
-            completed = [t for t in trip_rows if t.status == "completed"]
-            trip_parts = []
-            if ongoing:
-                trip_parts.append(f"진행 중: {ongoing[0].name}({ongoing[0].destination})")
-            if planned:
-                next_trip = planned[0]
-                trip_parts.append(f"예정: {next_trip.name}({next_trip.destination}, {next_trip.start_date}~{next_trip.end_date})")
-            if completed:
-                trip_parts.append(f"완료 {len(completed)}건")
-            lines.append(f"- 여행: {' / '.join(trip_parts) if trip_parts else '기록 있음'}")
-            # 여행 id 목록 (checklist 추가 용)
-            trip_list = ", ".join(f"id={t.id} {t.name}" for t in trip_rows[:3])
-            lines.append(f"  → 최근 여행 목록: {trip_list}")
-        else:
-            lines.append("- 여행: 기록 없음")
+    # 여행 현황
+    trip_rows = (await session.execute(
+        select(Trip).order_by(Trip.start_date.desc()).limit(5)
+    )).scalars().all()
+    if trip_rows:
+        ongoing = [t for t in trip_rows if t.status == "ongoing"]
+        planned = [t for t in trip_rows if t.status == "planned"]
+        completed = [t for t in trip_rows if t.status == "completed"]
+        trip_parts = []
+        if ongoing:
+            trip_parts.append(f"진행 중: {ongoing[0].name}({ongoing[0].destination})")
+        if planned:
+            next_trip = planned[0]
+            trip_parts.append(f"예정: {next_trip.name}({next_trip.destination}, {next_trip.start_date}~{next_trip.end_date})")
+        if completed:
+            trip_parts.append(f"완료 {len(completed)}건")
+        lines.append(f"- 여행: {' / '.join(trip_parts) if trip_parts else '기록 있음'}")
+        trip_list = ", ".join(f"id={t.id} {t.name}" for t in trip_rows[:3])
+        lines.append(f"  → 최근 여행 목록: {trip_list}")
+    else:
+        lines.append("- 여행: 기록 없음")
 
     return "\n".join(lines)
 
@@ -275,7 +271,7 @@ async def parse_and_save(
 
     response = await asyncio.to_thread(
         gemini.models.generate_content,
-        model="gemini-3.5-flash",
+        model="gemini-3.1-flash-lite",
         contents=prompt,
         config=genai.types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -394,8 +390,6 @@ async def _update(session: AsyncSession, module: str, filter_: dict, data: dict)
             )).scalars().all()
             title_q = filter_.get("title", "").lower()
             record = next((r for r in rows if title_q and title_q in r.title.lower()), None)
-            if record is None and rows:
-                record = rows[0]
 
         elif module == "growth_english":
             rows = (await session.execute(
@@ -496,8 +490,6 @@ async def _delete(session: AsyncSession, module: str, filter_: dict) -> bool:
             )).scalars().all()
             title_q = filter_.get("title", "").lower()
             match = next((r for r in rows if title_q and title_q in r.title.lower()), None)
-            if match is None and rows:
-                match = rows[0]
 
         elif module == "growth_english":
             rows = (await session.execute(
@@ -535,7 +527,7 @@ def _find_trip(rows: list, filter_: dict):
             return r
         if dest_q and dest_q in r.destination.lower():
             return r
-    return rows[0] if rows else None
+    return None
 
 
 def _find_orm(
@@ -557,4 +549,4 @@ def _find_orm(
     if type_q and type_key:
         candidates = [r for r in candidates if type_q in getattr(r, type_key, "").lower()]
 
-    return candidates[0] if candidates else (records[0] if records else None)
+    return candidates[0] if candidates else None
