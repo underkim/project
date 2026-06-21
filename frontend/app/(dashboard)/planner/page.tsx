@@ -797,7 +797,15 @@ export default function PlannerPage() {
         ...p,
         categories: p.categories.map(c => ({
           ...c,
-          items: c.items.map(i => i.id === id ? { ...i, text } : i),
+          items: c.items.map(i =>
+            i.id === id
+              ? {
+                  ...i,
+                  ...(data.text !== undefined && { text: data.text }),
+                  ...(data.offset !== undefined && { offset: data.offset }),
+                }
+              : i
+          ),
         })),
       })));
     } catch {

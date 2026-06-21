@@ -271,7 +271,7 @@ async def parse_and_save(
 
     response = await asyncio.to_thread(
         gemini.models.generate_content,
-        model="gemini-3.1-flash-lite",
+        model="gemini-2.0-flash-lite",
         contents=prompt,
         config=genai.types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -306,6 +306,7 @@ async def parse_and_save(
 
         try:
             await _create(session, module, data)
+            await session.commit()
         except IntegrityError:
             await session.rollback()
             return {
@@ -327,6 +328,8 @@ async def parse_and_save(
     if action == "update":
         try:
             updated = await _update(session, module, parsed.get("filter") or {}, parsed.get("data") or {})
+            if updated:
+                await session.commit()
         except Exception as exc:
             await session.rollback()
             return {
@@ -352,7 +355,10 @@ async def parse_and_save(
 
 
 async def execute_delete(session: AsyncSession, module: str, filter_: dict) -> bool:
-    return await _delete(session, module, filter_)
+    result = await _delete(session, module, filter_)
+    if result:
+        await session.commit()
+    return result
 
 
 async def _update(session: AsyncSession, module: str, filter_: dict, data: dict) -> bool:
@@ -363,159 +369,183 @@ async def _update(session: AsyncSession, module: str, filter_: dict, data: dict)
     from app.modules.career.models import CFRatingLog
     from app.modules.travel.models import Trip
 
-    async with session.begin():
-        record = None
+    record = None
 
-        if module == "health_exercise":
-            rows = (await session.execute(
-                select(ExerciseLog).order_by(ExerciseLog.log_date.desc())
-            )).scalars().all()
-            record = _find_orm(rows, filter_, date_key="log_date", type_key="exercise_type")
+    if module == "health_exercise":
+        rows = (await session.execute(
+            select(ExerciseLog).order_by(ExerciseLog.log_date.desc())
+        )).scalars().all()
+        record = _find_orm(rows, filter_, date_key="log_date", type_key="exercise_type")
 
-        elif module == "health_sleep":
-            rows = (await session.execute(
-                select(SleepLog).order_by(SleepLog.log_date.desc())
-            )).scalars().all()
-            record = _find_orm(rows, filter_, date_key="log_date")
+    elif module == "health_sleep":
+        rows = (await session.execute(
+            select(SleepLog).order_by(SleepLog.log_date.desc())
+        )).scalars().all()
+        record = _find_orm(rows, filter_, date_key="log_date")
 
-        elif module == "finance_record":
-            rows = (await session.execute(
-                select(AssetRecord).order_by(AssetRecord.record_date.desc())
-            )).scalars().all()
-            record = _find_orm(rows, filter_, date_key="record_date")
+    elif module == "finance_record":
+        rows = (await session.execute(
+            select(AssetRecord).order_by(AssetRecord.record_date.desc())
+        )).scalars().all()
+        record = _find_orm(rows, filter_, date_key="record_date")
 
-        elif module == "growth_book":
-            rows = (await session.execute(
-                select(BookRecord).order_by(BookRecord.id.desc())
-            )).scalars().all()
-            title_q = filter_.get("title", "").lower()
-            record = next((r for r in rows if title_q and title_q in r.title.lower()), None)
+    elif module == "growth_book":
+        rows = (await session.execute(
+            select(BookRecord).order_by(BookRecord.id.desc())
+        )).scalars().all()
+        title_q = filter_.get("title", "").lower()
+        record = next((r for r in rows if title_q and title_q in r.title.lower()), None)
 
-        elif module == "growth_english":
-            rows = (await session.execute(
-                select(EnglishLog).order_by(EnglishLog.log_date.desc())
-            )).scalars().all()
-            record = _find_orm(rows, filter_, date_key="log_date", type_key="activity_type")
+    elif module == "growth_english":
+        rows = (await session.execute(
+            select(EnglishLog).order_by(EnglishLog.log_date.desc())
+        )).scalars().all()
+        record = _find_orm(rows, filter_, date_key="log_date", type_key="activity_type")
 
-        elif module == "career_cf_rating":
-            rows = (await session.execute(
-                select(CFRatingLog).order_by(CFRatingLog.log_date.desc())
-            )).scalars().all()
-            record = _find_orm(rows, filter_, date_key="log_date")
+    elif module == "career_cf_rating":
+        rows = (await session.execute(
+            select(CFRatingLog).order_by(CFRatingLog.log_date.desc())
+        )).scalars().all()
+        record = _find_orm(rows, filter_, date_key="log_date")
 
-        elif module == "travel_trip":
-            rows = (await session.execute(
-                select(Trip).order_by(Trip.start_date.desc())
-            )).scalars().all()
-            record = _find_trip(rows, filter_)
+    elif module == "travel_trip":
+        rows = (await session.execute(
+            select(Trip).order_by(Trip.start_date.desc())
+        )).scalars().all()
+        record = _find_trip(rows, filter_)
 
-        else:
-            return False
+    else:
+        return False
 
-        if record is None:
-            return False
+    if record is None:
+        return False
 
-        for field, value in data.items():
-            if value is not None and hasattr(record, field):
-                setattr(record, field, value)
+    for field, value in data.items():
+        if value is not None and hasattr(record, field):
+            setattr(record, field, value)
 
     return True
 
 
 async def _create(session: AsyncSession, module: str, data: dict) -> None:
+    """sub-service를 거치지 않고 직접 ORM 객체를 추가해 session.begin() 중첩을 방지."""
+    from app.modules.health.models import ExerciseLog, SleepLog
     from app.modules.health.schemas import ExerciseLogCreate, SleepLogCreate
+    from app.modules.finance.models import AssetRecord
     from app.modules.finance.schemas import AssetRecordCreate
+    from app.modules.growth.models import BookRecord, EnglishLog
     from app.modules.growth.schemas import BookRecordCreate, EnglishLogCreate
+    from app.modules.career.models import CFRatingLog
     from app.modules.career.schemas import CFRatingLogCreate
-    from app.modules.planner.schemas import RoadmapItemCreate
+    from app.modules.travel.models import Trip, TripChecklistItem
     from app.modules.travel.schemas import TripCreate, ChecklistItemCreate
-    from app.modules.travel import service as travel_svc
-    from app.modules.planner import service as planner_svc
+    from app.core.models import RoadmapItem, Category
+    from app.modules.planner.schemas import RoadmapItemCreate
+
+    data = dict(data)  # 호출자 dict 변경 방지
 
     if module == "health_exercise":
-        await health_svc.create_exercise(session, ExerciseLogCreate(**data))
+        session.add(ExerciseLog(**ExerciseLogCreate(**data).model_dump()))
+
     elif module == "health_sleep":
-        await health_svc.create_sleep(session, SleepLogCreate(**data))
+        session.add(SleepLog(**SleepLogCreate(**data).model_dump()))
+
     elif module == "finance_record":
-        await finance_svc.create_record(session, AssetRecordCreate(**data))
+        session.add(AssetRecord(**AssetRecordCreate(**data).model_dump()))
+
     elif module == "growth_book":
-        await growth_svc.create_book(session, BookRecordCreate(**data))
+        session.add(BookRecord(**BookRecordCreate(**data).model_dump()))
+
     elif module == "growth_english":
-        await growth_svc.create_english(session, EnglishLogCreate(**data))
+        session.add(EnglishLog(**EnglishLogCreate(**data).model_dump()))
+
     elif module == "career_cf_rating":
-        await career_svc.create_cf_rating(session, CFRatingLogCreate(**data))
+        session.add(CFRatingLog(**CFRatingLogCreate(**data).model_dump()))
+
     elif module == "travel_trip":
-        await travel_svc.create_trip(session, TripCreate(**data))
+        session.add(Trip(**TripCreate(**data).model_dump()))
+
     elif module == "travel_checklist":
         trip_id = data.pop("trip_id", None)
         if not trip_id:
             raise ValueError("trip_id가 필요합니다")
-        await travel_svc.add_checklist_item(session, int(trip_id), ChecklistItemCreate(**data))
+        trip = await session.get(Trip, int(trip_id))
+        if trip is None:
+            raise ValueError(f"trip_id={trip_id}인 여행을 찾을 수 없습니다")
+        session.add(TripChecklistItem(trip_id=int(trip_id), **ChecklistItemCreate(**data).model_dump()))
+
     elif module == "planner_item":
-        await planner_svc.create_item(session, RoadmapItemCreate(**data))
+        item_data = RoadmapItemCreate(**data)
+        cat = await session.get(Category, item_data.category_id)
+        if cat is None:
+            raise ValueError(f"category_id={item_data.category_id}를 찾을 수 없습니다")
+        session.add(RoadmapItem(
+            category_id=item_data.category_id,
+            text=item_data.text,
+            offset=item_data.offset,
+            is_completed=False,
+        ))
 
 
 async def _delete(session: AsyncSession, module: str, filter_: dict) -> bool:
-    """하나의 트랜잭션 안에서 select → delete."""
+    """filter로 대상을 찾아 삭제. 커밋은 호출부(execute_delete)에서 처리."""
     from app.modules.health.models import ExerciseLog, SleepLog
     from app.modules.finance.models import AssetRecord
     from app.modules.growth.models import BookRecord, EnglishLog
     from app.modules.career.models import CFRatingLog
     from app.modules.travel.models import Trip
 
-    async with session.begin():
-        match = None
+    match = None
 
-        if module == "health_exercise":
-            rows = (await session.execute(
-                select(ExerciseLog).order_by(ExerciseLog.log_date.desc())
-            )).scalars().all()
-            match = _find_orm(rows, filter_, date_key="log_date", type_key="exercise_type")
+    if module == "health_exercise":
+        rows = (await session.execute(
+            select(ExerciseLog).order_by(ExerciseLog.log_date.desc())
+        )).scalars().all()
+        match = _find_orm(rows, filter_, date_key="log_date", type_key="exercise_type")
 
-        elif module == "health_sleep":
-            rows = (await session.execute(
-                select(SleepLog).order_by(SleepLog.log_date.desc())
-            )).scalars().all()
-            match = _find_orm(rows, filter_, date_key="log_date")
+    elif module == "health_sleep":
+        rows = (await session.execute(
+            select(SleepLog).order_by(SleepLog.log_date.desc())
+        )).scalars().all()
+        match = _find_orm(rows, filter_, date_key="log_date")
 
-        elif module == "finance_record":
-            rows = (await session.execute(
-                select(AssetRecord).order_by(AssetRecord.record_date.desc())
-            )).scalars().all()
-            match = _find_orm(rows, filter_, date_key="record_date")
+    elif module == "finance_record":
+        rows = (await session.execute(
+            select(AssetRecord).order_by(AssetRecord.record_date.desc())
+        )).scalars().all()
+        match = _find_orm(rows, filter_, date_key="record_date")
 
-        elif module == "growth_book":
-            rows = (await session.execute(
-                select(BookRecord).order_by(BookRecord.id.desc())
-            )).scalars().all()
-            title_q = filter_.get("title", "").lower()
-            match = next((r for r in rows if title_q and title_q in r.title.lower()), None)
+    elif module == "growth_book":
+        rows = (await session.execute(
+            select(BookRecord).order_by(BookRecord.id.desc())
+        )).scalars().all()
+        title_q = filter_.get("title", "").lower()
+        match = next((r for r in rows if title_q and title_q in r.title.lower()), None)
 
-        elif module == "growth_english":
-            rows = (await session.execute(
-                select(EnglishLog).order_by(EnglishLog.log_date.desc())
-            )).scalars().all()
-            match = _find_orm(rows, filter_, date_key="log_date", type_key="activity_type")
+    elif module == "growth_english":
+        rows = (await session.execute(
+            select(EnglishLog).order_by(EnglishLog.log_date.desc())
+        )).scalars().all()
+        match = _find_orm(rows, filter_, date_key="log_date", type_key="activity_type")
 
-        elif module == "career_cf_rating":
-            rows = (await session.execute(
-                select(CFRatingLog).order_by(CFRatingLog.log_date.desc())
-            )).scalars().all()
-            match = _find_orm(rows, filter_, date_key="log_date")
+    elif module == "career_cf_rating":
+        rows = (await session.execute(
+            select(CFRatingLog).order_by(CFRatingLog.log_date.desc())
+        )).scalars().all()
+        match = _find_orm(rows, filter_, date_key="log_date")
 
-        elif module == "travel_trip":
-            rows = (await session.execute(
-                select(Trip).order_by(Trip.start_date.desc())
-            )).scalars().all()
-            match = _find_trip(rows, filter_)
+    elif module == "travel_trip":
+        rows = (await session.execute(
+            select(Trip).order_by(Trip.start_date.desc())
+        )).scalars().all()
+        match = _find_trip(rows, filter_)
 
-        else:
-            return False
+    else:
+        return False
 
-        if match is None:
-            return False
-        await session.delete(match)
-
+    if match is None:
+        return False
+    await session.delete(match)
     return True
 
 

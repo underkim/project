@@ -98,12 +98,7 @@ async def update_trip(
 
 async def delete_trip(session: AsyncSession, trip_id: int) -> bool:
     async with session.begin():
-        result = await session.execute(
-            select(Trip)
-            .options(*_trip_opts())
-            .where(Trip.id == trip_id)
-        )
-        trip = result.scalar_one_or_none()
+        trip = await session.get(Trip, trip_id)
         if trip is None:
             return False
         await session.delete(trip)
