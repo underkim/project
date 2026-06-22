@@ -180,7 +180,7 @@ export default function DashboardPage() {
               label: '이번 주 운동',
               value: `${exerciseDays}일`,
               sub: (health?.total_exercise_minutes_this_week ?? 0) > 0
-                ? `총 ${health!.total_exercise_minutes_this_week}분`
+                ? `총 ${health?.total_exercise_minutes_this_week}분`
                 : sleepQuality > 0 ? `수면 ${sleepQuality}/5` : '수면 미입력',
             },
             {
@@ -241,7 +241,7 @@ export default function DashboardPage() {
               </div>
               <WeekDots days={exerciseDays} />
               {(health?.total_exercise_minutes_this_week ?? 0) > 0 && (
-                <p className="text-[11px] text-slate-400 mt-1.5">총 {health!.total_exercise_minutes_this_week}분</p>
+                <p className="text-[11px] text-slate-400 mt-1.5">총 {health?.total_exercise_minutes_this_week}분</p>
               )}
             </div>
             {health?.avg_sleep_hours_this_week && (
