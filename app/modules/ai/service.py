@@ -6,7 +6,7 @@ import re
 from datetime import date, timedelta
 
 from google import genai
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -372,15 +372,13 @@ def _safe_date(s: str) -> date | None:
         return None
 
 
-async def _update(session: AsyncSession, module: str, filter_: dict, data: dict) -> bool:
-    """filter로 대상을 찾아 data의 필드만 부분 수정. WHERE 절로 직접 필터링."""
+async def _find_record(session: AsyncSession, module: str, filter_: dict):
+    """filter_ 기준으로 레코드 1개를 WHERE 쿼리로 탐색. 없으면 None."""
     from app.modules.health.models import ExerciseLog, SleepLog
     from app.modules.finance.models import AssetRecord
     from app.modules.growth.models import BookRecord, EnglishLog
     from app.modules.career.models import CFRatingLog
     from app.modules.travel.models import Trip
-
-    record = None
 
     if module == "health_exercise":
         q = select(ExerciseLog)
@@ -388,46 +386,46 @@ async def _update(session: AsyncSession, module: str, filter_: dict, data: dict)
             q = q.where(ExerciseLog.log_date == d)
         if t := filter_.get("exercise_type"):
             q = q.where(ExerciseLog.exercise_type.ilike(f"%{t}%"))
-        record = (await session.execute(q.order_by(ExerciseLog.log_date.desc()).limit(1))).scalars().first()
+        return (await session.execute(q.order_by(ExerciseLog.log_date.desc()).limit(1))).scalars().first()
 
-    elif module == "health_sleep":
+    if module == "health_sleep":
         q = select(SleepLog)
         if d := _safe_date(filter_.get("log_date", "")):
             q = q.where(SleepLog.log_date == d)
-        record = (await session.execute(q.order_by(SleepLog.log_date.desc()).limit(1))).scalars().first()
+        return (await session.execute(q.order_by(SleepLog.log_date.desc()).limit(1))).scalars().first()
 
-    elif module == "finance_record":
+    if module == "finance_record":
         q = select(AssetRecord)
         if d := _safe_date(filter_.get("record_date", "")):
             q = q.where(AssetRecord.record_date == d)
-        record = (await session.execute(q.order_by(AssetRecord.record_date.desc()).limit(1))).scalars().first()
+        return (await session.execute(q.order_by(AssetRecord.record_date.desc()).limit(1))).scalars().first()
 
-    elif module == "growth_book":
+    if module == "growth_book":
         title_q = filter_.get("title", "")
         if not title_q:
-            return False
+            return None
         q = select(BookRecord).where(BookRecord.title.ilike(f"%{title_q}%"))
-        record = (await session.execute(q.order_by(BookRecord.id.desc()).limit(1))).scalars().first()
+        return (await session.execute(q.order_by(BookRecord.id.desc()).limit(1))).scalars().first()
 
-    elif module == "growth_english":
+    if module == "growth_english":
         q = select(EnglishLog)
         if d := _safe_date(filter_.get("log_date", "")):
             q = q.where(EnglishLog.log_date == d)
         if t := filter_.get("activity_type"):
             q = q.where(EnglishLog.activity_type.ilike(f"%{t}%"))
-        record = (await session.execute(q.order_by(EnglishLog.log_date.desc()).limit(1))).scalars().first()
+        return (await session.execute(q.order_by(EnglishLog.log_date.desc()).limit(1))).scalars().first()
 
-    elif module == "career_cf_rating":
+    if module == "career_cf_rating":
         q = select(CFRatingLog)
         if d := _safe_date(filter_.get("log_date", "")):
             q = q.where(CFRatingLog.log_date == d)
-        record = (await session.execute(q.order_by(CFRatingLog.log_date.desc()).limit(1))).scalars().first()
+        return (await session.execute(q.order_by(CFRatingLog.log_date.desc()).limit(1))).scalars().first()
 
-    elif module == "travel_trip":
-        # name 매치 우선, 없으면 destination 매치 (구 _find_trip 동작 유지)
+    if module == "travel_trip":
+        # name 매치 우선, 없으면 destination 매치
         n, dest = filter_.get("name", ""), filter_.get("destination", "")
         if not n and not dest:
-            return False
+            return None
         record = None
         if n:
             record = (await session.execute(
@@ -437,17 +435,19 @@ async def _update(session: AsyncSession, module: str, filter_: dict, data: dict)
             record = (await session.execute(
                 select(Trip).where(Trip.destination.ilike(f"%{dest}%")).order_by(Trip.start_date.desc()).limit(1)
             )).scalars().first()
+        return record
 
-    else:
-        return False
+    return None
 
+
+async def _update(session: AsyncSession, module: str, filter_: dict, data: dict) -> bool:
+    """filter로 대상을 찾아 data의 필드만 부분 수정."""
+    record = await _find_record(session, module, filter_)
     if record is None:
         return False
-
     for field, value in data.items():
         if value is not None and hasattr(record, field):
             setattr(record, field, value)
-
     return True
 
 
@@ -512,74 +512,8 @@ async def _create(session: AsyncSession, module: str, data: dict) -> None:
 
 
 async def _delete(session: AsyncSession, module: str, filter_: dict) -> bool:
-    """filter로 대상을 찾아 삭제. 커밋은 호출부(execute_delete)에서 처리. WHERE 절로 직접 필터링."""
-    from app.modules.health.models import ExerciseLog, SleepLog
-    from app.modules.finance.models import AssetRecord
-    from app.modules.growth.models import BookRecord, EnglishLog
-    from app.modules.career.models import CFRatingLog
-    from app.modules.travel.models import Trip
-
-    match = None
-
-    if module == "health_exercise":
-        q = select(ExerciseLog)
-        if d := _safe_date(filter_.get("log_date", "")):
-            q = q.where(ExerciseLog.log_date == d)
-        if t := filter_.get("exercise_type"):
-            q = q.where(ExerciseLog.exercise_type.ilike(f"%{t}%"))
-        match = (await session.execute(q.order_by(ExerciseLog.log_date.desc()).limit(1))).scalars().first()
-
-    elif module == "health_sleep":
-        q = select(SleepLog)
-        if d := _safe_date(filter_.get("log_date", "")):
-            q = q.where(SleepLog.log_date == d)
-        match = (await session.execute(q.order_by(SleepLog.log_date.desc()).limit(1))).scalars().first()
-
-    elif module == "finance_record":
-        q = select(AssetRecord)
-        if d := _safe_date(filter_.get("record_date", "")):
-            q = q.where(AssetRecord.record_date == d)
-        match = (await session.execute(q.order_by(AssetRecord.record_date.desc()).limit(1))).scalars().first()
-
-    elif module == "growth_book":
-        title_q = filter_.get("title", "")
-        if not title_q:
-            return False
-        q = select(BookRecord).where(BookRecord.title.ilike(f"%{title_q}%"))
-        match = (await session.execute(q.order_by(BookRecord.id.desc()).limit(1))).scalars().first()
-
-    elif module == "growth_english":
-        q = select(EnglishLog)
-        if d := _safe_date(filter_.get("log_date", "")):
-            q = q.where(EnglishLog.log_date == d)
-        if t := filter_.get("activity_type"):
-            q = q.where(EnglishLog.activity_type.ilike(f"%{t}%"))
-        match = (await session.execute(q.order_by(EnglishLog.log_date.desc()).limit(1))).scalars().first()
-
-    elif module == "career_cf_rating":
-        q = select(CFRatingLog)
-        if d := _safe_date(filter_.get("log_date", "")):
-            q = q.where(CFRatingLog.log_date == d)
-        match = (await session.execute(q.order_by(CFRatingLog.log_date.desc()).limit(1))).scalars().first()
-
-    elif module == "travel_trip":
-        # name 매치 우선, 없으면 destination 매치 (구 _find_trip 동작 유지)
-        n, dest = filter_.get("name", ""), filter_.get("destination", "")
-        if not n and not dest:
-            return False
-        match = None
-        if n:
-            match = (await session.execute(
-                select(Trip).where(Trip.name.ilike(f"%{n}%")).order_by(Trip.start_date.desc()).limit(1)
-            )).scalars().first()
-        if match is None and dest:
-            match = (await session.execute(
-                select(Trip).where(Trip.destination.ilike(f"%{dest}%")).order_by(Trip.start_date.desc()).limit(1)
-            )).scalars().first()
-
-    else:
-        return False
-
+    """filter로 대상을 찾아 삭제. 커밋은 호출부(execute_delete)에서 처리."""
+    match = await _find_record(session, module, filter_)
     if match is None:
         return False
     await session.delete(match)

@@ -10,7 +10,7 @@ import type {
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
-export const client = axios.create({ baseURL: BASE });
+export const client = axios.create({ baseURL: BASE, timeout: 10000 });
 
 client.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
@@ -26,6 +26,16 @@ client.interceptors.response.use(
     if (err.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('token');
       window.location.href = '/login';
+      return Promise.reject(err);
+    }
+    // API가 반환한 detail 메시지를 err.message에 노출 (호출자가 선택적으로 사용 가능)
+    const detail = err.response?.data?.detail;
+    if (detail && typeof detail === 'string') {
+      err.message = detail;
+    } else if (!err.response) {
+      err.message = '서버에 연결할 수 없습니다. 네트워크를 확인해주세요.';
+    } else if (err.response.status >= 500) {
+      err.message = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
     }
     return Promise.reject(err);
   }

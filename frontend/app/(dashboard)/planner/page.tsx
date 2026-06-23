@@ -728,7 +728,7 @@ export default function PlannerPage() {
   useEffect(() => {
     setError(null);
     loadRoadmap()
-      .catch(() => setError('데이터를 불러오지 못했습니다.'))
+      .catch((err: Error) => setError(err.message || '데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
   }, []);
 

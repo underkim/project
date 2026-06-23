@@ -545,8 +545,8 @@ export default function TravelPage() {
     try {
       const data = await travelApi.listTrips();
       setTrips(data);
-    } catch {
-      setError('여행 데이터를 불러오지 못했습니다.');
+    } catch (err) {
+      setError((err as Error).message || '여행 데이터를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }

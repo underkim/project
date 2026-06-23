@@ -27,7 +27,9 @@ async def test_chat_requires_auth(client):
 
 @pytest.mark.asyncio
 async def test_chat_general_conversation(auth_client):
-    with patch("app.modules.ai.service.genai") as mock_genai:
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
         mock_genai.Client.return_value.models.generate_content.return_value = \
             _mock_gemini("안녕하세요! 무엇을 도와드릴까요?")
 
@@ -42,7 +44,9 @@ async def test_chat_general_conversation(auth_client):
 
 @pytest.mark.asyncio
 async def test_chat_create_exercise(auth_client):
-    with patch("app.modules.ai.service.genai") as mock_genai:
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
         mock_genai.Client.return_value.models.generate_content.return_value = _mock_gemini(
             reply="운동 기록을 저장했어요!",
             action="create",
@@ -60,7 +64,9 @@ async def test_chat_create_exercise(auth_client):
 
 @pytest.mark.asyncio
 async def test_chat_delete_returns_pending(auth_client):
-    with patch("app.modules.ai.service.genai") as mock_genai:
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
         mock_genai.Client.return_value.models.generate_content.return_value = _mock_gemini(
             reply="삭제할까요?",
             action="delete",
@@ -105,7 +111,9 @@ async def test_execute_delete_not_found(auth_client):
 @pytest.mark.asyncio
 async def test_chat_planner_no_categories(auth_client):
     """카테고리 없을 때 플래너 아이템 추가 → saved: False, 친절한 메시지."""
-    with patch("app.modules.ai.service.genai") as mock_genai:
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
         mock_genai.Client.return_value.models.generate_content.return_value = _mock_gemini(
             reply="플래너에 추가할게요!",
             action="create",
