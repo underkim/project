@@ -80,8 +80,10 @@ export const plannerApi = {
 };
 
 export const financeApi = {
-  getSummary: async (): Promise<FinanceSummaryResponse> =>
-    (await client.get('/api/v1/finance/summary')).data,
+  getSummary: async (recordsLimit = 20, recordsOffset = 0): Promise<FinanceSummaryResponse> =>
+    (await client.get('/api/v1/finance/summary', { params: { records_limit: recordsLimit, records_offset: recordsOffset } })).data,
+  listRecords: async (limit = 20, offset = 0): Promise<AssetRecordResponse[]> =>
+    (await client.get('/api/v1/finance/records', { params: { limit, offset } })).data,
   createRecord: async (data: {
     record_date: string; total_assets: number;
     monthly_income: number; monthly_expense: number; note?: string;
@@ -99,8 +101,8 @@ export const financeApi = {
 export const healthApi = {
   getSummary: async (): Promise<HealthSummaryResponse> =>
     (await client.get('/api/v1/health/summary')).data,
-  listExercise: async (): Promise<ExerciseLogResponse[]> =>
-    (await client.get('/api/v1/health/exercise')).data,
+  listExercise: async (limit = 20, offset = 0): Promise<ExerciseLogResponse[]> =>
+    (await client.get('/api/v1/health/exercise', { params: { limit, offset } })).data,
   createExercise: async (data: {
     log_date: string; exercise_type: string; duration_minutes: number; note?: string;
   }): Promise<ExerciseLogResponse> =>
@@ -110,8 +112,8 @@ export const healthApi = {
     exercise_type: string; duration_minutes: number; note: string;
   }>): Promise<ExerciseLogResponse> =>
     (await client.put(`/api/v1/health/exercise/${id}`, data)).data,
-  listSleep: async (): Promise<SleepLogResponse[]> =>
-    (await client.get('/api/v1/health/sleep')).data,
+  listSleep: async (limit = 20, offset = 0): Promise<SleepLogResponse[]> =>
+    (await client.get('/api/v1/health/sleep', { params: { limit, offset } })).data,
   createSleep: async (data: {
     log_date: string; sleep_hours: number; quality: number; note?: string;
   }): Promise<SleepLogResponse> =>
@@ -126,8 +128,8 @@ export const healthApi = {
 export const growthApi = {
   getSummary: async (): Promise<GrowthSummaryResponse> =>
     (await client.get('/api/v1/growth/summary')).data,
-  listBooks: async (): Promise<BookRecordResponse[]> =>
-    (await client.get('/api/v1/growth/books')).data,
+  listBooks: async (limit = 20, offset = 0): Promise<BookRecordResponse[]> =>
+    (await client.get('/api/v1/growth/books', { params: { limit, offset } })).data,
   createBook: async (data: {
     title: string; author?: string; status?: string;
     start_date?: string; end_date?: string; rating?: number; note?: string;
@@ -139,8 +141,8 @@ export const growthApi = {
   }>): Promise<BookRecordResponse> =>
     (await client.put(`/api/v1/growth/books/${id}`, data)).data,
   deleteBook: async (id: number) => { await client.delete(`/api/v1/growth/books/${id}`); },
-  listEnglish: async (): Promise<EnglishLogResponse[]> =>
-    (await client.get('/api/v1/growth/english')).data,
+  listEnglish: async (limit = 20, offset = 0): Promise<EnglishLogResponse[]> =>
+    (await client.get('/api/v1/growth/english', { params: { limit, offset } })).data,
   createEnglish: async (data: {
     log_date: string; activity_type: string; duration_minutes: number; note?: string;
   }): Promise<EnglishLogResponse> =>
@@ -155,8 +157,8 @@ export const careerApi = {
     cf_handle?: string; github_username?: string; blog_url?: string;
   }): Promise<CareerSettingsResponse> =>
     (await client.put('/api/v1/career/settings', data)).data,
-  listCFRatings: async (): Promise<CFRatingLogResponse[]> =>
-    (await client.get('/api/v1/career/cf-ratings')).data,
+  listCFRatings: async (limit = 20, offset = 0): Promise<CFRatingLogResponse[]> =>
+    (await client.get('/api/v1/career/cf-ratings', { params: { limit, offset } })).data,
   createCFRating: async (data: {
     log_date: string; rating: number; rank_name: string;
   }): Promise<CFRatingLogResponse> =>

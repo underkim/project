@@ -15,8 +15,8 @@ from app.modules.growth.schemas import (
 )
 
 
-async def list_books(session: AsyncSession) -> list[BookRecordResponse]:
-    result = await session.execute(select(BookRecord).order_by(BookRecord.id.desc()))
+async def list_books(session: AsyncSession, limit: int = 20, offset: int = 0) -> list[BookRecordResponse]:
+    result = await session.execute(select(BookRecord).order_by(BookRecord.id.desc()).limit(limit).offset(offset))
     return [BookRecordResponse.model_validate(r) for r in result.scalars().all()]
 
 
@@ -48,9 +48,9 @@ async def delete_book(session: AsyncSession, book_id: int) -> bool:
     return True
 
 
-async def list_english(session: AsyncSession) -> list[EnglishLogResponse]:
+async def list_english(session: AsyncSession, limit: int = 20, offset: int = 0) -> list[EnglishLogResponse]:
     result = await session.execute(
-        select(EnglishLog).order_by(EnglishLog.log_date.desc())
+        select(EnglishLog).order_by(EnglishLog.log_date.desc()).limit(limit).offset(offset)
     )
     return [EnglishLogResponse.model_validate(r) for r in result.scalars().all()]
 

@@ -22,11 +22,17 @@ function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCance
   );
 }
 
+const PAGE = 20;
+
 export default function GrowthPage() {
   const [summary, setSummary] = useState<GrowthSummaryResponse | null>(null);
   const [books, setBooks] = useState<BookRecordResponse[]>([]);
   const [englishLogs, setEnglishLogs] = useState<EnglishLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [booksHasMore, setBooksHasMore] = useState(false);
+  const [engHasMore, setEngHasMore] = useState(false);
+  const [booksLoadMore, setBooksLoadMore] = useState(false);
+  const [engLoadMore, setEngLoadMore] = useState(false);
   const [showBookForm, setShowBookForm] = useState(false);
   const [showEngForm, setShowEngForm] = useState(false);
   const [deletingBook, setDeletingBook] = useState<number | null>(null);
@@ -38,14 +44,36 @@ export default function GrowthPage() {
   async function load() {
     try {
       const [s, b, e] = await Promise.all([
-        growthApi.getSummary(), growthApi.listBooks(), growthApi.listEnglish(),
+        growthApi.getSummary(), growthApi.listBooks(PAGE), growthApi.listEnglish(PAGE),
       ]);
-      setSummary(s); setBooks(b); setEnglishLogs(e);
+      setSummary(s);
+      setBooks(b); setBooksHasMore(b.length === PAGE);
+      setEnglishLogs(e); setEngHasMore(e.length === PAGE);
     } catch {
       showToast('데이터를 불러오지 못했습니다.', 'error');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadMoreBooks() {
+    setBooksLoadMore(true);
+    try {
+      const more = await growthApi.listBooks(PAGE, books.length);
+      setBooks(prev => [...prev, ...more]);
+      setBooksHasMore(more.length === PAGE);
+    } catch { showToast('불러오지 못했습니다.', 'error'); }
+    finally { setBooksLoadMore(false); }
+  }
+
+  async function loadMoreEng() {
+    setEngLoadMore(true);
+    try {
+      const more = await growthApi.listEnglish(PAGE, englishLogs.length);
+      setEnglishLogs(prev => [...prev, ...more]);
+      setEngHasMore(more.length === PAGE);
+    } catch { showToast('불러오지 못했습니다.', 'error'); }
+    finally { setEngLoadMore(false); }
   }
 
   useEffect(() => {
@@ -217,6 +245,14 @@ export default function GrowthPage() {
               )}
             </div>
           ))}
+          {booksHasMore && (
+            <div className="px-5 py-3 border-t border-slate-50">
+              <button onClick={loadMoreBooks} disabled={booksLoadMore}
+                className="w-full text-xs text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50">
+                {booksLoadMore ? '불러오는 중...' : '더 보기'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -269,7 +305,7 @@ export default function GrowthPage() {
               <p className="text-slate-400 text-sm">아직 영어 학습 기록이 없어요</p>
               <button onClick={() => setShowEngForm(true)} className="mt-2 text-xs text-slate-500 underline underline-offset-2">첫 기록 추가하기</button>
             </div>
-          ) : englishLogs.slice(0, 20).map(log => (
+          ) : englishLogs.map(log => (
             <div key={log.id} className="flex items-center px-5 py-3 gap-4 hover:bg-slate-50 transition-colors">
               <span className="text-slate-400 text-xs w-24 shrink-0">{log.log_date}</span>
               <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-medium">{log.activity_type}</span>
@@ -284,6 +320,14 @@ export default function GrowthPage() {
               )}
             </div>
           ))}
+          {engHasMore && (
+            <div className="px-5 py-3 border-t border-slate-50">
+              <button onClick={loadMoreEng} disabled={engLoadMore}
+                className="w-full text-xs text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50">
+                {engLoadMore ? '불러오는 중...' : '더 보기'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

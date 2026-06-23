@@ -27,11 +27,17 @@ function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCance
   );
 }
 
+const PAGE = 20;
+
 export default function HealthPage() {
   const [summary, setSummary] = useState<HealthSummaryResponse | null>(null);
   const [exercises, setExercises] = useState<ExerciseLogResponse[]>([]);
   const [sleeps, setSleeps] = useState<SleepLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exHasMore, setExHasMore] = useState(false);
+  const [slHasMore, setSlHasMore] = useState(false);
+  const [exLoadMore, setExLoadMore] = useState(false);
+  const [slLoadMore, setSlLoadMore] = useState(false);
 
   const [exForm, setExForm] = useState({ log_date: '', exercise_type: '', duration_minutes: '', note: '' });
   const [slForm, setSlForm] = useState({ log_date: '', sleep_hours: '', quality: '3', note: '' });
@@ -43,14 +49,36 @@ export default function HealthPage() {
   async function load() {
     try {
       const [s, ex, sl] = await Promise.all([
-        healthApi.getSummary(), healthApi.listExercise(), healthApi.listSleep(),
+        healthApi.getSummary(), healthApi.listExercise(PAGE), healthApi.listSleep(PAGE),
       ]);
-      setSummary(s); setExercises(ex); setSleeps(sl);
+      setSummary(s);
+      setExercises(ex); setExHasMore(ex.length === PAGE);
+      setSleeps(sl); setSlHasMore(sl.length === PAGE);
     } catch {
       showToast('데이터를 불러오지 못했습니다.', 'error');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadMoreEx() {
+    setExLoadMore(true);
+    try {
+      const more = await healthApi.listExercise(PAGE, exercises.length);
+      setExercises(prev => [...prev, ...more]);
+      setExHasMore(more.length === PAGE);
+    } catch { showToast('불러오지 못했습니다.', 'error'); }
+    finally { setExLoadMore(false); }
+  }
+
+  async function loadMoreSl() {
+    setSlLoadMore(true);
+    try {
+      const more = await healthApi.listSleep(PAGE, sleeps.length);
+      setSleeps(prev => [...prev, ...more]);
+      setSlHasMore(more.length === PAGE);
+    } catch { showToast('불러오지 못했습니다.', 'error'); }
+    finally { setSlLoadMore(false); }
   }
 
   useEffect(() => {
@@ -236,7 +264,7 @@ export default function HealthPage() {
               <p className="text-slate-400 text-sm">아직 운동 기록이 없어요</p>
               <button onClick={() => setShowEx(true)} className="mt-2 text-xs text-slate-500 underline underline-offset-2">첫 기록 추가하기</button>
             </div>
-          ) : exercises.slice(0, 20).map(ex => (
+          ) : exercises.map(ex => (
             <div key={ex.id} className="flex items-center px-5 py-3 gap-4 hover:bg-slate-50 transition-colors">
               <span className="text-slate-400 text-xs w-24 shrink-0">{ex.log_date}</span>
               <span className="font-medium text-sm text-slate-700">{ex.exercise_type}</span>
@@ -251,6 +279,14 @@ export default function HealthPage() {
               )}
             </div>
           ))}
+          {exHasMore && (
+            <div className="px-5 py-3 border-t border-slate-50">
+              <button onClick={loadMoreEx} disabled={exLoadMore}
+                className="w-full text-xs text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50">
+                {exLoadMore ? '불러오는 중...' : '더 보기'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -299,7 +335,7 @@ export default function HealthPage() {
               <p className="text-slate-400 text-sm">아직 수면 기록이 없어요</p>
               <button onClick={() => setShowSl(true)} className="mt-2 text-xs text-slate-500 underline underline-offset-2">첫 기록 추가하기</button>
             </div>
-          ) : sleeps.slice(0, 20).map(sl => (
+          ) : sleeps.map(sl => (
             <div key={sl.id} className="flex items-center px-5 py-3 gap-4 hover:bg-slate-50 transition-colors">
               <span className="text-slate-400 text-xs w-24 shrink-0">{sl.log_date}</span>
               <span className="font-medium text-sm text-slate-700">{sl.sleep_hours}시간</span>
@@ -317,6 +353,14 @@ export default function HealthPage() {
               )}
             </div>
           ))}
+          {slHasMore && (
+            <div className="px-5 py-3 border-t border-slate-50">
+              <button onClick={loadMoreSl} disabled={slLoadMore}
+                className="w-full text-xs text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50">
+                {slLoadMore ? '불러오는 중...' : '더 보기'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

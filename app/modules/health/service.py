@@ -15,9 +15,9 @@ from app.modules.health.schemas import (
 )
 
 
-async def list_exercise(session: AsyncSession) -> list[ExerciseLogResponse]:
+async def list_exercise(session: AsyncSession, limit: int = 20, offset: int = 0) -> list[ExerciseLogResponse]:
     result = await session.execute(
-        select(ExerciseLog).order_by(ExerciseLog.log_date.desc())
+        select(ExerciseLog).order_by(ExerciseLog.log_date.desc()).limit(limit).offset(offset)
     )
     return [ExerciseLogResponse.model_validate(r) for r in result.scalars().all()]
 
@@ -50,9 +50,9 @@ async def delete_exercise(session: AsyncSession, log_id: int) -> bool:
     return True
 
 
-async def list_sleep(session: AsyncSession) -> list[SleepLogResponse]:
+async def list_sleep(session: AsyncSession, limit: int = 20, offset: int = 0) -> list[SleepLogResponse]:
     result = await session.execute(
-        select(SleepLog).order_by(SleepLog.log_date.desc())
+        select(SleepLog).order_by(SleepLog.log_date.desc()).limit(limit).offset(offset)
     )
     return [SleepLogResponse.model_validate(r) for r in result.scalars().all()]
 

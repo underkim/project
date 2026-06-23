@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -38,8 +38,13 @@ async def update_settings(
 
 
 @router.get("/cf-ratings", response_model=list[CFRatingLogResponse])
-async def list_cf_ratings(_: CurrentUser, session: AsyncSession = Depends(get_db)):
-    return await service.list_cf_ratings(session)
+async def list_cf_ratings(
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    return await service.list_cf_ratings(session, limit=limit, offset=offset)
 
 
 @router.post("/cf-ratings", response_model=CFRatingLogResponse, status_code=status.HTTP_201_CREATED)

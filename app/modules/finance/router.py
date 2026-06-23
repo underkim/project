@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -18,13 +18,23 @@ CurrentUser = Annotated[str, Depends(get_current_user)]
 
 
 @router.get("/summary", response_model=FinanceSummaryResponse)
-async def get_summary(_: CurrentUser, session: AsyncSession = Depends(get_db)):
-    return await service.get_summary(session)
+async def get_summary(
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+    records_limit: int = Query(default=20, ge=1, le=200),
+    records_offset: int = Query(default=0, ge=0),
+):
+    return await service.get_summary(session, records_limit=records_limit, records_offset=records_offset)
 
 
 @router.get("/records", response_model=list[AssetRecordResponse])
-async def list_records(_: CurrentUser, session: AsyncSession = Depends(get_db)):
-    return await service.list_records(session)
+async def list_records(
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    return await service.list_records(session, limit=limit, offset=offset)
 
 
 @router.get("/records/{record_id}", response_model=AssetRecordResponse)

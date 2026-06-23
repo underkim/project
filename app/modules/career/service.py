@@ -34,9 +34,9 @@ async def update_settings(
     return CareerSettingsResponse.model_validate(settings)
 
 
-async def list_cf_ratings(session: AsyncSession) -> list[CFRatingLogResponse]:
+async def list_cf_ratings(session: AsyncSession, limit: int = 20, offset: int = 0) -> list[CFRatingLogResponse]:
     result = await session.execute(
-        select(CFRatingLog).order_by(CFRatingLog.log_date.desc())
+        select(CFRatingLog).order_by(CFRatingLog.log_date.desc()).limit(limit).offset(offset)
     )
     return [CFRatingLogResponse.model_validate(r) for r in result.scalars().all()]
 

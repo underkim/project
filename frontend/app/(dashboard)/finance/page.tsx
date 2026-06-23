@@ -19,10 +19,14 @@ function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCance
   );
 }
 
+const PAGE = 20;
+
 export default function FinancePage() {
   const [records, setRecords] = useState<AssetRecordResponse[]>([]);
   const [summary, setSummary] = useState<{ latest_total_assets: number | null; avg_savings_rate: number | null }>({ latest_total_assets: null, avg_savings_rate: null });
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadMore, setLoadMore] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ record_date: '', total_assets: '', monthly_income: '', monthly_expense: '', note: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -30,14 +34,25 @@ export default function FinancePage() {
 
   async function load() {
     try {
-      const data = await financeApi.getSummary();
+      const data = await financeApi.getSummary(PAGE);
       setRecords(data.records);
+      setHasMore(data.records.length === PAGE);
       setSummary({ latest_total_assets: data.latest_total_assets, avg_savings_rate: data.avg_savings_rate });
     } catch {
       showToast('데이터를 불러오지 못했습니다.', 'error');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleLoadMore() {
+    setLoadMore(true);
+    try {
+      const more = await financeApi.listRecords(PAGE, records.length);
+      setRecords(prev => [...prev, ...more]);
+      setHasMore(more.length === PAGE);
+    } catch { showToast('불러오지 못했습니다.', 'error'); }
+    finally { setLoadMore(false); }
   }
 
   useEffect(() => {
@@ -223,6 +238,14 @@ export default function FinancePage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {hasMore && (
+          <div className="px-5 py-3 border-t border-slate-100">
+            <button onClick={handleLoadMore} disabled={loadMore}
+              className="w-full text-xs text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50">
+              {loadMore ? '불러오는 중...' : '더 보기'}
+            </button>
           </div>
         )}
       </div>

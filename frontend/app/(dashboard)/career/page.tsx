@@ -32,23 +32,38 @@ function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCance
   );
 }
 
+const PAGE = 20;
+
 export default function CareerPage() {
   const [settings, setSettings] = useState<CareerSettingsResponse>({ cf_handle: null, github_username: null, blog_url: null });
   const [ratings, setRatings] = useState<CFRatingLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadMore, setLoadMore] = useState(false);
   const [showRatingForm, setShowRatingForm] = useState(false);
   const [ratingForm, setRatingForm] = useState({ log_date: '', rating: '', rank_name: 'pupil' });
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   async function load() {
     try {
-      const [s, r] = await Promise.all([careerApi.getSettings(), careerApi.listCFRatings()]);
-      setSettings(s); setRatings(r);
+      const [s, r] = await Promise.all([careerApi.getSettings(), careerApi.listCFRatings(PAGE)]);
+      setSettings(s);
+      setRatings(r); setHasMore(r.length === PAGE);
     } catch {
       showToast('데이터를 불러오지 못했습니다.', 'error');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleLoadMore() {
+    setLoadMore(true);
+    try {
+      const more = await careerApi.listCFRatings(PAGE, ratings.length);
+      setRatings(prev => [...prev, ...more]);
+      setHasMore(more.length === PAGE);
+    } catch { showToast('불러오지 못했습니다.', 'error'); }
+    finally { setLoadMore(false); }
   }
 
   useEffect(() => {
@@ -245,6 +260,14 @@ export default function CareerPage() {
               </div>
             );
           })}
+          {hasMore && (
+            <div className="px-5 py-3 border-t border-slate-50">
+              <button onClick={handleLoadMore} disabled={loadMore}
+                className="w-full text-xs text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50">
+                {loadMore ? '불러오는 중...' : '더 보기'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

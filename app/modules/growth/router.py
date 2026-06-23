@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -26,8 +26,13 @@ async def get_summary(_: CurrentUser, session: AsyncSession = Depends(get_db)):
 
 
 @router.get("/books", response_model=list[BookRecordResponse])
-async def list_books(_: CurrentUser, session: AsyncSession = Depends(get_db)):
-    return await service.list_books(session)
+async def list_books(
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    return await service.list_books(session, limit=limit, offset=offset)
 
 
 @router.post("/books", response_model=BookRecordResponse, status_code=status.HTTP_201_CREATED)
@@ -52,8 +57,13 @@ async def delete_book(book_id: int, _: CurrentUser, session: AsyncSession = Depe
 
 
 @router.get("/english", response_model=list[EnglishLogResponse])
-async def list_english(_: CurrentUser, session: AsyncSession = Depends(get_db)):
-    return await service.list_english(session)
+async def list_english(
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    return await service.list_english(session, limit=limit, offset=offset)
 
 
 @router.post("/english", response_model=EnglishLogResponse, status_code=status.HTTP_201_CREATED)

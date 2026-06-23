@@ -25,9 +25,9 @@ def _to_response(record: AssetRecord) -> AssetRecordResponse:
     )
 
 
-async def list_records(session: AsyncSession) -> list[AssetRecordResponse]:
+async def list_records(session: AsyncSession, limit: int = 20, offset: int = 0) -> list[AssetRecordResponse]:
     result = await session.execute(
-        select(AssetRecord).order_by(AssetRecord.record_date.desc())
+        select(AssetRecord).order_by(AssetRecord.record_date.desc()).limit(limit).offset(offset)
     )
     return [_to_response(r) for r in result.scalars().all()]
 
@@ -67,16 +67,24 @@ async def delete_record(session: AsyncSession, record_id: int) -> bool:
     return True
 
 
-async def get_summary(session: AsyncSession) -> FinanceSummaryResponse:
-    result = await session.execute(
-        select(AssetRecord).order_by(AssetRecord.record_date.desc())
+async def get_summary(
+    session: AsyncSession, records_limit: int = 20, records_offset: int = 0
+) -> FinanceSummaryResponse:
+    # 요약 통계용: 최신 3개만 조회
+    stat_result = await session.execute(
+        select(AssetRecord).order_by(AssetRecord.record_date.desc()).limit(3)
     )
-    records = result.scalars().all()
-    responses = [_to_response(r) for r in records]
-
-    latest_assets = records[0].total_assets if records else None
-    recent_rates = [r.savings_rate for r in responses[:3] if r.savings_rate is not None]
+    stat_records = stat_result.scalars().all()
+    latest_assets = stat_records[0].total_assets if stat_records else None
+    stat_responses = [_to_response(r) for r in stat_records]
+    recent_rates = [r.savings_rate for r in stat_responses if r.savings_rate is not None]
     avg_rate = round(sum(recent_rates) / len(recent_rates), 1) if recent_rates else None
+
+    # 목록: 페이지네이션 적용
+    list_result = await session.execute(
+        select(AssetRecord).order_by(AssetRecord.record_date.desc()).limit(records_limit).offset(records_offset)
+    )
+    responses = [_to_response(r) for r in list_result.scalars().all()]
 
     return FinanceSummaryResponse(
         latest_total_assets=latest_assets,

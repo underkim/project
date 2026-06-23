@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,8 +27,13 @@ async def get_summary(_: CurrentUser, session: AsyncSession = Depends(get_db)):
 
 
 @router.get("/exercise", response_model=list[ExerciseLogResponse])
-async def list_exercise(_: CurrentUser, session: AsyncSession = Depends(get_db)):
-    return await service.list_exercise(session)
+async def list_exercise(
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    return await service.list_exercise(session, limit=limit, offset=offset)
 
 
 @router.post("/exercise", response_model=ExerciseLogResponse, status_code=status.HTTP_201_CREATED)
@@ -60,8 +65,13 @@ async def delete_exercise(log_id: int, _: CurrentUser, session: AsyncSession = D
 
 
 @router.get("/sleep", response_model=list[SleepLogResponse])
-async def list_sleep(_: CurrentUser, session: AsyncSession = Depends(get_db)):
-    return await service.list_sleep(session)
+async def list_sleep(
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    return await service.list_sleep(session, limit=limit, offset=offset)
 
 
 @router.post("/sleep", response_model=SleepLogResponse, status_code=status.HTTP_201_CREATED)
