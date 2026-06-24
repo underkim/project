@@ -25,9 +25,13 @@ client.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-      return Promise.reject(err);
+      // 토큰이 있을 때만 리다이렉트 (로그인 시도 실패는 호출자가 처리)
+      const token = localStorage.getItem('token');
+      if (token) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return Promise.reject(err);
+      }
     }
     // API가 반환한 detail 메시지를 err.message에 노출 (호출자가 선택적으로 사용 가능)
     const detail = err.response?.data?.detail;

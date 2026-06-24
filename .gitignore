@@ -31,3 +31,8 @@ frontend/out/
 
 # 빌드 캐시
 .turbo/
+
+# Playwright
+frontend/e2e/.auth/
+frontend/playwright-report/
+frontend/test-results/
