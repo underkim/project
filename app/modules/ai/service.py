@@ -53,7 +53,8 @@ growth_book      : title(string), author(선택), status("planned"|"reading"|"co
 growth_english   : log_date(YYYY-MM-DD, 기본 오늘), activity_type("reading"|"listening"|"speaking"|"writing"|"vocab"), duration_minutes(int), note(선택)
 career_cf_rating : log_date(YYYY-MM-DD), rating(int), rank_name(string)
 travel_trip      : name(string), destination(string), start_date(YYYY-MM-DD), end_date(YYYY-MM-DD), status("planned"|"ongoing"|"completed", 기본 "planned"), note(선택)
-travel_checklist : trip_id(int, 위 여행 목록에서 선택), text(string), order_index(int, 기본 0)
+travel_checklist : trip_name(string, 여행 이름으로 특정), text(string)
+travel_plan      : trip_name(string, 여행 이름으로 특정), day(int, 1부터), title(string), time(HH:MM 선택), description(선택), sort_order(int 선택)
 planner_item     : category_id(int, 위 카테고리 목록에서 선택), text(string), offset(float, 기본 0)
 
 === update 모듈·필드 ===
@@ -65,6 +66,8 @@ growth_book      : filter(title), data(status, rating, note, author)
 growth_english   : filter(log_date, activity_type), data(duration_minutes, note)
 career_cf_rating : filter(log_date), data(rating, rank_name)
 travel_trip      : filter(name 또는 destination), data(status, name, destination, note)
+travel_checklist : filter(trip_name, text), data(text, is_checked)
+travel_plan      : filter(trip_name, title), data(title, time, description, day, sort_order)
 planner_item     : filter(text), data(text, offset, is_completed)
 
 === delete 필터 ===
@@ -75,6 +78,8 @@ growth_book      : title
 growth_english   : log_date, activity_type
 career_cf_rating : log_date
 travel_trip      : name 또는 destination
+travel_checklist : trip_name, text
+travel_plan      : trip_name, title
 planner_item     : text
 
 === 예시 ===
@@ -440,6 +445,36 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
             )).scalars().first()
         return record
 
+    if module == "travel_checklist":
+        from app.modules.travel.models import TripChecklistItem
+        text_q = filter_.get("text", "")
+        if not text_q:
+            return None
+        q = select(TripChecklistItem).where(
+            TripChecklistItem.text.ilike(f"%{_escape_like(text_q)}%", escape="\\")
+        )
+        trip_name = filter_.get("trip_name", "")
+        if trip_name:
+            q = q.join(Trip, TripChecklistItem.trip_id == Trip.id).where(
+                Trip.name.ilike(f"%{_escape_like(trip_name)}%", escape="\\")
+            )
+        return (await session.execute(q.limit(1))).scalars().first()
+
+    if module == "travel_plan":
+        from app.modules.travel.models import TripPlanItem
+        title_q = filter_.get("title", "")
+        if not title_q:
+            return None
+        q = select(TripPlanItem).where(
+            TripPlanItem.title.ilike(f"%{_escape_like(title_q)}%", escape="\\")
+        )
+        trip_name = filter_.get("trip_name", "")
+        if trip_name:
+            q = q.join(Trip, TripPlanItem.trip_id == Trip.id).where(
+                Trip.name.ilike(f"%{_escape_like(trip_name)}%", escape="\\")
+            )
+        return (await session.execute(q.limit(1))).scalars().first()
+
     if module == "planner_item":
         from app.core.models import RoadmapItem
         text_q = filter_.get("text", "")
@@ -501,13 +536,34 @@ async def _create(session: AsyncSession, module: str, data: dict) -> None:
         session.add(Trip(**TripCreate(**data).model_dump()))
 
     elif module == "travel_checklist":
+        trip_name = data.pop("trip_name", None)
         trip_id = data.pop("trip_id", None)
-        if not trip_id:
-            raise ValueError("trip_id가 필요합니다")
-        trip = await session.get(Trip, int(trip_id))
+        if trip_name:
+            trip = (await session.execute(
+                select(Trip).where(Trip.name.ilike(f"%{_escape_like(trip_name)}%", escape="\\")).limit(1)
+            )).scalars().first()
+            if trip is None:
+                raise ValueError(f"'{trip_name}' 여행을 찾을 수 없습니다")
+        elif trip_id:
+            trip = await session.get(Trip, int(trip_id))
+            if trip is None:
+                raise ValueError(f"trip_id={trip_id}인 여행을 찾을 수 없습니다")
+        else:
+            raise ValueError("trip_name 또는 trip_id가 필요합니다")
+        session.add(TripChecklistItem(trip_id=trip.id, **ChecklistItemCreate(**data).model_dump()))
+
+    elif module == "travel_plan":
+        from app.modules.travel.models import TripPlanItem
+        from app.modules.travel.schemas import PlanItemCreate
+        trip_name = data.pop("trip_name", None)
+        if not trip_name:
+            raise ValueError("trip_name이 필요합니다")
+        trip = (await session.execute(
+            select(Trip).where(Trip.name.ilike(f"%{_escape_like(trip_name)}%", escape="\\")).limit(1)
+        )).scalars().first()
         if trip is None:
-            raise ValueError(f"trip_id={trip_id}인 여행을 찾을 수 없습니다")
-        session.add(TripChecklistItem(trip_id=int(trip_id), **ChecklistItemCreate(**data).model_dump()))
+            raise ValueError(f"'{trip_name}' 여행을 찾을 수 없습니다")
+        session.add(TripPlanItem(trip_id=trip.id, **PlanItemCreate(**data).model_dump()))
 
     elif module == "planner_item":
         item_data = RoadmapItemCreate(**data)
