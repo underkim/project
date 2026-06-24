@@ -81,6 +81,7 @@ travel_trip      : name 또는 destination
 travel_checklist : trip_name, text
 travel_plan      : trip_name, title
 planner_item     : text
+planner_category : title (⚠️ 카테고리 삭제 시 하위 아이템 전체 삭제됨 — reply에 반드시 경고 포함)
 
 === 예시 ===
 사용자: "오늘 러닝 45분 했어"
@@ -482,6 +483,14 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
             return None
         q = select(RoadmapItem).where(RoadmapItem.text.ilike(f"%{_escape_like(text_q)}%", escape="\\"))
         return (await session.execute(q.order_by(RoadmapItem.id.desc()).limit(1))).scalars().first()
+
+    if module == "planner_category":
+        from app.core.models import Category
+        title_q = filter_.get("title", "")
+        if not title_q:
+            return None
+        q = select(Category).where(Category.title.ilike(f"%{_escape_like(title_q)}%", escape="\\"))
+        return (await session.execute(q.order_by(Category.id.desc()).limit(1))).scalars().first()
 
     return None
 
