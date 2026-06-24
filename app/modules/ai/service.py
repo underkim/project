@@ -65,6 +65,7 @@ growth_book      : filter(title), data(status, rating, note, author)
 growth_english   : filter(log_date, activity_type), data(duration_minutes, note)
 career_cf_rating : filter(log_date), data(rating, rank_name)
 travel_trip      : filter(name 또는 destination), data(status, name, destination, note)
+planner_item     : filter(text), data(text, offset, is_completed)
 
 === delete 필터 ===
 health_exercise  : log_date, exercise_type
@@ -74,7 +75,7 @@ growth_book      : title
 growth_english   : log_date, activity_type
 career_cf_rating : log_date
 travel_trip      : name 또는 destination
-(planner_item 삭제·수정 미지원)
+planner_item     : text
 
 === 예시 ===
 사용자: "오늘 러닝 45분 했어"
@@ -438,6 +439,14 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
                 select(Trip).where(Trip.destination.ilike(f"%{_escape_like(dest)}%", escape="\\")).order_by(Trip.start_date.desc()).limit(1)
             )).scalars().first()
         return record
+
+    if module == "planner_item":
+        from app.core.models import RoadmapItem
+        text_q = filter_.get("text", "")
+        if not text_q:
+            return None
+        q = select(RoadmapItem).where(RoadmapItem.text.ilike(f"%{_escape_like(text_q)}%", escape="\\"))
+        return (await session.execute(q.order_by(RoadmapItem.id.desc()).limit(1))).scalars().first()
 
     return None
 
