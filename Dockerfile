@@ -19,4 +19,4 @@ COPY alembic.ini alembic.ini
 EXPOSE 8000
 
 # 마이그레이션 후 서버 시작
-CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
