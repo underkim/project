@@ -7,8 +7,8 @@
 
 Life Dashboard는 두 종류의 화면을 가진다.
 
-1. **홈 화면** — 4개 도메인(커리어·재테크·건강·자기계발) 요약을 한눈에
-2. **상세 화면** — 각 도메인 페이지 (예: `/career`, `/finance`)
+1. **홈 화면** — 7개 도메인(플래너·재테크·건강·자기계발·커리어·여행·AI) 요약을 한눈에
+2. **상세 화면** — 각 도메인 페이지 (예: `/career`, `/finance`, `/travel`)
 
 홈 화면은 여러 모듈의 데이터를 동시에 필요로 한다. 이를 클라이언트가 어떻게 받을 것인지 결정해야 한다.
 
@@ -68,18 +68,20 @@ GET /api/v1/finance/...
 ```python
 # dashboard/service.py
 async def get_overview() -> OverviewResponse:
-    career, finance, health, growth = await asyncio.gather(
-        career_service.get_summary(),
+    planner, finance, health, growth, career = await asyncio.gather(
+        planner_service.get_summary(),
         finance_service.get_summary(),
         health_service.get_summary(),
         growth_service.get_summary(),
+        career_service.get_summary(),
         return_exceptions=True,  # 부분 실패 허용
     )
     return OverviewResponse(
-        career=_handle(career),
+        planner=_handle(planner),
         finance=_handle(finance),
         health=_handle(health),
         growth=_handle(growth),
+        career=_handle(career),
     )
 ```
 
@@ -112,5 +114,5 @@ async def get_overview() -> OverviewResponse:
 ## 관련 문서
 
 - [ADR-0001 Modular Monolith](./0001-modular-monolith.md)
-- ADR-0003 SQLAlchemy Async (작성 예정)
-- [architecture/system.md](../architecture/system.md) (작성 예정)
+- [ADR-0003 SQLAlchemy Async](./0003-sqlalchemy-async.md)
+- [architecture/system.md](../architecture/system.md)

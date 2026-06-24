@@ -56,5 +56,5 @@ Life Dashboard의 첫 번째 모듈이며, 이후 career·finance·health·growt
 
 ## 관련 문서
 
-- [architecture/data-model.md](../architecture/data-model.md) (작성 예정)
-- [api/planner.md](../api/planner.md) (작성 예정)
+- [architecture/data-model.md](../architecture/data-model.md)
+- [adr/0005-Roadmap.md](../adr/0005-Roadmap.md)

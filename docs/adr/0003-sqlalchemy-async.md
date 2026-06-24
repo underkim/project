@@ -121,3 +121,4 @@ phase.categories  # ← MissingGreenlet 예외 가능
 - [ADR-0001 Modular Monolith](./0001-modular-monolith.md)
 - [ADR-0002 BFF 패턴](./0002-bff-pattern.md)
 - [architecture/data-model.md](../architecture/data-model.md)
+- [architecture/system.md](../architecture/system.md)

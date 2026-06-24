@@ -5,7 +5,7 @@
 
 ## 맥락
 
-Life Dashboard는 4개 도메인(커리어·재테크·건강·자기계발) + 인증 + 집계로 구성된다.
+Life Dashboard는 7개 도메인(플래너·재테크·건강·자기계발·커리어·여행·AI) + 인증 + 집계로 구성된다.
 프로젝트 시작 시점에 코드 구조를 결정해야 한다.
 
 ## 선택지
@@ -66,10 +66,13 @@ app/
 ├── core/        # 공통 설정·DB·예외
 ├── auth/
 ├── planner/
-├── career/
 ├── finance/
 ├── health/
 ├── growth/
+├── career/
+├── travel/
+├── ai/
+├── export/
 └── dashboard/   # read-only 집계 BFF
 ```
 
@@ -78,7 +81,7 @@ app/
 ## 근거
 
 - **단일 개발자 + 학습 프로젝트** — MSA의 운영 복잡도(배포·네트워크·트랜잭션)는 학습 비용 대비 이득이 적다
-- **도메인 경계가 뚜렷** — 커리어 / 재테크 / 건강 / 자기계발은 서로 침범하지 않는다. Layered 구조는 이 경계를 흐린다
+- **도메인 경계가 뚜렷** — 플래너 / 재테크 / 건강 / 자기계발 / 커리어 / 여행 / AI는 서로 침범하지 않는다. Layered 구조는 이 경계를 흐린다
 - **점진적 전환 가능** — 모듈 경계가 잘 잡혀 있으면, 트래픽이 커지는 모듈만 떼어내 MSA로 전환할 수 있다 (Modular Monolith가 "MSA로 가는 안전한 출발점"이라 불리는 이유)
 - **포트폴리오 가치** — Modular Monolith + BFF 조합은 실무 트렌드와 일치하고, 설계 의도를 설명하기 좋다
 
@@ -97,6 +100,6 @@ app/
 
 ## 관련 문서
 
-- ADR-0002 BFF 패턴 (작성 예정)
-- ADR-0003 SQLAlchemy Async (작성 예정)
-- [architecture/system.md](../architecture/system.md) (작성 예정)
+- [ADR-0002 BFF 패턴](./0002-bff-pattern.md)
+- [ADR-0003 SQLAlchemy Async](./0003-sqlalchemy-async.md)
+- [architecture/system.md](../architecture/system.md)

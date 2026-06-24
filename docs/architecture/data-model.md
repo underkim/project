@@ -1,127 +1,210 @@
-# Data Model
+# 데이터 모델
 
-Planner 모듈의 4계층 데이터 모델. 이후 다른 모듈은 이 구조를 기반으로 확장한다.
+7개 도메인 전체의 테이블 스키마와 관계.
 
-## 개요
-
-```
-Roadmap (1) ─── (N) Phase ─── (N) Category ─── (N) Item
-```
-
-- **Roadmap**: 전체 계획 (V1은 1개 가정)
-- **Phase**: 큰 단계 (4개 — 기반 / 가속 / 확장 / 안정)
-- **Category**: 영역 (Phase당 4개 — 커리어 / 재테크 / 건강 / 자기계발)
-- **Item**: 체크리스트 항목
-
-## ER 다이어그램
+## 전체 관계도
 
 ```
-┌─────────────┐
-│   Roadmap   │
-├─────────────┤
-│ id (PK)     │
-│ title       │
-│ start_date  │
-│ total_months│
-└──────┬──────┘
-       │ 1:N
-       ▼
-┌─────────────┐
-│    Phase    │
-├─────────────┤
-│ id (PK)     │
-│ roadmap_id  │ (FK)
-│ order       │
-│ label       │
-│ months      │
-│ color       │
-└──────┬──────┘
-       │ 1:N
-       ▼
-┌─────────────┐
-│  Category   │
-├─────────────┤
-│ id (PK)     │
-│ phase_id    │ (FK)
-│ icon        │
-│ title       │
-│ subtitle    │
-└──────┬──────┘
-       │ 1:N
-       ▼
-┌──────────────┐
-│     Item     │
-├──────────────┤
-│ id (PK)      │
-│ category_id  │ (FK)
-│ text         │
-│ offset_months│
-│ is_done      │
-│ completed_at │
-└──────────────┘
+roadmap_settings (1)
+phases (4)
+  └── categories (Phase당 4)
+        └── roadmap_items (N)
+
+asset_records (N)
+
+exercise_logs (N)
+sleep_logs (N)
+
+book_records (N)
+english_logs (N)
+
+career_settings (1)
+cf_ratings (N)
+
+trips (N)
+  ├── trip_checklist_items (N)   ON DELETE CASCADE
+  └── trip_plan_items (N)        ON DELETE CASCADE
 ```
 
-## 엔티티 정의
+---
 
-### Roadmap
+## Planner
 
-| 필드 | 타입 | 설명 |
+### roadmap_settings
+| 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | int | PK |
-| title | str | "종합 라이프 로드맵" |
-| start_date | date | 로드맵 시작일 |
-| total_months | int | 전체 기간 (60 = 5년) |
+| id | int PK | 항상 1 (단일 row) |
+| start_date | date | 로드맵 전체 시작일 |
 
-### Phase
-
-| 필드 | 타입 | 설명 |
+### phases
+| 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | int | PK |
-| roadmap_id | int | FK → Roadmap |
-| order | int | 순서 (1~4) |
+| id | int PK | |
+| key | str | "p1" ~ "p4" |
+| name | str | "Phase 1" |
 | label | str | "기반 다지기" |
-| months | int | 단계 기간 |
-| color | str | UI 색상 (#4f46e5) |
+| order_index | int | 정렬 순서 |
+| months | int | 단계 기간(월) |
+| color | str | 텍스트 색상 (#hex) |
+| bg | str | 배경 색상 (#hex) |
 
-### Category
-
-| 필드 | 타입 | 설명 |
+### categories
+| 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | int | PK |
-| phase_id | int | FK → Phase |
-| icon | str | 이모지 (💻) |
+| id | int PK | |
+| phase_id | int FK → phases | |
+| icon | str | 이모지 ("💻") |
 | title | str | "커리어" |
-| subtitle | str | "Python 백엔드 + 알고리즘" |
+| subtitle | str | 부제목 |
+| order_index | int | |
 
-### Item
-
-| 필드 | 타입 | 설명 |
+### roadmap_items
+| 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | int | PK |
-| category_id | int | FK → Category |
+| id | int PK | |
+| category_id | int FK → categories | |
 | text | str | 항목 내용 |
 | offset_months | float | Phase 시작 기준 오프셋 |
-| is_done | bool | 완료 여부 |
-| completed_at | datetime \| null | 완료 시각 |
+| is_completed | bool | 완료 여부 |
+| order_index | int | |
 
-## 파생값 (저장 X)
+**파생값 (DB 저장 X)**
 
-| 값 | 계산식 |
-|----|--------|
-| Phase.start_date | Roadmap.start_date + Σ(이전 Phase들의 months) |
-| Phase.end_date | Phase.start_date + months |
-| Item.deadline | Phase.start_date + offset_months |
-| Item.status | 완료 / 임박(≤30일) / 정상 / 지연 |
+| 파생값 | 계산식 |
+|--------|--------|
+| Phase.start_date | roadmap_settings.start_date + Σ(이전 Phase들의 months) |
+| Item.deadline | Phase.start_date + offset_months개월 |
 
-## 흐름: "오늘 할 일" 도출
+---
 
-```
-1. 모든 Item 조회 (is_done = false)
-2. 각 Item의 deadline 계산
-3. deadline ≤ 오늘 + 7일 인 항목만 필터
-4. deadline 오름차순 정렬
-```
+## Finance
 
-## 관련 ADR
+### asset_records
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | |
+| record_date | date | 기록 날짜 |
+| total_assets | int | 총 자산 (원) |
+| monthly_income | int \| null | 월 소득 |
+| monthly_expense | int \| null | 월 지출 |
+| savings_rate | float \| null | 저축률 (%) |
+| note | str \| null | 메모 |
+| created_at | datetime | |
 
-- ADR-0003 SQLAlchemy Async (작성 예정)
+---
+
+## Health
+
+### exercise_logs
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | |
+| log_date | date | |
+| exercise_type | str | "달리기", "웨이트" 등 |
+| duration_minutes | int | |
+| note | str \| null | |
+| created_at | datetime | |
+
+### sleep_logs
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | |
+| log_date | date | |
+| sleep_hours | float | |
+| quality | int | 1~5 점수 |
+| note | str \| null | |
+| created_at | datetime | |
+
+---
+
+## Growth
+
+### book_records
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | |
+| title | str | 책 제목 |
+| author | str \| null | |
+| status | str | "reading" \| "completed" \| "planned" |
+| start_date | date \| null | |
+| end_date | date \| null | |
+| rating | int \| null | 1~5 |
+| note | str \| null | |
+| created_at | datetime | |
+
+### english_logs
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | |
+| log_date | date | |
+| activity_type | str | "단어", "듣기", "말하기" 등 |
+| duration_minutes | int | |
+| note | str \| null | |
+| created_at | datetime | |
+
+---
+
+## Career
+
+### career_settings
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | 항상 1 (단일 row) |
+| cf_handle | str \| null | Codeforces 핸들 |
+
+### cf_ratings
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | |
+| contest_date | date | |
+| rating | int | |
+| rank | str \| null | "pupil", "specialist" 등 |
+| contest_name | str \| null | |
+| created_at | datetime | |
+
+---
+
+## Travel
+
+### trips
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | |
+| name | str | 여행 이름 |
+| destination | str | 목적지 |
+| start_date | date | |
+| end_date | date | |
+| status | str | "planned" \| "ongoing" \| "completed" |
+| note | str \| null | |
+| created_at | datetime | |
+
+### trip_checklist_items
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | |
+| trip_id | int FK → trips ON DELETE CASCADE | |
+| text | str | |
+| is_checked | bool | |
+| order_index | int | |
+
+### trip_plan_items
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | int PK | |
+| trip_id | int FK → trips ON DELETE CASCADE | |
+| day | int | 여행 N일차 |
+| sort_order | int | 같은 날 내 순서 |
+| time | str \| null | "09:00" |
+| title | str | |
+| description | str \| null | |
+
+**주의**: `trip_checklist_items`와 `trip_plan_items`는 FK에 `ON DELETE CASCADE` 적용.
+`Trip` 삭제 시 연관 레코드 자동 삭제. SQLAlchemy relationship에 `passive_deletes=True` 설정.
+
+---
+
+## 관련 문서
+
+- [adr/0003-sqlalchemy-async.md](../adr/0003-sqlalchemy-async.md)
+- [adr/0005-Roadmap.md](../adr/0005-Roadmap.md)
+- [architecture/system.md](./system.md)
