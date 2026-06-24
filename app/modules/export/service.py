@@ -7,6 +7,7 @@ from app.modules.career import service as career_svc
 from app.modules.finance import service as finance_svc
 from app.modules.growth import service as growth_svc
 from app.modules.health import service as health_svc
+from app.modules.travel import service as travel_svc
 
 
 def _to_csv(rows: list[dict]) -> bytes:
@@ -102,4 +103,31 @@ async def export_career(session: AsyncSession) -> bytes:
         {"날짜": str(r.log_date), "레이팅": r.rating, "랭크": r.rank_name}
         for r in ratings
     ]
+    return _to_csv(rows)
+
+
+async def export_travel(session: AsyncSession) -> bytes:
+    trips = await travel_svc.list_trips(session)
+    rows = []
+    for t in trips:
+        checklist = "; ".join(
+            f"{'[✓]' if item.is_checked else '[ ]'} {item.text}"
+            for item in t.checklist_items
+        )
+        plan = "; ".join(
+            f"Day{item.day} {item.time or ''} {item.title}"
+            for item in sorted(t.plan_items, key=lambda x: (x.day, x.sort_order))
+        )
+        rows.append(
+            {
+                "여행명": t.name,
+                "목적지": t.destination,
+                "시작일": str(t.start_date),
+                "종료일": str(t.end_date),
+                "상태": t.status,
+                "체크리스트": checklist,
+                "일정": plan,
+                "메모": t.note or "",
+            }
+        )
     return _to_csv(rows)

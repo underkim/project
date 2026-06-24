@@ -4,9 +4,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
   Plane, MapPin, Calendar, Plus, Trash2, Pencil, Check, X,
-  ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered,
+  ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered, Download,
 } from 'lucide-react';
-import { travelApi } from '@/lib/api';
+import { travelApi, exportApi } from '@/lib/api';
 import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse } from '@/types';
 
 // ── 상태 배지 ──────────────────────────────────────────────
@@ -658,13 +658,18 @@ export default function TravelPage() {
           <h1 className="text-2xl font-bold text-slate-900">여행 계획</h1>
           <p className="text-slate-400 text-sm mt-1">나만의 여행을 계획하고 관리하세요</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(v => !v)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-700 transition-colors text-sm font-medium"
-        >
-          <Plus size={16} />
-          여행 추가
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => exportApi.travel()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
+            <Download size={16} />
+          </button>
+          <button
+            onClick={() => setShowAddForm(v => !v)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-700 transition-colors text-sm font-medium"
+          >
+            <Plus size={16} />
+            여행 추가
+          </button>
+        </div>
       </div>
 
       {/* 에러 배너 */}

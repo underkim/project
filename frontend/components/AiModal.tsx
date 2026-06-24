@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Bot, Send, Loader2, X, CheckCircle2, Trash2, Eraser, ChevronDown,
+  Bot, Send, Loader2, X, CheckCircle2, Trash2, Eraser, ChevronDown, Copy, Check,
 } from 'lucide-react';
 import { aiApi } from '@/lib/api';
 import type { AiChatResponse } from '@/lib/api';
@@ -12,12 +12,78 @@ type Message = {
   role: 'user' | 'ai';
   text: string;
   saved?: boolean;
+  savedCount?: number;
   module?: string | null;
+  modules?: string[] | null;
   action?: string | null;
   pendingFilter?: Record<string, unknown> | null;
   confirmLoading?: boolean;
   timestamp?: string;
+  dateLabel?: string;
+  suggestions?: string[] | null;
 };
+
+// ── 복사 버튼 ──────────────────────────────────────────────────
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <button
+      onClick={copy}
+      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-slate-300 hover:text-slate-500"
+      title="복사"
+    >
+      {copied ? <Check size={11} /> : <Copy size={11} />}
+    </button>
+  );
+}
+
+// ── 마크다운 렌더링 ────────────────────────────────────────────
+
+function parseBold(text: string) {
+  const parts = text.split(/\*\*(.*?)\*\*/);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1
+          ? <strong key={i} className="font-semibold text-slate-800">{part}</strong>
+          : <Fragment key={i}>{part}</Fragment>
+      )}
+    </>
+  );
+}
+
+function MarkdownText({ text }: { text: string }) {
+  const lines = text.split('\n');
+  return (
+    <>
+      {lines.map((line, i) => {
+        const isBullet = /^[-•] /.test(line);
+        const isHeading = /^#{1,3} /.test(line);
+        const content = isBullet
+          ? line.replace(/^[-•] /, '')
+          : isHeading
+          ? line.replace(/^#{1,3} /, '')
+          : line;
+        return (
+          <Fragment key={i}>
+            {i > 0 && <br />}
+            {isBullet && <span className="mr-1 select-none text-slate-400">•</span>}
+            {isHeading
+              ? <strong className="font-semibold text-slate-800">{parseBold(content)}</strong>
+              : parseBold(content)
+            }
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
 
 const MODULE_LABEL: Record<string, string> = {
   health_exercise: '운동',
@@ -45,6 +111,7 @@ export default function AiModal() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [clearConfirm, setClearConfirm] = useState(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -58,16 +125,25 @@ export default function AiModal() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const autoResize = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, []);
+
   useEffect(() => {
-    if (open) {
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-      inputRef.current?.focus();
-    }
+    if (!open) return;
+    const id = requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+    if (messages.length === 0 || open) inputRef.current?.focus();
+    return () => cancelAnimationFrame(id);
   }, [open, messages]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const toSave = messages.slice(-30).map(m => ({
+    const toSave = messages.slice(-40).map(m => ({
       ...m,
       confirmLoading: false,
     }));
@@ -75,31 +151,53 @@ export default function AiModal() {
   }, [messages]);
 
   function getHistory() {
-    return messages.slice(-10).map(m => ({ role: m.role === 'user' ? 'user' : 'ai', text: m.text }));
+    return messages.slice(-20).map(m => {
+      let text = m.text;
+      // 저장 완료된 AI 메시지는 모듈 힌트 추가 → 다음 턴에서 AI가 "방금 뭘 저장했는지" 참조 가능
+      if (m.role === 'ai' && m.saved && m.module) {
+        text = `${text} [저장: ${m.module}]`;
+      }
+      return { role: m.role === 'user' ? 'user' : 'ai', text };
+    });
+  }
+
+  function makeTimestamp() {
+    const d = new Date();
+    const time = d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    const today = new Date(); today.setHours(0,0,0,0);
+    const msgDay = new Date(d); msgDay.setHours(0,0,0,0);
+    const diffDays = Math.round((today.getTime() - msgDay.getTime()) / 86400000);
+    const dateLabel = diffDays === 0 ? '' : diffDays === 1 ? '어제 ' : d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) + ' ';
+    return { time, dateLabel };
   }
 
   function applyAiResponse(res: AiChatResponse) {
-    const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    const { time, dateLabel } = makeTimestamp();
     const aiMsg: Message = {
       id: ++msgId,
       role: 'ai',
       text: res.reply,
       saved: res.saved,
+      savedCount: res.saved_count,
       module: res.module,
+      modules: res.modules,
       action: res.action,
       pendingFilter: res.action === 'delete_pending' ? (res.pending_filter ?? null) : null,
-      timestamp: now,
+      timestamp: time,
+      dateLabel,
+      suggestions: res.suggestions ?? null,
     };
     setMessages(prev => [...prev, aiMsg]);
-    if (res.saved && res.module) dispatchAiSaved(res.module);
+    if (res.saved) {
+      const mods = res.modules ?? (res.module ? [res.module] : []);
+      mods.forEach(m => dispatchAiSaved(m));
+    }
   }
 
-  async function handleSend() {
-    if (!input.trim() || loading) return;
-    const text = input.trim();
-    setInput('');
-    const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-    setMessages(prev => [...prev, { id: ++msgId, role: 'user', text, timestamp: now }]);
+  async function sendMessage(text: string) {
+    if (!text.trim() || loading) return;
+    const { time, dateLabel } = makeTimestamp();
+    setMessages(prev => [...prev, { id: ++msgId, role: 'user', text, timestamp: time, dateLabel }]);
     setLoading(true);
     try {
       const res = await aiApi.chat(text, getHistory());
@@ -114,6 +212,14 @@ export default function AiModal() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSend() {
+    if (!input.trim() || loading) return;
+    const text = input.trim();
+    setInput('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
+    await sendMessage(text);
   }
 
   async function handleConfirmDelete(msgLocalId: number, module: string, filter: Record<string, unknown>) {
@@ -142,8 +248,10 @@ export default function AiModal() {
   }
 
   function clearChat() {
+    if (!clearConfirm) { setClearConfirm(true); setTimeout(() => setClearConfirm(false), 3000); return; }
     setMessages([]);
     localStorage.removeItem('ai-chat-history');
+    setClearConfirm(false);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -163,17 +271,22 @@ export default function AiModal() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">AI 어시스턴트</p>
-                <p className="text-[10px] text-slate-400">운동 30분, 책 추가, 기록 수정 등</p>
+                <p className="text-[10px] text-slate-400">기록·수정·삭제·분석·조언 — 자유롭게 대화해요</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
               {messages.length > 0 && (
                 <button
                   onClick={clearChat}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
-                  title="대화 초기화"
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${
+                    clearConfirm
+                      ? 'bg-red-50 text-red-500 hover:bg-red-100'
+                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                  }`}
+                  title={clearConfirm ? '한 번 더 클릭하면 초기화됩니다' : '대화 초기화'}
                 >
-                  <Eraser size={14} />
+                  <Eraser size={12} />
+                  {clearConfirm && <span>확인?</span>}
                 </button>
               )}
               <button
@@ -194,16 +307,24 @@ export default function AiModal() {
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-slate-700">무엇을 도와드릴까요?</p>
-                  <p className="text-xs text-slate-400 mt-1">자연어로 기록하거나 질문해보세요</p>
+                  <p className="text-xs text-slate-400 mt-1">기록·조회·분석·조언 뭐든지 말해봐요</p>
                 </div>
                 <div className="flex flex-wrap gap-2 justify-center mt-1">
-                  {['오늘 러닝 30분 했어', '이번 달 운동 몇 번?', '파친코 읽기 시작했어'].map(ex => (
+                  {[
+                    { text: '이번 주 어땠어?', icon: '📊' },
+                    { text: '오늘 러닝 40분', icon: '🏃' },
+                    { text: '다음 우선순위 뭐야?', icon: '🎯' },
+                    { text: '요즘 생활 분석해줘', icon: '💡' },
+                    { text: '파친코 완독했어', icon: '📚' },
+                    { text: '어젯밤 수면 7시간 품질 4점', icon: '😴' },
+                  ].map(({ text, icon }) => (
                     <button
-                      key={ex}
-                      onClick={() => { setInput(ex); inputRef.current?.focus(); }}
-                      className="text-xs px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-full transition-colors"
+                      key={text}
+                      onClick={() => sendMessage(text)}
+                      className="text-xs px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-full transition-colors flex items-center gap-1"
                     >
-                      {ex}
+                      <span>{icon}</span>
+                      <span>{text}</span>
                     </button>
                   ))}
                 </div>
@@ -212,23 +333,32 @@ export default function AiModal() {
 
             {messages.map(m => (
               <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                <div className={`group relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   m.role === 'user'
-                    ? 'bg-slate-900 text-white rounded-br-sm'
+                    ? 'bg-slate-900 text-white rounded-br-sm whitespace-pre-wrap'
                     : 'bg-slate-50 text-slate-700 border border-slate-100 rounded-bl-sm'
                 }`}>
-                  {m.text}
+                  {m.role === 'ai' ? <MarkdownText text={m.text} /> : m.text}
+                  {m.role === 'ai' && (
+                    <span className="absolute -top-1 -right-1">
+                      <CopyButton text={m.text} />
+                    </span>
+                  )}
                 </div>
 
                 {m.timestamp && (
-                  <span className="mt-0.5 text-[10px] text-slate-300 px-1">{m.timestamp}</span>
+                  <span className="mt-0.5 text-[10px] text-slate-300 px-1">{m.dateLabel}{m.timestamp}</span>
                 )}
 
-                {m.role === 'ai' && m.saved && m.module && (
+                {m.role === 'ai' && m.saved && (
                   <span className="flex items-center gap-1 mt-0.5 text-[11px] text-slate-400">
                     <CheckCircle2 size={11} />
-                    {MODULE_LABEL[m.module] ?? m.module}
-                    {m.action === 'delete' ? ' 삭제됨' : m.action === 'update' ? ' 수정됨' : ' 저장됨'}
+                    {m.savedCount && m.savedCount > 1
+                      ? `${m.savedCount}개 저장됨`
+                      : m.module
+                        ? `${MODULE_LABEL[m.module] ?? m.module}${m.action === 'delete' ? ' 삭제됨' : m.action === 'update' ? ' 수정됨' : ' 저장됨'}`
+                        : '저장됨'
+                    }
                   </span>
                 )}
 
@@ -249,6 +379,20 @@ export default function AiModal() {
                     >
                       취소
                     </button>
+                  </div>
+                )}
+
+                {m.role === 'ai' && m.suggestions && m.suggestions.length > 0 && !loading && (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {m.suggestions.slice(0, 3).map((s, i) => (
+                      <button
+                        key={i}
+                        onClick={() => sendMessage(s)}
+                        className="text-[11px] px-2.5 py-1 bg-white border border-slate-200 text-slate-500 rounded-full hover:border-slate-400 hover:text-slate-700 transition-colors"
+                      >
+                        {s}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -274,12 +418,13 @@ export default function AiModal() {
               <textarea
                 ref={inputRef}
                 value={input}
-                onChange={e => setInput(e.target.value)}
+                onChange={e => { setInput(e.target.value); autoResize(); }}
                 onKeyDown={handleKeyDown}
-                placeholder="오늘 러닝 30분 했어&#10;이번 달 운동 몇 번?"
+                placeholder="오늘 러닝 40분 했어&#10;요즘 내 생활 어때? 로드맵 진행 현황은?"
                 rows={2}
                 disabled={loading}
-                className="w-full resize-none border border-slate-200 rounded-xl px-3.5 py-2.5 pr-10 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 disabled:opacity-50 leading-relaxed"
+                style={{ minHeight: '60px' }}
+                className="w-full resize-none border border-slate-200 rounded-xl px-3.5 py-2.5 pr-10 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 disabled:opacity-50 leading-relaxed overflow-hidden"
               />
               <button
                 onClick={handleSend}

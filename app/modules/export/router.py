@@ -63,3 +63,11 @@ async def export_career(
     session: AsyncSession = Depends(get_db),
 ):
     return _csv(await service.export_career(session), "career.csv")
+
+
+@router.get("/travel")
+async def export_travel(
+    _: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    return _csv(await service.export_travel(session), "travel.csv")

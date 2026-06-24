@@ -91,9 +91,9 @@ project/
 │       ├── growth/          # /api/v1/growth/books & /english CRUD + /summary
 │       ├── career/          # /api/v1/career/settings + /cf-ratings CRUD + /summary
 │       ├── travel/          # /api/v1/travel/trips CRUD + checklist + plan(일정)
-│       ├── ai/              # /api/v1/ai/chat (Gemini), /execute (삭제 확인)
+│       ├── ai/              # /api/v1/ai/chat (Gemini 멀티턴), /execute (삭제 확인), /weekly-report
 │       ├── dashboard/       # GET /api/v1/dashboard/overview (BFF 집계)
-│       └── export/          # GET /api/v1/export/{module} (CSV 내보내기, 5개 모듈)
+│       └── export/          # GET /api/v1/export/{module} (CSV 내보내기, 7개 엔드포인트)
 ├── alembic/
 │   ├── env.py               # asyncpg 직접 사용 (asyncio.run + create_async_engine)
 │   └── versions/
@@ -125,7 +125,7 @@ project/
 │   │       ├── travel/      # 여행 CRUD + 체크리스트 탭 + 일정(plan) 탭
 │   │       └── help/        # 인앱 가이드 & 매뉴얼 페이지
 │   ├── components/
-│   │   ├── AiModal.tsx      # AI 채팅 FAB 모달 (localStorage 이력, 삭제 확인 UI)
+│   │   ├── AiModal.tsx      # AI 채팅 FAB 모달 (localStorage 이력, 삭제 확인, suggestions 칩, 복사 버튼)
 │   │   ├── Sidebar.tsx      # 8개 메뉴 (대시보드~여행 + 가이드)
 │   │   └── Toast.tsx
 │   ├── hooks/
@@ -168,6 +168,20 @@ project/
 최상위 함수에서 `await session.commit()` / `await session.rollback()`으로 관리한다.
 다른 모듈 서비스를 호출하지 않고 직접 ORM 객체를 `session.add()`한다.
 
+### AI 다중 액션 패턴 (`_process_multi_actions`)
+AI 응답에 `actions` 배열이 있으면 순서대로 처리한다.
+각 `_create` 후 `await session.flush()`를 호출해 순서 의존성을 해결한다.
+(예: `travel_trip` 생성 직후 `travel_plan` 항목이 `trip_name`으로 같은 여행을 조회 가능)
+삭제는 다중 액션 배열에서 처리하지 않고 개별 `/execute` 엔드포인트로만 처리한다.
+
+### AI 컨텍스트 로딩 패턴
+`parse_and_save`는 매 요청마다 두 가지 컨텍스트를 로딩한다:
+- `_load_user_context`: 도메인별 최근 현황 (운동·수면·자산·독서·영어·CF·여행·플래너)
+  - 이번 주 vs 지난 주 운동 비교, 자산 3개월 추이, 수면 전주 비교, Phase별 진행률 포함
+  - 예정·진행 중 여행의 plan_items(Day별) + 체크리스트 진행률 포함
+- `_load_categories_context`: 플래너 카테고리 목록 (Phase 날짜 범위 + 미완료 항목 3개)
+날짜 변수 10개를 시스템 프롬프트에 주입: today, yesterday, tomorrow, week_start, last_week_start 등
+
 ### 플래너 다중 선택 삭제 패턴
 `handleBulkCategoryDelete`는 `Promise.allSettled`로 병렬 처리한다.
 성공한 항목만 즉시 UI에서 제거하고, 실패한 항목은 선택 상태 유지 → 재시도 가능.
@@ -195,7 +209,7 @@ Trip → name, destination, start_date, end_date, status, note
 
 ## 알려진 문제 / 수정 필요
 
-없음 — 코드 리뷰에서 발견된 버그 6개 모두 수정 완료.
+없음 — 코드 리뷰 버그 6개 + 추가 발견 버그 모두 수정 완료.
 
 ## 현재 구현 상태
 
@@ -211,12 +225,19 @@ Trip → name, destination, start_date, end_date, status, note
 | Health 모듈 (운동/수면 CRUD + 요약 + CSV 내보내기) | 완료 |
 | Growth 모듈 (독서/영어 CRUD + 요약 + CSV 내보내기) | 완료 |
 | Career 모듈 (CF 레이팅 CRUD + 요약 + CSV 내보내기) | 완료 |
-| Travel 모듈 (여행 CRUD + 체크리스트 + 일정 탭) | 완료 |
-| Export 모듈 (`GET /api/v1/export/{module}` CSV, 5개 도메인) | 완료 |
-| AI 모듈 (Gemini gemini-3.1-flash-lite, 자연어 기록/수정/삭제, 삭제 확인) | 완료 |
+| Travel 모듈 (여행 CRUD + 체크리스트 + 일정 탭 + CSV 내보내기) | 완료 |
+| Export 모듈 (`GET /api/v1/export/{module}` CSV, 7개 엔드포인트) | 완료 |
+| AI 모듈 — 기본 (Gemini gemini-3.1-flash-lite, 자연어 기록/수정/삭제, 삭제 확인) | 완료 |
+| AI 모듈 — 멀티턴 (Gemini native multi-turn, system_instruction 분리) | 완료 |
+| AI 모듈 — 다중 액션 (`actions` 배열, session.flush() 순서 보장) | 완료 |
+| AI 모듈 — suggestions (후속 질문 칩 2-3개, 조회·분석 응답 후만 포함) | 완료 |
+| AI 모듈 — 주간 리포트 (`GET /api/v1/ai/weekly-report`, Gemini 생성) | 완료 |
+| AI 컨텍스트 강화 (이번 주/지난 주 운동, 자산 추이, 수면 비교, Phase 진행률 등) | 완료 |
 | AI 지원 도메인 (운동·수면·재테크·독서·영어·CF레이팅·여행·체크리스트·여행일정·플래너항목·카테고리) | 완료 |
 | Dashboard 모듈 (`GET /api/v1/dashboard/overview` BFF 집계) | 완료 |
 | Next.js 프론트엔드 (8개 페이지 + AI FAB 모달 + Toast) | 완료 |
+| AiModal — 마크다운 렌더링 (bold·list·heading, XSS-safe) | 완료 |
+| AiModal — suggestion 칩, 복사 버튼, textarea 자동 높이, 2단계 초기화 확인 | 완료 |
 | 인앱 가이드 & 매뉴얼 페이지 (`/help`) | 완료 |
 | 테스트 (79개) | 완료 |
 | 프로덕션 배포 (Render + Supabase + Vercel) | 완료 |

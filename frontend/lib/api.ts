@@ -216,9 +216,12 @@ export const travelApi = {
 export type AiChatResponse = {
   reply: string;
   saved: boolean;
+  saved_count?: number;
   module: string | null;
+  modules?: string[] | null;
   action: string | null;
   pending_filter?: Record<string, unknown> | null;
+  suggestions?: string[] | null;
 };
 
 export const aiApi = {
@@ -261,4 +264,5 @@ export const exportApi = {
   books: () => _downloadCsv('/api/v1/export/growth/books', 'books.csv'),
   english: () => _downloadCsv('/api/v1/export/growth/english', 'english.csv'),
   career: () => _downloadCsv('/api/v1/export/career', 'career.csv'),
+  travel: () => _downloadCsv('/api/v1/export/travel', 'travel.csv'),
 };

@@ -31,9 +31,12 @@ class ExecuteRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     saved: bool
+    saved_count: int = 0
     module: str | None = None
+    modules: list[str] | None = None
     action: str | None = None
-    pending_filter: dict | None = None   # delete_pending일 때만
+    pending_filter: dict | None = None
+    suggestions: list[str] | None = None
 
 
 @router.post("/chat", response_model=ChatResponse)
