@@ -13,7 +13,7 @@
 - **SQLAlchemy 2.0 async** + **asyncpg** (PostgreSQL 드라이버)
 - **Alembic** (마이그레이션)
 - **pydantic-settings** (환경설정, `.env` 자동 로드)
-- **pytest** + **httpx** (테스트, 60개)
+- **pytest** + **httpx** (테스트, 79개)
 - **PyJWT** (JWT 인증)
 - **python-multipart** (OAuth2 폼 데이터)
 - **google-genai** (Gemini AI — gemini-2.0-flash-lite 모델)
@@ -59,7 +59,7 @@ uv run uvicorn app.main:app --reload
 # 프론트엔드 개발 서버
 cd frontend && npm run dev   # http://localhost:3000
 
-# 테스트 (60개)
+# 테스트 (79개)
 uv run pytest
 
 # 마이그레이션
@@ -205,7 +205,7 @@ Trip → name, destination, start_date, end_date, status, note
 | AI 모듈 (Gemini 자연어 기록/수정/삭제, gemini-2.0-flash-lite) | 완료 |
 | Dashboard 모듈 (`GET /api/v1/dashboard/overview` BFF 집계) | 완료 |
 | Next.js 프론트엔드 (7개 페이지 + AI FAB 모달 + Toast) | 완료 |
-| 테스트 (60개) | 완료 |
+| 테스트 (79개) | 완료 |
 
 ## 새 모듈 추가 패턴
 
