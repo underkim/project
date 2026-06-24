@@ -5,18 +5,21 @@
 5년 라이프 로드맵을 7개 도메인(플래너·재테크·건강·자기계발·커리어·여행·AI)으로 관리하는
 풀스택 개인 대시보드. FastAPI 백엔드 + Next.js 프론트엔드, 단일 사용자 기준, 학습 목적 겸 포트폴리오.
 
+**배포**: Render(백엔드) + Supabase(PostgreSQL) + Vercel(프론트엔드)  
+**콜드 스타트 방지**: cron-job.org가 `/api/v1/health`를 14분마다 핑 (DB도 동시에 깨움)
+
 ## 기술 스택
 
 ### 백엔드
 - **Python 3.12+**, 패키지 관리: `uv` (`pyproject.toml` + `uv.lock`)
 - **FastAPI** + **uvicorn** (ASGI)
 - **SQLAlchemy 2.0 async** + **asyncpg** (PostgreSQL 드라이버)
-- **Alembic** (마이그레이션)
+- **Alembic** (마이그레이션 — asyncpg 직접 사용, psycopg2 의존 없음)
 - **pydantic-settings** (환경설정, `.env` 자동 로드)
 - **pytest** + **httpx** (테스트, 79개)
 - **PyJWT** (JWT 인증)
 - **python-multipart** (OAuth2 폼 데이터)
-- **google-genai** (Gemini AI — gemini-2.0-flash-lite 모델)
+- **google-genai** (Gemini AI — **gemini-3.1-flash-lite** 모델)
 
 ### 프론트엔드
 - **Next.js** (App Router, `frontend/`)
@@ -79,7 +82,7 @@ project/
 │   │   ├── models.py        # Phase, Category, RoadmapItem, RoadmapSettings
 │   │   └── security.py      # JWT 생성·검증, get_current_user
 │   ├── api/v1/
-│   │   └── health.py        # GET /api/v1/health
+│   │   └── health.py        # GET /api/v1/health (DB ping 포함)
 │   └── modules/
 │       ├── auth/            # POST /api/v1/auth/token (JWT, secrets.compare_digest)
 │       ├── planner/         # GET /roadmap, GET|PUT /settings, PATCH /items/{id}/toggle
@@ -89,9 +92,10 @@ project/
 │       ├── career/          # /api/v1/career/settings + /cf-ratings CRUD + /summary
 │       ├── travel/          # /api/v1/travel/trips CRUD + checklist + plan(일정)
 │       ├── ai/              # /api/v1/ai/chat (Gemini), /execute (삭제 확인)
-│       └── dashboard/       # GET /api/v1/dashboard/overview (BFF 집계)
+│       ├── dashboard/       # GET /api/v1/dashboard/overview (BFF 집계)
+│       └── export/          # GET /api/v1/export/{module} (CSV 내보내기, 5개 모듈)
 ├── alembic/
-│   ├── env.py
+│   ├── env.py               # asyncpg 직접 사용 (asyncio.run + create_async_engine)
 │   └── versions/
 │       ├── 4bbb978ce5a7_create_roadmap_tables.py
 │       ├── a1b2c3d4e5f6_seed_planner_data.py
@@ -113,15 +117,16 @@ project/
 │   │   └── (dashboard)/
 │   │       ├── layout.tsx   # Sidebar + AiModal(FAB) 레이아웃
 │   │       ├── page.tsx     # 대시보드 홈 (overview)
-│   │       ├── planner/     # 로드맵, Phase, 항목 관리 (마감일 날짜 피커 포함)
+│   │       ├── planner/     # 로드맵, Phase, 항목 관리 (다중 선택 삭제 + 마감일 피커)
 │   │       ├── finance/
 │   │       ├── health/
 │   │       ├── growth/
 │   │       ├── career/
-│   │       └── travel/      # 여행 CRUD + 체크리스트 탭 + 일정(plan) 탭
+│   │       ├── travel/      # 여행 CRUD + 체크리스트 탭 + 일정(plan) 탭
+│   │       └── help/        # 인앱 가이드 & 매뉴얼 페이지
 │   ├── components/
-│   │   ├── AiModal.tsx      # AI 채팅 FAB 모달 (localStorage 이력 저장)
-│   │   ├── Sidebar.tsx
+│   │   ├── AiModal.tsx      # AI 채팅 FAB 모달 (localStorage 이력, 삭제 확인 UI)
+│   │   ├── Sidebar.tsx      # 8개 메뉴 (대시보드~여행 + 가이드)
 │   │   └── Toast.tsx
 │   ├── hooks/
 │   │   └── useAiRefresh.ts  # ai-data-saved 이벤트 구독 → 페이지 데이터 리프레시
@@ -130,6 +135,7 @@ project/
 │   └── types/
 │       └── index.ts         # 모든 TypeScript 인터페이스
 └── docs/
+    ├── deployment.md        # Render + Supabase + Vercel + cron-job.org 배포 가이드
     ├── adr/
     ├── architecture/
     └── requirements/
@@ -153,7 +159,7 @@ project/
 - 관계 로딩은 `selectinload` / `joinedload` 명시 필수
 - 세션은 요청당 1개, DI(`Depends(get_db)`)로 주입; service가 자체 생성 금지
 - 트랜잭션은 service layer에서 `async with session.begin():` 관리
-- Alembic 마이그레이션은 **동기** 엔진 사용 (alembic/env.py)
+- Alembic 마이그레이션: `asyncio.run()` + `create_async_engine` (asyncpg 직접, psycopg2 불필요)
 - FK에 `ON DELETE CASCADE` 있을 때는 relationship에 `passive_deletes=True` 추가 권장
 
 ### AI 서비스 트랜잭션 패턴
@@ -161,6 +167,10 @@ project/
 `_create` / `_update` / `_delete` 내부에서 `session.begin()`을 사용하지 않고,
 최상위 함수에서 `await session.commit()` / `await session.rollback()`으로 관리한다.
 다른 모듈 서비스를 호출하지 않고 직접 ORM 객체를 `session.add()`한다.
+
+### 플래너 다중 선택 삭제 패턴
+`handleBulkCategoryDelete`는 `Promise.allSettled`로 병렬 처리한다.
+성공한 항목만 즉시 UI에서 제거하고, 실패한 항목은 선택 상태 유지 → 재시도 가능.
 
 ## 데이터 모델
 
@@ -185,27 +195,33 @@ Trip → name, destination, start_date, end_date, status, note
 
 ## 알려진 문제 / 수정 필요
 
-없음 — 이전에 발견된 버그 6개 모두 수정 완료.
+없음 — 코드 리뷰에서 발견된 버그 6개 모두 수정 완료.
 
 ## 현재 구현 상태
 
 | 항목 | 상태 |
 |------|------|
 | FastAPI 앱 골격 (팩토리 패턴) | 완료 |
-| `GET /api/v1/health` | 완료 |
+| `GET /api/v1/health` (DB ping 포함) | 완료 |
 | DB 설정 (async 엔진·세션·DI) | 완료 |
-| Alembic 마이그레이션 (5개 버전) | 완료 |
+| Alembic 마이그레이션 (5개 버전, asyncpg 직접) | 완료 |
 | Auth 모듈 (`POST /api/v1/auth/token`, JWT, `secrets.compare_digest`) | 완료 |
-| Planner 모듈 (로드맵 CRUD + 마감일 날짜 피커) | 완료 |
-| Finance 모듈 (자산 기록 CRUD + 요약) | 완료 |
-| Health 모듈 (운동/수면 CRUD + 요약) | 완료 |
-| Growth 모듈 (독서/영어 CRUD + 요약) | 완료 |
-| Career 모듈 (CF 레이팅 CRUD + 요약) | 완료 |
+| Planner 모듈 (로드맵 CRUD + 마감일 날짜 피커 + 다중 선택 삭제) | 완료 |
+| Finance 모듈 (자산 기록 CRUD + 요약 + CSV 내보내기) | 완료 |
+| Health 모듈 (운동/수면 CRUD + 요약 + CSV 내보내기) | 완료 |
+| Growth 모듈 (독서/영어 CRUD + 요약 + CSV 내보내기) | 완료 |
+| Career 모듈 (CF 레이팅 CRUD + 요약 + CSV 내보내기) | 완료 |
 | Travel 모듈 (여행 CRUD + 체크리스트 + 일정 탭) | 완료 |
-| AI 모듈 (Gemini 자연어 기록/수정/삭제, gemini-2.0-flash-lite) | 완료 |
+| Export 모듈 (`GET /api/v1/export/{module}` CSV, 5개 도메인) | 완료 |
+| AI 모듈 (Gemini gemini-3.1-flash-lite, 자연어 기록/수정/삭제, 삭제 확인) | 완료 |
+| AI 지원 도메인 (운동·수면·재테크·독서·영어·CF레이팅·여행·체크리스트·여행일정·플래너항목·카테고리) | 완료 |
 | Dashboard 모듈 (`GET /api/v1/dashboard/overview` BFF 집계) | 완료 |
-| Next.js 프론트엔드 (7개 페이지 + AI FAB 모달 + Toast) | 완료 |
+| Next.js 프론트엔드 (8개 페이지 + AI FAB 모달 + Toast) | 완료 |
+| 인앱 가이드 & 매뉴얼 페이지 (`/help`) | 완료 |
 | 테스트 (79개) | 완료 |
+| 프로덕션 배포 (Render + Supabase + Vercel) | 완료 |
+| 콜드 스타트 방지 (cron-job.org 14분 핑) | 완료 |
+| 배포 관리 가이드 (`docs/deployment.md`) | 완료 |
 
 ## 새 모듈 추가 패턴
 
@@ -235,14 +251,17 @@ frontend/types/index.ts # 응답 인터페이스 추가
 ```
 APP_NAME=Life Dashboard
 DEBUG=false
-DATABASE_URL=postgresql+asyncpg://user:pass@host/lifedash
+DATABASE_URL=postgresql+asyncpg://postgres.[id]:[PW]@aws-0-[region].pooler.supabase.com:5432/postgres
 JWT_SECRET=<안전한 랜덤 문자열>
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=<비밀번호>
 GEMINI_API_KEY=<Google AI Studio 키>
+CORS_ORIGINS=http://localhost:3000,https://<vercel-domain>.vercel.app
 ```
 
 프론트엔드 `.env.local`:
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
+
+> **주의**: `DATABASE_URL`은 Supabase **Session Pooler** URL 사용 (Direct Connection은 IPv6 — Render 무료 티어 불가)

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
-import { Plus, Trash2, Check, X, Pencil, AlertTriangle, Settings2, Loader2, CalendarClock } from 'lucide-react';
+import { Plus, Trash2, Check, X, Pencil, AlertTriangle, Settings2, Loader2, CalendarClock, CheckSquare } from 'lucide-react';
 import { plannerApi } from '@/lib/api';
 import type { PhaseResponse, RoadmapItemResponse, ItemStatus } from '@/types';
 
@@ -324,9 +324,12 @@ interface CategoryCardProps {
   onAddItem: (categoryId: number, text: string, offset: number) => Promise<void>;
   onCategoryUpdate: (id: number, icon: string, title: string, subtitle: string) => Promise<void>;
   onCategoryDelete: (id: number) => Promise<void>;
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: number) => void;
 }
 
-function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onAddItem, onCategoryUpdate, onCategoryDelete }: CategoryCardProps) {
+function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onAddItem, onCategoryUpdate, onCategoryDelete, selectMode, isSelected, onToggleSelect }: CategoryCardProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingMeta, setEditingMeta] = useState(false);
   const [metaIcon, setMetaIcon] = useState(cat.icon);
@@ -381,8 +384,26 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
     }
   }
 
+  useEffect(() => {
+    if (selectMode) {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+      setPendingDelete(false);
+    }
+  }, [selectMode]);
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    <div
+      className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all relative ${
+        selectMode
+          ? `cursor-pointer ${isSelected ? 'border-slate-900 ring-2 ring-slate-900/10' : 'border-slate-200 hover:border-slate-400'}`
+          : 'border-slate-100'
+      }`}
+      onClick={selectMode ? () => onToggleSelect?.(cat.id) : undefined}
+      role={selectMode ? 'button' : undefined}
+      tabIndex={selectMode ? 0 : undefined}
+      onKeyDown={selectMode ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleSelect?.(cat.id); } } : undefined}
+    >
+      {selectMode && <div className="absolute inset-0 z-10" />}
       <div className="px-4 pt-4 pb-3">
         {editingMeta ? (
           /* ── 카테고리 메타 편집 폼 ── */
@@ -446,6 +467,12 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
                     <X size={12} />
                   </button>
                 </>
+              ) : selectMode ? (
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors shrink-0 ${
+                  isSelected ? 'bg-slate-900 border-slate-900' : 'border-slate-300'
+                }`}>
+                  {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
+                </div>
               ) : (
                 <>
                   <span className="text-xs text-slate-400 font-medium mr-0.5">{done}/{total}</span>
@@ -712,6 +739,10 @@ export default function PlannerPage() {
   const [error, setError] = useState<string | null>(null);
   const [editingPhaseId, setEditingPhaseId] = useState<number | null>(null);
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedCatIds, setSelectedCatIds] = useState<Set<number>>(new Set());
+  const [bulkDeletePending, setBulkDeletePending] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
     if (!error) return;
@@ -865,6 +896,48 @@ export default function PlannerPage() {
     }
   }
 
+  function cancelSelectMode() {
+    setSelectMode(false);
+    setSelectedCatIds(new Set());
+    setBulkDeletePending(false);
+  }
+
+  function toggleCatSelect(id: number) {
+    setSelectedCatIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkCategoryDelete() {
+    if (selectedCatIds.size === 0) return;
+    const ids = Array.from(selectedCatIds);
+    setError(null);
+    setBulkDeleting(true);
+    try {
+      const results = await Promise.allSettled(ids.map(id => plannerApi.deleteCategory(id)));
+      const succeededIds = new Set(ids.filter((_, i) => results[i].status === 'fulfilled'));
+      const failedCount = results.filter(r => r.status === 'rejected').length;
+      if (succeededIds.size > 0) {
+        setPhases(prev => prev.map(p => ({
+          ...p,
+          categories: p.categories.filter(c => !succeededIds.has(c.id)),
+        })));
+      }
+      if (failedCount > 0) {
+        setSelectedCatIds(new Set(ids.filter((_, i) => results[i].status === 'rejected')));
+        setError(`${failedCount}개 카테고리 삭제에 실패했습니다.`);
+      } else {
+        setSelectedCatIds(new Set());
+        setSelectMode(false);
+      }
+    } finally {
+      setBulkDeleting(false);
+      setBulkDeletePending(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -971,8 +1044,8 @@ export default function PlannerPage() {
               key={phase.id}
               role="button"
               tabIndex={0}
-              onClick={() => { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); }}
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); } }}
+              onClick={() => { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); cancelSelectMode(); }}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); cancelSelectMode(); } }}
               className={`flex-1 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 relative group cursor-pointer select-none ${
                 isActive
                   ? 'bg-white text-slate-800 shadow-sm'
@@ -984,7 +1057,7 @@ export default function PlannerPage() {
                 <span className="truncate">{phase.name}</span>
                 {isActive && (
                   <button
-                    onClick={e => { e.stopPropagation(); setEditingPhaseId(editingPhaseId === phase.id ? null : phase.id); }}
+                    onClick={e => { e.stopPropagation(); cancelSelectMode(); setEditingPhaseId(editingPhaseId === phase.id ? null : phase.id); }}
                     className="p-0.5 rounded text-slate-300 hover:text-slate-600 transition-colors ml-0.5"
                     title="Phase 편집"
                   >
@@ -1033,6 +1106,67 @@ export default function PlannerPage() {
         </div>
       )}
 
+      {/* 카테고리 선택 툴바 */}
+      {activePhase && (
+        <div className="flex items-center justify-between min-h-[36px]">
+          {selectMode ? (
+            <>
+              <span className="text-sm text-slate-500">
+                {selectedCatIds.size > 0 ? `${selectedCatIds.size}개 선택됨` : '카테고리를 선택하세요'}
+              </span>
+              <div className="flex items-center gap-2">
+                {bulkDeletePending ? (
+                  <>
+                    <span className="text-sm font-medium text-red-500">정말 삭제할까요?</span>
+                    <button
+                      onClick={handleBulkCategoryDelete}
+                      disabled={bulkDeleting}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 font-medium transition-colors"
+                    >
+                      {bulkDeleting ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} strokeWidth={3} />}
+                      확인
+                    </button>
+                    <button
+                      onClick={() => setBulkDeletePending(false)}
+                      disabled={bulkDeleting}
+                      className="px-3 py-1.5 text-xs text-slate-500 rounded-lg hover:bg-slate-100 transition-colors"
+                    >
+                      취소
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={cancelSelectMode}
+                      className="px-3 py-1.5 text-xs text-slate-500 rounded-lg hover:bg-slate-100 transition-colors"
+                    >
+                      취소
+                    </button>
+                    <button
+                      onClick={() => setBulkDeletePending(true)}
+                      disabled={selectedCatIds.size === 0}
+                      className="px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-40 font-medium transition-colors"
+                    >
+                      선택 삭제 ({selectedCatIds.size})
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="ml-auto">
+              <button
+                onClick={() => { setShowAddCategory(false); setSelectMode(true); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 rounded-lg hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <CheckSquare size={13} />
+                다중 선택
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 카테고리 그리드 */}
       {activePhase && (
         <div className="grid grid-cols-2 gap-4">
@@ -1047,6 +1181,9 @@ export default function PlannerPage() {
               onAddItem={handleAddItem}
               onCategoryUpdate={handleCategoryUpdate}
               onCategoryDelete={handleCategoryDelete}
+              selectMode={selectMode}
+              isSelected={selectedCatIds.has(cat.id)}
+              onToggleSelect={toggleCatSelect}
             />
           ))}
           {showAddCategory && activePhase && (
@@ -1060,7 +1197,7 @@ export default function PlannerPage() {
       )}
 
       {/* 카테고리 추가 버튼 */}
-      {activePhase && !showAddCategory && (
+      {activePhase && !showAddCategory && !selectMode && (
         <button
           onClick={() => setShowAddCategory(true)}
           className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 hover:text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm font-medium"

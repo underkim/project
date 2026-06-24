@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, CalendarDays, TrendingUp,
-  Activity, BookOpen, Briefcase, Plane, LogOut, Map, ChevronLeft,
+  Activity, BookOpen, Briefcase, Plane, LogOut, Map, ChevronLeft, HelpCircle,
 } from 'lucide-react';
 
 const navItems = [
@@ -15,6 +15,7 @@ const navItems = [
   { href: '/growth',  icon: BookOpen,        label: '자기계발' },
   { href: '/career',  icon: Briefcase,       label: '커리어'   },
   { href: '/travel',  icon: Plane,           label: '여행'     },
+  { href: '/help',    icon: HelpCircle,      label: '가이드'   },
 ];
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
