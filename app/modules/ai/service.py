@@ -268,7 +268,7 @@ async def parse_and_save(
 
     response = await asyncio.to_thread(
         gemini.models.generate_content,
-        model="gemini-2.0-flash-lite",
+        model="gemini-3.1-flash-lite",
         contents=prompt,
         config=genai.types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -583,7 +583,7 @@ async def generate_weekly_report(session: AsyncSession) -> str:
     ai_client = genai.Client(api_key=settings.gemini_api_key)
     response = await asyncio.to_thread(
         ai_client.models.generate_content,
-        model="gemini-2.0-flash-lite",
+        model="gemini-3.1-flash-lite",
         contents=prompt,
     )
     return response.text
