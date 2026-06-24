@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { showToast } from '@/lib/toast';
 import type {
   RoadmapResponse, RoadmapItemResponse, CategoryResponse, FinanceSummaryResponse, AssetRecordResponse,
   ExerciseLogResponse, SleepLogResponse, HealthSummaryResponse,
@@ -228,4 +229,32 @@ export const aiApi = {
     filter: Record<string, unknown>,
   ): Promise<AiChatResponse> =>
     (await client.post('/api/v1/ai/execute', { module, filter })).data,
+
+  weeklyReport: async (): Promise<{ report: string }> =>
+    (await client.get('/api/v1/ai/weekly-report')).data,
+};
+
+async function _downloadCsv(url: string, filename: string): Promise<void> {
+  try {
+    const res = await client.get(url, { responseType: 'blob' });
+    const href = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(href), 100);
+  } catch {
+    showToast('CSV 내보내기에 실패했습니다.', 'error');
+  }
+}
+
+export const exportApi = {
+  finance: () => _downloadCsv('/api/v1/export/finance', 'finance.csv'),
+  exercise: () => _downloadCsv('/api/v1/export/health/exercise', 'exercise.csv'),
+  sleep: () => _downloadCsv('/api/v1/export/health/sleep', 'sleep.csv'),
+  books: () => _downloadCsv('/api/v1/export/growth/books', 'books.csv'),
+  english: () => _downloadCsv('/api/v1/export/growth/english', 'english.csv'),
+  career: () => _downloadCsv('/api/v1/export/career', 'career.csv'),
 };

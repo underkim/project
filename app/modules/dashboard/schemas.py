@@ -32,6 +32,7 @@ class GrowthSnapshot(BaseModel):
 class CareerSnapshot(BaseModel):
     cf_handle: str | None
     latest_cf_rating: int | None
+    latest_cf_rank: str | None
 
 
 class TravelSnapshot(BaseModel):

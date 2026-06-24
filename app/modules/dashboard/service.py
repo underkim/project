@@ -49,7 +49,7 @@ async def _planner_snapshot(session: AsyncSession) -> PlannerSnapshot | None:
 
 async def _finance_snapshot(session: AsyncSession) -> FinanceSnapshot | None:
     try:
-        summary = await finance_svc.get_summary(session)
+        summary = await finance_svc.get_summary(session, records_limit=0)
         return FinanceSnapshot(
             latest_total_assets=summary.latest_total_assets,
             avg_savings_rate=summary.avg_savings_rate,
@@ -90,6 +90,7 @@ async def _career_snapshot(session: AsyncSession) -> CareerSnapshot | None:
         return CareerSnapshot(
             cf_handle=summary.cf_handle,
             latest_cf_rating=summary.latest_cf_rating,
+            latest_cf_rank=summary.latest_cf_rank,
         )
     except Exception:
         return None

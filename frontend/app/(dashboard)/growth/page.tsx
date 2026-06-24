@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import { showToast } from '@/lib/toast';
-import { growthApi } from '@/lib/api';
+import { growthApi, exportApi } from '@/lib/api';
 import type { BookRecordResponse, EnglishLogResponse, GrowthSummaryResponse, BookStatus } from '@/types';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Download } from 'lucide-react';
 
 const statusConfig: Record<BookStatus, { label: string; color: string }> = {
   planned:   { label: '예정',   color: 'bg-slate-100 text-slate-600' },
@@ -178,10 +178,15 @@ export default function GrowthPage() {
       <div className="border border-slate-100 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">독서 목록</p>
-          <button onClick={() => setShowBookForm(!showBookForm)}
-            className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">
-            + 추가
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => exportApi.books()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
+              <Download size={14} />
+            </button>
+            <button onClick={() => setShowBookForm(!showBookForm)}
+              className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">
+              + 추가
+            </button>
+          </div>
         </div>
         {showBookForm && (
           <form onSubmit={submitBook} className="px-5 py-4 bg-slate-50 border-b border-slate-100">
@@ -260,10 +265,15 @@ export default function GrowthPage() {
       <div className="border border-slate-100 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">영어 학습 기록</p>
-          <button onClick={() => setShowEngForm(!showEngForm)}
-            className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">
-            + 추가
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => exportApi.english()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
+              <Download size={14} />
+            </button>
+            <button onClick={() => setShowEngForm(!showEngForm)}
+              className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">
+              + 추가
+            </button>
+          </div>
         </div>
         {showEngForm && (
           <form onSubmit={submitEng} className="px-5 py-4 bg-slate-50 border-b border-slate-100">

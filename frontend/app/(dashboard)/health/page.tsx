@@ -6,9 +6,9 @@ import { showToast } from '@/lib/toast';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { healthApi } from '@/lib/api';
+import { healthApi, exportApi } from '@/lib/api';
 import type { ExerciseLogResponse, SleepLogResponse, HealthSummaryResponse } from '@/types';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Download } from 'lucide-react';
 
 function getLast7Days(): string[] {
   return Array.from({ length: 7 }, (_, i) => {
@@ -49,10 +49,10 @@ export default function HealthPage() {
   async function load() {
     try {
       const [s, ex, sl] = await Promise.all([
-        healthApi.getSummary(), healthApi.listExercise(PAGE), healthApi.listSleep(PAGE),
+        healthApi.getSummary(), healthApi.listExercise(30), healthApi.listSleep(PAGE),
       ]);
       setSummary(s);
-      setExercises(ex); setExHasMore(ex.length === PAGE);
+      setExercises(ex); setExHasMore(ex.length === 30);
       setSleeps(sl); setSlHasMore(sl.length === PAGE);
     } catch {
       showToast('데이터를 불러오지 못했습니다.', 'error');
@@ -225,10 +225,15 @@ export default function HealthPage() {
       <div className="border border-slate-100 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">운동 기록</p>
+          <div className="flex items-center gap-2">
+          <button onClick={() => exportApi.exercise()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
+            <Download size={14} />
+          </button>
           <button onClick={() => setShowEx(!showEx)}
             className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">
             + 추가
           </button>
+          </div>
         </div>
         {showEx && (
           <form onSubmit={submitExercise} className="px-5 py-4 bg-slate-50 border-b border-slate-100">
@@ -294,10 +299,15 @@ export default function HealthPage() {
       <div className="border border-slate-100 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">수면 기록</p>
+          <div className="flex items-center gap-2">
+          <button onClick={() => exportApi.sleep()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
+            <Download size={14} />
+          </button>
           <button onClick={() => setShowSl(!showSl)}
             className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">
             + 추가
           </button>
+          </div>
         </div>
         {showSl && (
           <form onSubmit={submitSleep} className="px-5 py-4 bg-slate-50 border-b border-slate-100">

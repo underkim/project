@@ -185,12 +185,7 @@ Trip → name, destination, start_date, end_date, status, note
 
 ## 알려진 문제 / 수정 필요
 
-- **[app/modules/ai/service.py:357]** `execute_delete`가 `_delete` 예외 시 `session.rollback()` 미호출 → PendingRollbackError 가능
-- **[frontend/components/AiModal.tsx:68]** localStorage 직렬화 시 `pendingFilter: null`로 초기화 → 새로고침 후 `delete_pending` 메시지의 확인 버튼 소멸
-- **[frontend/app/(dashboard)/planner/page.tsx:66]** `dateToOffset`이 Phase 시작일로부터 15일 이내 날짜를 offset=0으로 반올림 → 마감일이 Phase 시작일로 잘못 설정됨
-- **[frontend/app/(dashboard)/travel/page.tsx:649]** `handleAddPlanItem`에서 `t.plan_items` null guard 없음 → 엣지 케이스에서 TypeError
-- **[app/modules/travel/models.py:19]** `checklist_items` / `plan_items` relationship에 `passive_deletes=True` 미설정 (DB에는 ON DELETE CASCADE 있음)
-- **[app/modules/ai/service.py:374]** `_update`/`_delete`에서 WHERE 없이 전체 테이블 fetch 후 Python 필터링 (성능 문제, 데이터 증가 시)
+없음 — 이전에 발견된 버그 6개 모두 수정 완료.
 
 ## 현재 구현 상태
 

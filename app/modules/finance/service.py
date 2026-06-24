@@ -80,7 +80,13 @@ async def get_summary(
     recent_rates = [r.savings_rate for r in stat_responses if r.savings_rate is not None]
     avg_rate = round(sum(recent_rates) / len(recent_rates), 1) if recent_rates else None
 
-    # 목록: 페이지네이션 적용
+    # 목록: 페이지네이션 적용 (records_limit=0이면 목록 쿼리 생략)
+    if records_limit == 0:
+        return FinanceSummaryResponse(
+            latest_total_assets=latest_assets,
+            avg_savings_rate=avg_rate,
+            records=[],
+        )
     list_result = await session.execute(
         select(AssetRecord).order_by(AssetRecord.record_date.desc()).limit(records_limit).offset(records_offset)
     )

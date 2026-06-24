@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.modules.ai.service import execute_delete, parse_and_save
+from app.modules.ai.service import execute_delete, generate_weekly_report, parse_and_save
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
@@ -54,6 +55,27 @@ async def chat(
             raise HTTPException(status_code=401, detail="Gemini API 키가 올바르지 않습니다.")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"AI 처리 중 오류: {err}")
+
+
+@router.get("/weekly-report")
+async def weekly_report(
+    _: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """이번 주 데이터 기반 AI 주간 리포트 생성"""
+    if not settings.gemini_api_key:
+        raise HTTPException(status_code=503, detail="AI 기능이 설정되지 않았습니다.")
+    try:
+        report = await generate_weekly_report(session)
+        return {"report": report}
+    except Exception as e:
+        err = str(e)
+        if "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
+            raise HTTPException(status_code=429, detail="API 할당량 초과입니다. 잠시 후 다시 시도해주세요.")
+        if "API_KEY_INVALID" in err or "invalid" in err.lower():
+            raise HTTPException(status_code=401, detail="Gemini API 키가 올바르지 않습니다.")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"리포트 생성 중 오류: {err}")
 
 
 @router.post("/execute", response_model=ChatResponse)

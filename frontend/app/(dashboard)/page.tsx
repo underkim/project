@@ -6,9 +6,9 @@ import Link from 'next/link';
 import {
   CalendarDays, TrendingUp, Activity, BookOpen,
   Briefcase, AlertTriangle, ChevronRight, Plane,
-  Star, MapPin, Dumbbell,
+  Star, MapPin, Dumbbell, FileText, X,
 } from 'lucide-react';
-import { dashboardApi } from '@/lib/api';
+import { dashboardApi, aiApi } from '@/lib/api';
 import type { OverviewResponse } from '@/types';
 
 // SVG 원형 진행률 링
@@ -96,10 +96,52 @@ function ModuleCard({ title, icon, href, accent = 'bg-slate-50', children }: Mod
   );
 }
 
+function WeeklyReportModal({ onClose }: { onClose: () => void }) {
+  const [report, setReport] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    aiApi.weeklyReport()
+      .then(res => setReport(res.report))
+      .catch((err: Error) => setError(err.message || '리포트 생성에 실패했습니다.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <FileText size={16} className="text-slate-500" />
+            <span className="font-semibold text-slate-800 text-sm">AI 주간 리포트</span>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <div className="w-6 h-6 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
+              <p className="text-xs text-slate-400">Gemini가 분석 중입니다...</p>
+            </div>
+          ) : error ? (
+            <p className="text-sm text-red-500">{error}</p>
+          ) : (
+            <pre className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">{report}</pre>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showReport, setShowReport] = useState(false);
 
   function load() {
     dashboardApi.getOverview()
@@ -139,20 +181,31 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {showReport && <WeeklyReportModal onClose={() => setShowReport(false)} />}
+
       {/* 헤더 */}
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">오늘의 현황</h1>
           <p className="text-xs text-slate-400 mt-0.5">{today}</p>
         </div>
-        {hasAlert && (
-          <Link href="/planner">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl hover:bg-amber-100 transition-colors font-medium">
-              <AlertTriangle size={12} />
-              지연 {planner!.overdue_items} · 임박 {planner!.urgent_items}
-            </span>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {hasAlert && (
+            <Link href="/planner">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl hover:bg-amber-100 transition-colors font-medium">
+                <AlertTriangle size={12} />
+                지연 {planner!.overdue_items} · 임박 {planner!.urgent_items}
+              </span>
+            </Link>
+          )}
+          <button
+            onClick={() => setShowReport(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-xs rounded-xl hover:bg-slate-700 transition-colors font-medium"
+          >
+            <FileText size={12} />
+            주간 리포트
+          </button>
+        </div>
       </div>
 
       {/* 히어로: 로드맵 링 + 핵심 지표 */}

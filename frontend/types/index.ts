@@ -157,6 +157,7 @@ export interface GrowthSnapshot {
 export interface CareerSnapshot {
   cf_handle: string | null;
   latest_cf_rating: number | null;
+  latest_cf_rank: string | null;
 }
 
 export interface TravelSnapshot {

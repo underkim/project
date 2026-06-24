@@ -6,9 +6,9 @@ import { showToast } from '@/lib/toast';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { careerApi } from '@/lib/api';
+import { careerApi, exportApi } from '@/lib/api';
 import type { CareerSettingsResponse, CFRatingLogResponse } from '@/types';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Download } from 'lucide-react';
 
 const cfRanks = ['newbie','pupil','specialist','expert','candidate master','master','international master','grandmaster','legendary grandmaster'];
 
@@ -198,8 +198,13 @@ export default function CareerPage() {
       <div className="border border-slate-100 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">CF 레이팅 기록</p>
-          <button onClick={() => setShowRatingForm(!showRatingForm)}
-            className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">+ 추가</button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => exportApi.career()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
+              <Download size={14} />
+            </button>
+            <button onClick={() => setShowRatingForm(!showRatingForm)}
+              className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">+ 추가</button>
+          </div>
         </div>
         {showRatingForm && (
           <form onSubmit={submitRating} className="px-5 py-4 bg-slate-50 border-b border-slate-100">

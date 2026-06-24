@@ -10,7 +10,7 @@ import type { PhaseResponse, RoadmapItemResponse, ItemStatus } from '@/types';
 function calcDateToOffset(phaseStartDate: string, dateStr: string): number {
   const diffMs = new Date(dateStr).getTime() - new Date(phaseStartDate).getTime();
   if (diffMs <= 0) return 0;
-  return Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30.44)));
+  return parseFloat((diffMs / (1000 * 60 * 60 * 24 * 30.44)).toFixed(2));
 }
 
 // ─── 상태 계산 ──────────────────────────────────────────

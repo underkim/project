@@ -12,6 +12,7 @@ from app.modules.growth.router import router as growth_router
 from app.modules.health.router import router as health_module_router
 from app.modules.planner.router import router as planner_router
 from app.modules.ai.router import router as ai_router
+from app.modules.export.router import router as export_router
 
 
 def create_app() -> FastAPI:
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(travel_router)
     app.include_router(dashboard_router)
     app.include_router(ai_router)
+    app.include_router(export_router)
 
     return app
 

@@ -6,9 +6,9 @@ import { showToast } from '@/lib/toast';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { financeApi } from '@/lib/api';
+import { financeApi, exportApi } from '@/lib/api';
 import type { AssetRecordResponse } from '@/types';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Download } from 'lucide-react';
 
 function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -34,9 +34,9 @@ export default function FinancePage() {
 
   async function load() {
     try {
-      const data = await financeApi.getSummary(PAGE);
+      const data = await financeApi.getSummary(100);
       setRecords(data.records);
-      setHasMore(data.records.length === PAGE);
+      setHasMore(data.records.length === 100);
       setSummary({ latest_total_assets: data.latest_total_assets, avg_savings_rate: data.avg_savings_rate });
     } catch {
       showToast('데이터를 불러오지 못했습니다.', 'error');
@@ -110,12 +110,21 @@ export default function FinancePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-slate-900">재테크</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-slate-900 text-white px-3.5 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
-        >
-          + 기록 추가
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => exportApi.finance()}
+            title="CSV 내보내기"
+            className="text-slate-400 hover:text-slate-600 transition-colors p-1.5"
+          >
+            <Download size={16} />
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="bg-slate-900 text-white px-3.5 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+          >
+            + 기록 추가
+          </button>
+        </div>
       </div>
 
       {/* 요약 */}

@@ -12,10 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
-from app.modules.health import service as health_svc
 from app.modules.finance import service as finance_svc
-from app.modules.growth import service as growth_svc
-from app.modules.career import service as career_svc
 
 
 _SYSTEM_PROMPT = """\
@@ -372,6 +369,11 @@ def _safe_date(s: str) -> date | None:
         return None
 
 
+def _escape_like(s: str) -> str:
+    """Escape LIKE metacharacters so user-supplied strings match literally."""
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 async def _find_record(session: AsyncSession, module: str, filter_: dict):
     """filter_ 기준으로 레코드 1개를 WHERE 쿼리로 탐색. 없으면 None."""
     from app.modules.health.models import ExerciseLog, SleepLog
@@ -385,7 +387,7 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
         if d := _safe_date(filter_.get("log_date", "")):
             q = q.where(ExerciseLog.log_date == d)
         if t := filter_.get("exercise_type"):
-            q = q.where(ExerciseLog.exercise_type.ilike(f"%{t}%"))
+            q = q.where(ExerciseLog.exercise_type.ilike(f"%{_escape_like(t)}%", escape="\\"))
         return (await session.execute(q.order_by(ExerciseLog.log_date.desc()).limit(1))).scalars().first()
 
     if module == "health_sleep":
@@ -404,7 +406,7 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
         title_q = filter_.get("title", "")
         if not title_q:
             return None
-        q = select(BookRecord).where(BookRecord.title.ilike(f"%{title_q}%"))
+        q = select(BookRecord).where(BookRecord.title.ilike(f"%{_escape_like(title_q)}%", escape="\\"))
         return (await session.execute(q.order_by(BookRecord.id.desc()).limit(1))).scalars().first()
 
     if module == "growth_english":
@@ -412,7 +414,7 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
         if d := _safe_date(filter_.get("log_date", "")):
             q = q.where(EnglishLog.log_date == d)
         if t := filter_.get("activity_type"):
-            q = q.where(EnglishLog.activity_type.ilike(f"%{t}%"))
+            q = q.where(EnglishLog.activity_type.ilike(f"%{_escape_like(t)}%", escape="\\"))
         return (await session.execute(q.order_by(EnglishLog.log_date.desc()).limit(1))).scalars().first()
 
     if module == "career_cf_rating":
@@ -429,11 +431,11 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
         record = None
         if n:
             record = (await session.execute(
-                select(Trip).where(Trip.name.ilike(f"%{n}%")).order_by(Trip.start_date.desc()).limit(1)
+                select(Trip).where(Trip.name.ilike(f"%{_escape_like(n)}%", escape="\\")).order_by(Trip.start_date.desc()).limit(1)
             )).scalars().first()
         if record is None and dest:
             record = (await session.execute(
-                select(Trip).where(Trip.destination.ilike(f"%{dest}%")).order_by(Trip.start_date.desc()).limit(1)
+                select(Trip).where(Trip.destination.ilike(f"%{_escape_like(dest)}%", escape="\\")).order_by(Trip.start_date.desc()).limit(1)
             )).scalars().first()
         return record
 
@@ -518,3 +520,70 @@ async def _delete(session: AsyncSession, module: str, filter_: dict) -> bool:
         return False
     await session.delete(match)
     return True
+
+
+async def generate_weekly_report(session: AsyncSession) -> str:
+    """이번 주 전체 데이터를 모아 Gemini로 주간 라이프 리포트를 생성."""
+    if not settings.gemini_api_key:
+        raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다.")
+
+    from app.modules.dashboard.service import get_overview
+
+    today = date.today()
+    overview = await get_overview(session)
+
+    planner = overview.planner
+    finance = overview.finance
+    health = overview.health
+    growth = overview.growth
+    career = overview.career
+
+    def fmt(v, suffix="", default="N/A"):
+        return f"{v}{suffix}" if v is not None else default
+
+    prompt = f"""당신은 5년 라이프 로드맵을 관리하는 사용자의 개인 라이프 코치입니다.
+아래 이번 주 데이터를 분석하고, 한국어로 주간 리포트를 작성해주세요.
+
+## 이번 주 데이터 ({today} 기준)
+
+**플래너 (5년 로드맵)**
+- 전체 목표: {fmt(planner.total_items if planner else None, "개")} / 완료: {fmt(planner.completed_items if planner else None, "개")} / 긴급: {fmt(planner.urgent_items if planner else None, "개")} / 초과: {fmt(planner.overdue_items if planner else None, "개")}
+
+**재테크**
+- 총 자산: {f"{finance.latest_total_assets:,}만원" if finance and finance.latest_total_assets else "N/A"}
+- 최근 3개월 평균 저축률: {fmt(finance.avg_savings_rate if finance else None, "%")}
+
+**건강**
+- 이번 주 운동: {fmt(health.exercise_days_this_week if health else None, "일")} / 총 {fmt(health.total_exercise_minutes_this_week if health else None, "분")}
+- 평균 수면: {fmt(health.avg_sleep_hours_this_week if health else None, "시간")} / 품질 {fmt(health.avg_sleep_quality_this_week if health else None, "/5")}
+
+**자기계발**
+- 올해 완독: {fmt(growth.books_completed_this_year if growth else None, "권")} / 읽는 중: {fmt(growth.books_reading if growth else None, "권")}
+- 이번 달 영어: {fmt(growth.english_days_this_month if growth else None, "일")} / {fmt(growth.english_minutes_this_month if growth else None, "분")}
+
+**커리어**
+- Codeforces 레이팅: {fmt(career.latest_cf_rating if career else None)} ({career.latest_cf_rank if career and career.latest_cf_rank else "—"})
+
+## 리포트 형식 (마크다운)
+
+### 📊 이번 주 요약
+(2-3줄, 핵심 성과와 현황)
+
+### ✅ 잘 한 점
+(데이터 기반으로 2-3가지)
+
+### 💡 개선할 점
+(솔직하고 건설적으로 2-3가지)
+
+### 🎯 다음 주 제안
+(실행 가능한 구체적 행동 3가지)
+
+격려하되 솔직하게, 반드시 데이터에 근거해서 작성해주세요."""
+
+    ai_client = genai.Client(api_key=settings.gemini_api_key)
+    response = await asyncio.to_thread(
+        ai_client.models.generate_content,
+        model="gemini-2.0-flash-lite",
+        contents=prompt,
+    )
+    return response.text
