@@ -132,3 +132,44 @@ async def test_chat_planner_no_categories(auth_client):
 async def test_chat_empty_message(auth_client):
     resp = await auth_client.post("/api/v1/ai/chat", json={"message": "   "})
     assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_weekly_report_requires_auth(client):
+    resp = await client.get("/api/v1/ai/weekly-report")
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_weekly_report_no_api_key(auth_client):
+    with patch("app.modules.ai.router.settings") as mock_settings:
+        mock_settings.gemini_api_key = None
+        resp = await auth_client.get("/api/v1/ai/weekly-report")
+    assert resp.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_weekly_report_success(auth_client):
+    with patch("app.modules.ai.router.settings") as mock_settings, \
+         patch("app.modules.ai.service.settings") as mock_svc_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai, \
+         patch("asyncio.to_thread") as mock_to_thread:
+        mock_settings.gemini_api_key = "test-key"
+        mock_svc_settings.gemini_api_key = "test-key"
+
+        mock_response = MagicMock()
+        mock_response.text = "## 이번 주 요약\n잘 하셨어요!"
+        mock_to_thread.return_value = mock_response
+
+        resp = await auth_client.get("/api/v1/ai/weekly-report")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "report" in data
+    assert isinstance(data["report"], str)
+
+
+@pytest.mark.asyncio
+async def test_weekly_report_route_registered(app):
+    routes = {r.path for r in app.routes}
+    assert "/api/v1/ai/weekly-report" in routes
