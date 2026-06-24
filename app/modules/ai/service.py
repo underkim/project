@@ -485,11 +485,16 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
         return (await session.execute(q.order_by(RoadmapItem.id.desc()).limit(1))).scalars().first()
 
     if module == "planner_category":
-        from app.core.models import Category
+        from app.core.models import Category, RoadmapItem
+        from sqlalchemy.orm import selectinload
         title_q = filter_.get("title", "")
         if not title_q:
             return None
-        q = select(Category).where(Category.title.ilike(f"%{_escape_like(title_q)}%", escape="\\"))
+        q = (
+            select(Category)
+            .options(selectinload(Category.items))
+            .where(Category.title.ilike(f"%{_escape_like(title_q)}%", escape="\\"))
+        )
         return (await session.execute(q.order_by(Category.id.desc()).limit(1))).scalars().first()
 
     return None
