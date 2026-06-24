@@ -28,7 +28,9 @@ const MODULE_LABEL: Record<string, string> = {
   career_cf_rating: 'CF 레이팅',
   travel_trip: '여행',
   travel_checklist: '여행 체크리스트',
-  planner_item: '플래너',
+  travel_plan: '여행 일정',
+  planner_item: '플래너 항목',
+  planner_category: '플래너 카테고리',
 };
 
 let msgId = Date.now();
@@ -126,7 +128,9 @@ export default function AiModal() {
       if (res.saved) dispatchAiSaved(module);
     } catch {
       setMessages(prev => prev.map(m =>
-        m.id === msgLocalId ? { ...m, confirmLoading: false, pendingFilter: null } : m
+        m.id === msgLocalId
+          ? { ...m, confirmLoading: false, pendingFilter: null, text: m.text + '\n\n⚠️ 삭제 중 오류가 발생했습니다.' }
+          : m
       ));
     }
   }

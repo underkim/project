@@ -594,9 +594,17 @@ async def _create(session: AsyncSession, module: str, data: dict) -> None:
 
 async def _delete(session: AsyncSession, module: str, filter_: dict) -> bool:
     """filter로 대상을 찾아 삭제. 커밋은 호출부(execute_delete)에서 처리."""
+    from sqlalchemy import delete as sa_delete
+
     match = await _find_record(session, module, filter_)
     if match is None:
         return False
+
+    # DB에 ON DELETE CASCADE가 없는 경우 하위 레코드를 먼저 명시 삭제
+    if module == "planner_category":
+        from app.core.models import RoadmapItem
+        await session.execute(sa_delete(RoadmapItem).where(RoadmapItem.category_id == match.id))
+
     await session.delete(match)
     return True
 
