@@ -86,6 +86,26 @@ async def test_create_record_duplicate_date_returns_409(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_get_finance_record_by_id(auth_client):
+    create = await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-02-01", "total_assets": 4500, "monthly_income": 350, "monthly_expense": 200,
+    })
+    assert create.status_code == 201
+    record_id = create.json()["id"]
+
+    get_resp = await auth_client.get(f"/api/v1/finance/records/{record_id}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["total_assets"] == 4500
+    assert get_resp.json()["savings_amount"] == 150
+
+
+@pytest.mark.asyncio
+async def test_get_finance_record_not_found(auth_client):
+    resp = await auth_client.get("/api/v1/finance/records/99999")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_delete_finance_record(auth_client):
     create = await auth_client.post("/api/v1/finance/records", json={
         "record_date": "2026-03-01", "total_assets": 3000, "monthly_income": 250, "monthly_expense": 180,
