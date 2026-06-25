@@ -91,7 +91,7 @@ async def get_roadmap(session: AsyncSession) -> RoadmapResponse:
             for item in category.items:
                 deadline = None
                 if phase_start is not None:
-                    deadline = phase_start + relativedelta(months=item.offset)
+                    deadline = phase_start + timedelta(days=round(item.offset * 30.44))
                 item_responses.append(
                     RoadmapItemResponse(
                         id=item.id,
