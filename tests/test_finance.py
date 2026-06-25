@@ -61,3 +61,12 @@ def test_finance_routes_registered(app):
     routes = {route.path for route in app.routes}
     assert "/api/v1/finance/records" in routes
     assert "/api/v1/finance/summary" in routes
+
+
+@pytest.mark.asyncio
+async def test_create_record_duplicate_date_returns_409(auth_client):
+    payload = {"record_date": "2026-05-01", "total_assets": 5000, "monthly_income": 300, "monthly_expense": 200}
+    resp1 = await auth_client.post("/api/v1/finance/records", json=payload)
+    assert resp1.status_code == 201
+    resp2 = await auth_client.post("/api/v1/finance/records", json=payload)
+    assert resp2.status_code == 409

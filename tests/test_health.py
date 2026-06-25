@@ -18,6 +18,15 @@ def test_exercise_duration_must_be_positive():
         ExerciseLogCreate(log_date="2026-01-01", exercise_type="러닝", duration_minutes=0)
 
 
+@pytest.mark.asyncio
+async def test_create_sleep_duplicate_date_returns_409(auth_client):
+    payload = {"log_date": "2026-06-01", "sleep_hours": 7.0, "quality": 4}
+    resp1 = await auth_client.post("/api/v1/health/sleep", json=payload)
+    assert resp1.status_code == 201
+    resp2 = await auth_client.post("/api/v1/health/sleep", json=payload)
+    assert resp2.status_code == 409
+
+
 async def test_health_returns_200(client):
     response = await client.get("/api/v1/health")
     assert response.status_code == 200
