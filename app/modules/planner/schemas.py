@@ -102,6 +102,13 @@ class PhaseUpdate(BaseModel):
     months: int | None = None
     color: str | None = None
 
+    @field_validator("name", "label")
+    @classmethod
+    def not_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("Phase 이름/라벨은 비어 있을 수 없습니다")
+        return v.strip() if v is not None else v
+
     @field_validator("months")
     @classmethod
     def months_positive(cls, v: int | None) -> int | None:
@@ -136,6 +143,13 @@ class CategoryUpdate(BaseModel):
     icon: str | None = None
     title: str | None = None
     subtitle: str | None = None
+
+    @field_validator("title")
+    @classmethod
+    def title_not_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("카테고리 제목은 비어 있을 수 없습니다")
+        return v.strip() if v is not None else v
 
 
 class CategoryUpdateResponse(BaseModel):
