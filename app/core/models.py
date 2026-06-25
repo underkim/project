@@ -32,7 +32,7 @@ class Category(Base):
 
     phase: Mapped["Phase"] = relationship(back_populates="categories")
     items: Mapped[list["RoadmapItem"]] = relationship(
-        back_populates="category", order_by="RoadmapItem.offset",cascade="all, delete-orphan",
+        back_populates="category", order_by="RoadmapItem.offset", cascade="all, delete-orphan",
     )
 
 
