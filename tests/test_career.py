@@ -70,3 +70,19 @@ async def test_create_and_delete_cf_rating(auth_client):
 
     del_resp = await auth_client.delete(f"/api/v1/career/cf-ratings/{log_id}")
     assert del_resp.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_career_summary_reflects_latest_rating(auth_client):
+    await auth_client.put("/api/v1/career/settings", json={
+        "cf_handle": "coder123", "github_username": "dev_user",
+    })
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-05-01", "rating": 1700, "rank_name": "expert",
+    })
+    resp = await auth_client.get("/api/v1/career/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["cf_handle"] == "coder123"
+    assert data["latest_cf_rating"] == 1700
+    assert data["latest_cf_rank"] == "expert"
