@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.health.models import ExerciseLog, SleepLog
@@ -89,24 +89,26 @@ async def get_summary(session: AsyncSession) -> HealthSummaryResponse:
     today = date.today()
     week_start = today - timedelta(days=today.weekday())  # 이번 주 월요일
 
-    ex_result = await session.execute(
-        select(ExerciseLog).where(ExerciseLog.log_date >= week_start)
-    )
-    exercises = ex_result.scalars().all()
+    ex_row = (await session.execute(
+        select(
+            func.count(distinct(ExerciseLog.log_date)).label("days"),
+            func.coalesce(func.sum(ExerciseLog.duration_minutes), 0).label("minutes"),
+        ).where(ExerciseLog.log_date >= week_start)
+    )).one()
 
-    sl_result = await session.execute(
-        select(SleepLog).where(SleepLog.log_date >= week_start)
-    )
-    sleeps = sl_result.scalars().all()
+    sl_row = (await session.execute(
+        select(
+            func.avg(SleepLog.sleep_hours).label("avg_hours"),
+            func.avg(SleepLog.quality).label("avg_quality"),
+        ).where(SleepLog.log_date >= week_start)
+    )).one()
 
-    ex_days = len({e.log_date for e in exercises})
-    ex_minutes = sum(e.duration_minutes for e in exercises)
-    avg_sleep = round(sum(s.sleep_hours for s in sleeps) / len(sleeps), 1) if sleeps else None
-    avg_quality = round(sum(s.quality for s in sleeps) / len(sleeps), 1) if sleeps else None
+    avg_sleep = round(sl_row.avg_hours, 1) if sl_row.avg_hours is not None else None
+    avg_quality = round(sl_row.avg_quality, 1) if sl_row.avg_quality is not None else None
 
     return HealthSummaryResponse(
-        exercise_days_this_week=ex_days,
-        total_exercise_minutes_this_week=ex_minutes,
+        exercise_days_this_week=ex_row.days,
+        total_exercise_minutes_this_week=ex_row.minutes,
         avg_sleep_hours_this_week=avg_sleep,
         avg_sleep_quality_this_week=avg_quality,
     )
