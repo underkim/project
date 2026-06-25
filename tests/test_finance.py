@@ -64,6 +64,19 @@ def test_finance_routes_registered(app):
 
 
 @pytest.mark.asyncio
+async def test_update_record_note_clear_with_null(auth_client):
+    payload = {"record_date": "2026-04-01", "total_assets": 2000, "monthly_income": 400, "monthly_expense": 300, "note": "초기 메모"}
+    create = await auth_client.post("/api/v1/finance/records", json=payload)
+    assert create.status_code == 201
+    record_id = create.json()["id"]
+    assert create.json()["note"] == "초기 메모"
+
+    update = await auth_client.put(f"/api/v1/finance/records/{record_id}", json={"note": None})
+    assert update.status_code == 200
+    assert update.json()["note"] is None
+
+
+@pytest.mark.asyncio
 async def test_create_record_duplicate_date_returns_409(auth_client):
     payload = {"record_date": "2026-05-01", "total_assets": 5000, "monthly_income": 300, "monthly_expense": 200}
     resp1 = await auth_client.post("/api/v1/finance/records", json=payload)
