@@ -1,6 +1,6 @@
 from datetime import date
 from enum import Enum
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 
 class BookStatus(str, Enum):
@@ -32,6 +32,13 @@ class BookRecordCreate(BaseModel):
             raise ValueError("평점은 1~5 사이여야 합니다")
         return v
 
+    @model_validator(mode="after")
+    def end_after_start(self) -> "BookRecordCreate":
+        if self.start_date is not None and self.end_date is not None:
+            if self.end_date < self.start_date:
+                raise ValueError("완료일은 시작일 이후여야 합니다")
+        return self
+
 
 class BookRecordUpdate(BaseModel):
     title: str | None = None
@@ -55,6 +62,13 @@ class BookRecordUpdate(BaseModel):
         if v is not None and not 1 <= v <= 5:
             raise ValueError("평점은 1~5 사이여야 합니다")
         return v
+
+    @model_validator(mode="after")
+    def end_after_start(self) -> "BookRecordUpdate":
+        if self.start_date is not None and self.end_date is not None:
+            if self.end_date < self.start_date:
+                raise ValueError("완료일은 시작일 이후여야 합니다")
+        return self
 
 
 class BookRecordResponse(BaseModel):

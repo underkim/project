@@ -30,6 +30,18 @@ def test_book_title_is_stripped():
     assert book.title == "파친코"
 
 
+def test_book_create_end_before_start_rejected():
+    from datetime import date
+    with pytest.raises(ValidationError):
+        BookRecordCreate(title="책", start_date=date(2026, 3, 10), end_date=date(2026, 3, 1))
+
+
+def test_book_update_end_before_start_rejected():
+    from datetime import date
+    with pytest.raises(ValidationError):
+        BookRecordUpdate(start_date=date(2026, 3, 10), end_date=date(2026, 3, 1))
+
+
 def test_english_activity_type_cannot_be_empty():
     with pytest.raises(ValidationError):
         EnglishLogCreate(log_date="2026-01-01", activity_type="", duration_minutes=30)
