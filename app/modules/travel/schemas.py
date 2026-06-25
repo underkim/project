@@ -57,6 +57,13 @@ class TripUpdate(BaseModel):
     status: TripStatus | None = None
     note: str | None = None
 
+    @field_validator("name", "destination")
+    @classmethod
+    def not_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("여행명과 목적지는 비어 있을 수 없습니다")
+        return v.strip() if v is not None else v
+
 
 class PlanItemCreate(BaseModel):
     day: int = 1

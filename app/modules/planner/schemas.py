@@ -88,6 +88,13 @@ class RoadmapItemUpdate(BaseModel):
     text: str | None = None
     offset: float | None = None
 
+    @field_validator("text")
+    @classmethod
+    def text_not_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("플래너 항목은 비어 있을 수 없습니다")
+        return v.strip() if v is not None else v
+
 
 class PhaseUpdate(BaseModel):
     name: str | None = None

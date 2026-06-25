@@ -42,6 +42,13 @@ class BookRecordUpdate(BaseModel):
     rating: int | None = None
     note: str | None = None
 
+    @field_validator("title")
+    @classmethod
+    def title_not_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("도서 제목은 비어 있을 수 없습니다")
+        return v.strip() if v is not None else v
+
     @field_validator("rating")
     @classmethod
     def rating_range(cls, v: int | None) -> int | None:
@@ -96,6 +103,13 @@ class EnglishLogUpdate(BaseModel):
     activity_type: str | None = None
     duration_minutes: int | None = None
     note: str | None = None
+
+    @field_validator("activity_type")
+    @classmethod
+    def activity_type_not_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("활동 종류는 비어 있을 수 없습니다")
+        return v.strip() if v is not None else v
 
     @field_validator("duration_minutes")
     @classmethod

@@ -17,7 +17,7 @@
 - **SQLAlchemy 2.0 async** + **asyncpg** (PostgreSQL 드라이버)
 - **Alembic** (마이그레이션 — asyncpg 직접 사용, psycopg2 의존 없음)
 - **pydantic-settings** (환경설정, `.env` 자동 로드)
-- **pytest** + **httpx** (테스트, 89개)
+- **pytest** + **httpx** (테스트, 103개)
 - **PyJWT** (JWT 인증)
 - **python-multipart** (OAuth2 폼 데이터)
 - **google-genai** (Gemini AI — **gemini-3.1-flash-lite** 모델)
@@ -39,7 +39,7 @@ uv run uvicorn app.main:app --reload
 # 프론트엔드 개발 서버
 cd frontend && npm run dev   # http://localhost:3000
 
-# 테스트 (89개)
+# 테스트 (103개)
 uv run pytest
 
 # 마이그레이션
