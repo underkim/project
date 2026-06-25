@@ -815,21 +815,22 @@ export default function PlannerPage() {
   async function handleEditSave(id: number, data: { text?: string; offset?: number }) {
     try {
       await plannerApi.updateItem(id, data);
-      setPhases(prev => prev.map(p => ({
-        ...p,
-        categories: p.categories.map(c => ({
-          ...c,
-          items: c.items.map(i =>
-            i.id === id
-              ? {
-                  ...i,
-                  ...(data.text !== undefined && { text: data.text }),
-                  ...(data.offset !== undefined && { offset: data.offset }),
-                }
-              : i
-          ),
-        })),
-      })));
+      if (data.offset !== undefined) {
+        // offset 변경 시 deadline·status가 서버에서 재계산되므로 전체 리로드
+        await loadRoadmap();
+      } else {
+        setPhases(prev => prev.map(p => ({
+          ...p,
+          categories: p.categories.map(c => ({
+            ...c,
+            items: c.items.map(i =>
+              i.id === id
+                ? { ...i, ...(data.text !== undefined && { text: data.text }) }
+                : i
+            ),
+          })),
+        })));
+      }
     } catch {
       setError('수정에 실패했습니다.');
     }

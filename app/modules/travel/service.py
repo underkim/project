@@ -73,7 +73,7 @@ async def update_trip(
         trip = result.scalar_one_or_none()
         if trip is None:
             return None
-        for field, value in data.model_dump(exclude_none=True).items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(trip, field, value)
     return _trip_to_response(trip)
 
