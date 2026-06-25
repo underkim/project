@@ -60,6 +60,16 @@ def test_roadmap_item_offset_non_negative():
         RoadmapItemCreate(category_id=1, text="항목", offset=-1.0)
 
 
+def test_roadmap_item_text_cannot_be_empty():
+    with pytest.raises(ValidationError):
+        RoadmapItemCreate(category_id=1, text="  ", offset=0.0)
+
+
+def test_roadmap_item_text_is_stripped():
+    item = RoadmapItemCreate(category_id=1, text=" 알고리즘 스터디 ", offset=1.0)
+    assert item.text == "알고리즘 스터디"
+
+
 def test_phase_update_months_must_be_positive():
     with pytest.raises(ValidationError):
         PhaseUpdate(months=0)

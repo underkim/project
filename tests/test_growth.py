@@ -20,6 +20,21 @@ def test_book_update_rating_must_be_1_to_5():
         BookRecordUpdate(rating=6)
 
 
+def test_book_title_cannot_be_empty():
+    with pytest.raises(ValidationError):
+        BookRecordCreate(title="   ")
+
+
+def test_book_title_is_stripped():
+    book = BookRecordCreate(title="  파친코  ")
+    assert book.title == "파친코"
+
+
+def test_english_activity_type_cannot_be_empty():
+    with pytest.raises(ValidationError):
+        EnglishLogCreate(log_date="2026-01-01", activity_type="", duration_minutes=30)
+
+
 def test_english_log_duration_must_be_positive():
     with pytest.raises(ValidationError):
         EnglishLogCreate(log_date="2026-01-01", activity_type="reading", duration_minutes=0)

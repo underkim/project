@@ -15,9 +15,24 @@ def test_trip_end_must_be_after_start():
         )
 
 
+def test_trip_name_cannot_be_empty():
+    with pytest.raises(ValidationError):
+        TripCreate(name="  ", destination="서울", start_date=date(2026, 8, 1), end_date=date(2026, 8, 3))
+
+
+def test_trip_destination_cannot_be_empty():
+    with pytest.raises(ValidationError):
+        TripCreate(name="테스트", destination="", start_date=date(2026, 8, 1), end_date=date(2026, 8, 3))
+
+
 def test_plan_item_day_must_be_positive():
     with pytest.raises(ValidationError):
         PlanItemCreate(day=0, title="일정")
+
+
+def test_plan_item_title_cannot_be_empty():
+    with pytest.raises(ValidationError):
+        PlanItemCreate(day=1, title="")
 
 
 def test_travel_routes_registered(app):
