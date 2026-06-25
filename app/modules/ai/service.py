@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
-from app.modules.finance import service as finance_svc
 
 
 _SYSTEM_PROMPT = """\
