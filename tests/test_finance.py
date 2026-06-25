@@ -83,3 +83,20 @@ async def test_create_record_duplicate_date_returns_409(auth_client):
     assert resp1.status_code == 201
     resp2 = await auth_client.post("/api/v1/finance/records", json=payload)
     assert resp2.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_delete_finance_record(auth_client):
+    create = await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-03-01", "total_assets": 3000, "monthly_income": 250, "monthly_expense": 180,
+    })
+    assert create.status_code == 201
+    record_id = create.json()["id"]
+
+    del_resp = await auth_client.delete(f"/api/v1/finance/records/{record_id}")
+    assert del_resp.status_code == 204
+
+    list_resp = await auth_client.get("/api/v1/finance/records")
+    assert all(r["id"] != record_id for r in list_resp.json())
+
+

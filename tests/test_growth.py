@@ -84,3 +84,12 @@ async def test_update_english_log(auth_client):
     assert update.status_code == 200
     assert update.json()["duration_minutes"] == 45
     assert update.json()["activity_type"] == "듣기"
+
+
+@pytest.mark.asyncio
+async def test_growth_summary_reflects_reading_books(auth_client):
+    await auth_client.post("/api/v1/growth/books", json={"title": "완독 책", "status": "reading"})
+    resp = await auth_client.get("/api/v1/growth/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["books_reading"] >= 1
