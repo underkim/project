@@ -154,6 +154,20 @@ async def delete_plan_item(session: AsyncSession, item_id: int) -> bool:
     return True
 
 
+async def get_next_trip(session: AsyncSession) -> Trip | None:
+    """다음 여행 조회 (진행 중 우선, 예정은 가장 가까운 날짜). 관계 로딩 없음."""
+    result = await session.execute(
+        select(Trip)
+        .where(Trip.status.in_(["ongoing", "planned"]))
+        .order_by(
+            case((Trip.status == "ongoing", 0), else_=1),
+            Trip.start_date.asc(),
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_summary(session: AsyncSession) -> TravelSummaryResponse:
     row = (await session.execute(
         select(

@@ -98,14 +98,12 @@ async def _career_snapshot(session: AsyncSession) -> CareerSnapshot | None:
 
 async def _travel_snapshot(session: AsyncSession) -> TravelSnapshot | None:
     try:
-        trips = await travel_svc.list_trips(session)
-        upcoming = [t for t in trips if t.status == "planned"]
-        ongoing = [t for t in trips if t.status == "ongoing"]
-        next_trip = ongoing[0] if ongoing else (upcoming[0] if upcoming else None)
+        summary = await travel_svc.get_summary(session)
+        next_trip = await travel_svc.get_next_trip(session)
         return TravelSnapshot(
-            total=len(trips),
-            upcoming=len(upcoming),
-            ongoing=len(ongoing),
+            total=summary.total,
+            upcoming=summary.planned,
+            ongoing=summary.ongoing,
             next_trip_name=next_trip.name if next_trip else None,
             next_trip_destination=next_trip.destination if next_trip else None,
         )
