@@ -35,6 +35,13 @@ class BookRecordUpdate(BaseModel):
     rating: int | None = None
     note: str | None = None
 
+    @field_validator("rating")
+    @classmethod
+    def rating_range(cls, v: int | None) -> int | None:
+        if v is not None and not 1 <= v <= 5:
+            raise ValueError("평점은 1~5 사이여야 합니다")
+        return v
+
 
 class BookRecordResponse(BaseModel):
     id: int

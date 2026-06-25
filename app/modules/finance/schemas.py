@@ -23,6 +23,13 @@ class AssetRecordUpdate(BaseModel):
     monthly_expense: int | None = None
     note: str | None = None
 
+    @field_validator("total_assets", "monthly_income", "monthly_expense")
+    @classmethod
+    def must_be_non_negative(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("금액은 0 이상이어야 합니다")
+        return v
+
 
 class AssetRecordResponse(BaseModel):
     id: int
