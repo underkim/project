@@ -136,3 +136,12 @@ async def test_career_settings_update(auth_client):
     })
     assert resp.status_code == 200
     assert resp.json()["cf_handle"] == "tourist"
+
+
+@pytest.mark.asyncio
+async def test_career_settings_clear_field(auth_client):
+    """cf_handle을 설정 후 null로 지울 수 있어야 한다."""
+    await auth_client.put("/api/v1/career/settings", json={"cf_handle": "tourist"})
+    resp = await auth_client.put("/api/v1/career/settings", json={"cf_handle": None})
+    assert resp.status_code == 200
+    assert resp.json()["cf_handle"] is None
