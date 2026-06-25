@@ -9,6 +9,13 @@ class ChecklistItemCreate(BaseModel):
     text: str
     order_index: int = 0
 
+    @field_validator("text")
+    @classmethod
+    def text_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("체크리스트 항목은 비어 있을 수 없습니다")
+        return v.strip()
+
 
 class ChecklistItemResponse(BaseModel):
     id: int
@@ -26,6 +33,13 @@ class TripCreate(BaseModel):
     end_date: date
     status: TripStatus = "planned"
     note: str | None = None
+
+    @field_validator("name", "destination")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("여행명과 목적지는 비어 있을 수 없습니다")
+        return v.strip()
 
     @field_validator("end_date")
     @classmethod

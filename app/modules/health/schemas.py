@@ -8,6 +8,13 @@ class ExerciseLogCreate(BaseModel):
     duration_minutes: int
     note: str | None = None
 
+    @field_validator("exercise_type")
+    @classmethod
+    def exercise_type_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("운동 종류는 비어 있을 수 없습니다")
+        return v.strip()
+
     @field_validator("duration_minutes")
     @classmethod
     def must_be_positive(cls, v: int) -> int:

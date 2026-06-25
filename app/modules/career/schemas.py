@@ -20,6 +20,13 @@ class CFRatingLogCreate(BaseModel):
     rating: int
     rank_name: str
 
+    @field_validator("rank_name")
+    @classmethod
+    def rank_name_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("랭크명은 비어 있을 수 없습니다")
+        return v.strip()
+
     @field_validator("rating")
     @classmethod
     def rating_positive(cls, v: int) -> int:
