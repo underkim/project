@@ -36,6 +36,8 @@ async def update_book(
             return None
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(book, field, value)
+        if book.start_date is not None and book.end_date is not None and book.end_date < book.start_date:
+            raise ValueError("완료일은 시작일 이후여야 합니다")
     return BookRecordResponse.model_validate(book)
 
 

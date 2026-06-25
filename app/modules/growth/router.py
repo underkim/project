@@ -44,7 +44,10 @@ async def create_book(data: BookRecordCreate, _: CurrentUser, session: AsyncSess
 async def update_book(
     book_id: int, data: BookRecordUpdate, _: CurrentUser, session: AsyncSession = Depends(get_db)
 ):
-    result = await service.update_book(session, book_id, data)
+    try:
+        result = await service.update_book(session, book_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="도서 기록을 찾을 수 없습니다.")
     return result

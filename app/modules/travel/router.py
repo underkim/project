@@ -55,7 +55,10 @@ async def update_trip(
     _: CurrentUser,
     session: AsyncSession = Depends(get_db),
 ):
-    result = await service.update_trip(session, trip_id, data)
+    try:
+        result = await service.update_trip(session, trip_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
     return result

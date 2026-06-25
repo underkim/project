@@ -75,6 +75,8 @@ async def update_trip(
             return None
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(trip, field, value)
+        if trip.end_date < trip.start_date:
+            raise ValueError("종료일은 시작일 이후여야 합니다")
     return _trip_to_response(trip)
 
 

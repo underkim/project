@@ -87,6 +87,20 @@ async def test_update_english_log(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_update_book_invalid_date_range_returns_422(auth_client):
+    """end_date를 start_date보다 이전으로 부분 업데이트하면 422여야 한다."""
+    from datetime import date
+    create = await auth_client.post("/api/v1/growth/books", json={
+        "title": "날짜 검증 책", "start_date": "2026-06-01",
+    })
+    assert create.status_code == 201
+    book_id = create.json()["id"]
+
+    resp = await auth_client.put(f"/api/v1/growth/books/{book_id}", json={"end_date": "2026-05-01"})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_delete_book(auth_client):
     create = await auth_client.post("/api/v1/growth/books", json={"title": "삭제할 책", "status": "planned"})
     assert create.status_code == 201
