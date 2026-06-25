@@ -574,6 +574,9 @@ async def _process_multi_actions(session: AsyncSession, reply: str, actions: lis
                 saved_modules.append(module)
 
         except IntegrityError:
+            # rollback은 이전 flush까지 모두 취소 → saved_count 초기화
+            saved_count = 0
+            saved_modules = []
             await session.rollback()
             error_parts.append("중복 기록이 있어요")
         except Exception as e:
