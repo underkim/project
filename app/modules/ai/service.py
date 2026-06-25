@@ -507,7 +507,7 @@ async def _load_user_context(session: AsyncSession) -> str:
                 if item.is_completed:
                     continue
                 _phase_start = cat_to_phase_start.get(item.category_id, roadmap_start)
-                dl = _phase_start + timedelta(days=int(item.offset * 30.44))
+                dl = _phase_start + timedelta(days=round(item.offset * 30.44))
                 days_left = (dl - today).days
                 deadline_list.append((item.text, days_left))
             deadline_list.sort(key=lambda x: x[1])
