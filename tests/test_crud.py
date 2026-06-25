@@ -110,6 +110,30 @@ async def test_create_and_list_book(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_update_book_status(auth_client):
+    """독서 상태를 planned → reading → completed로 변경할 수 있어야 한다."""
+    created = (await auth_client.post("/api/v1/growth/books", json={
+        "title": "클린 코드", "status": "planned",
+    })).json()
+    book_id = created["id"]
+
+    resp = await auth_client.put(f"/api/v1/growth/books/{book_id}", json={
+        "status": "reading", "start_date": "2026-06-01",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "reading"
+    assert data["start_date"] == "2026-06-01"
+
+    resp2 = await auth_client.put(f"/api/v1/growth/books/{book_id}", json={
+        "status": "completed", "end_date": "2026-06-25",
+    })
+    assert resp2.status_code == 200
+    assert resp2.json()["status"] == "completed"
+    assert resp2.json()["end_date"] == "2026-06-25"
+
+
+@pytest.mark.asyncio
 async def test_create_english_log(auth_client):
     resp = await auth_client.post("/api/v1/growth/english", json={
         "log_date": "2026-06-21", "activity_type": "listening", "duration_minutes": 20,
