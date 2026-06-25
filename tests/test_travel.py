@@ -178,6 +178,25 @@ async def test_update_trip_status_and_clear_note(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_delete_checklist_item(auth_client):
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "체크 삭제 여행", "destination": "대구", "start_date": "2026-10-10", "end_date": "2026-10-12",
+    })).json()
+    trip_id = trip["id"]
+
+    item = (await auth_client.post(
+        f"/api/v1/travel/trips/{trip_id}/checklist", json={"text": "지갑 챙기기"},
+    )).json()
+    item_id = item["id"]
+
+    del_resp = await auth_client.delete(f"/api/v1/travel/checklist/{item_id}")
+    assert del_resp.status_code == 204
+
+    trip_detail = (await auth_client.get(f"/api/v1/travel/trips/{trip_id}")).json()
+    assert all(c["id"] != item_id for c in trip_detail["checklist_items"])
+
+
+@pytest.mark.asyncio
 async def test_delete_trip_with_plan_and_checklist(auth_client):
     """plan_items, checklist_items가 있는 여행도 삭제 가능해야 한다."""
     trip = (await auth_client.post("/api/v1/travel/trips", json={

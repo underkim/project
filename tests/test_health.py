@@ -63,6 +63,23 @@ async def test_update_sleep_note_and_quality(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_update_exercise_type_and_duration(auth_client):
+    create = await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-06-10", "exercise_type": "수영", "duration_minutes": 30,
+    })
+    assert create.status_code == 201
+    log_id = create.json()["id"]
+
+    update = await auth_client.put(f"/api/v1/health/exercise/{log_id}", json={
+        "exercise_type": "러닝", "duration_minutes": 45,
+    })
+    assert update.status_code == 200
+    assert update.json()["exercise_type"] == "러닝"
+    assert update.json()["duration_minutes"] == 45
+    assert update.json()["log_date"] == "2026-06-10"  # 변경하지 않은 필드 유지
+
+
+@pytest.mark.asyncio
 async def test_create_sleep_duplicate_date_returns_409(auth_client):
     payload = {"log_date": "2026-06-01", "sleep_hours": 7.0, "quality": 4}
     resp1 = await auth_client.post("/api/v1/health/sleep", json=payload)
