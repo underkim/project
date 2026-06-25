@@ -155,6 +155,24 @@ async def test_add_and_delete_plan_item(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_update_trip_status_and_clear_note(auth_client):
+    """여행 상태 변경 + note를 null로 지울 수 있어야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "업데이트 여행", "destination": "후쿠오카",
+        "start_date": "2026-09-01", "end_date": "2026-09-03",
+        "note": "기록할 것들",
+    })).json()
+    trip_id = trip["id"]
+    assert trip["note"] == "기록할 것들"
+
+    # note를 null로 명시적으로 지우기
+    resp = await auth_client.put(f"/api/v1/travel/trips/{trip_id}", json={"note": None})
+    assert resp.status_code == 200
+    assert resp.json()["note"] is None
+    assert resp.json()["name"] == "업데이트 여행"  # 다른 필드는 유지
+
+
+@pytest.mark.asyncio
 async def test_delete_trip_with_plan_and_checklist(auth_client):
     """plan_items, checklist_items가 있는 여행도 삭제 가능해야 한다."""
     trip = (await auth_client.post("/api/v1/travel/trips", json={
