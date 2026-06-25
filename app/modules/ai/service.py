@@ -328,23 +328,19 @@ async def _load_user_context(session: AsyncSession) -> str:
         sign = "+" if diff >= 0 else ""
         lines.append(f"  → 지난 주 대비: {sign}{diff}분 (지난 주 {last_min}분/{len(last_week_ex)}일)")
 
-    # 최근 7일 수면 + 지난 7일 비교
-    sl_rows = (await session.execute(
+    # 최근 14일 수면 한 번에 로드해 이번 주/지난 주 비교
+    two_weeks_ago = week_ago - timedelta(days=7)
+    all_sl = (await session.execute(
         select(SleepLog)
-        .where(SleepLog.log_date >= week_ago)
+        .where(SleepLog.log_date >= two_weeks_ago)
         .order_by(SleepLog.log_date.desc())
     )).scalars().all()
+    sl_rows = [r for r in all_sl if r.log_date >= week_ago]
     if sl_rows:
         avg_sleep = sum(r.sleep_hours for r in sl_rows) / len(sl_rows)
         avg_q = sum(r.quality for r in sl_rows) / len(sl_rows)
         lines.append(f"- 최근 7일 수면: 평균 {avg_sleep:.1f}시간 (품질 {avg_q:.1f}/5, {len(sl_rows)}일 기록)")
-        # 지난 7일 비교
-        prev_week_ago = week_ago - timedelta(days=7)
-        prev_sl = (await session.execute(
-            select(SleepLog)
-            .where(SleepLog.log_date >= prev_week_ago)
-            .where(SleepLog.log_date < week_ago)
-        )).scalars().all()
+        prev_sl = [r for r in all_sl if r.log_date < week_ago]
         if prev_sl:
             prev_avg = sum(r.sleep_hours for r in prev_sl) / len(prev_sl)
             diff = avg_sleep - prev_avg
