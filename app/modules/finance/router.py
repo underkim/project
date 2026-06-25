@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -51,7 +52,10 @@ async def create_record(
     _: CurrentUser,
     session: AsyncSession = Depends(get_db),
 ):
-    return await service.create_record(session, data)
+    try:
+        return await service.create_record(session, data)
+    except IntegrityError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="해당 날짜에 이미 재테크 기록이 있어요.")
 
 
 @router.put("/records/{record_id}", response_model=AssetRecordResponse)
