@@ -11,6 +11,7 @@ async def test_export_routes_registered(app):
     assert "/api/v1/export/growth/books" in paths
     assert "/api/v1/export/growth/english" in paths
     assert "/api/v1/export/career" in paths
+    assert "/api/v1/export/travel" in paths
 
 
 @pytest.mark.asyncio
@@ -21,6 +22,7 @@ async def test_export_routes_registered(app):
     "/api/v1/export/growth/books",
     "/api/v1/export/growth/english",
     "/api/v1/export/career",
+    "/api/v1/export/travel",
 ])
 async def test_export_requires_auth(client, path):
     resp = await client.get(path)
@@ -130,6 +132,22 @@ async def test_export_career_with_data(auth_client):
     assert "레이팅" in content
     assert "1500" in content
     assert "specialist" in content
+
+
+@pytest.mark.asyncio
+async def test_export_travel_with_data(auth_client):
+    await auth_client.post("/api/v1/travel/trips", json={
+        "name": "제주 여행",
+        "destination": "제주도",
+        "start_date": "2026-08-01",
+        "end_date": "2026-08-03",
+    })
+
+    resp = await auth_client.get("/api/v1/export/travel")
+    assert resp.status_code == 200
+    content = resp.content.decode("utf-8-sig")
+    assert "여행명" in content
+    assert "제주 여행" in content
 
 
 @pytest.mark.asyncio
