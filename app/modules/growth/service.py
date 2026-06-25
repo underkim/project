@@ -34,7 +34,7 @@ async def update_book(
         book = await session.get(BookRecord, book_id)
         if book is None:
             return None
-        for field, value in data.model_dump(exclude_none=True).items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(book, field, value)
     return BookRecordResponse.model_validate(book)
 
@@ -71,7 +71,7 @@ async def update_english(
         log = await session.get(EnglishLog, log_id)
         if log is None:
             return None
-        for field, value in data.model_dump(exclude_none=True).items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(log, field, value)
     return EnglishLogResponse.model_validate(log)
 

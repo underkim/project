@@ -53,7 +53,7 @@ async def update_record(
         record = await session.get(AssetRecord, record_id)
         if record is None:
             return None
-        for field, value in data.model_dump(exclude_none=True).items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(record, field, value)
     return _to_response(record)
 

@@ -36,7 +36,7 @@ async def update_exercise(session: AsyncSession, log_id: int, data: ExerciseLogU
         log = await session.get(ExerciseLog, log_id)
         if log is None:
             return None
-        for field, value in data.model_dump(exclude_none=True).items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(log, field, value)
     return ExerciseLogResponse.model_validate(log)
 
@@ -71,7 +71,7 @@ async def update_sleep(session: AsyncSession, log_id: int, data: SleepLogUpdate)
         log = await session.get(SleepLog, log_id)
         if log is None:
             return None
-        for field, value in data.model_dump(exclude_none=True).items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(log, field, value)
     return SleepLogResponse.model_validate(log)
 
