@@ -160,6 +160,34 @@ async def test_create_and_toggle_item(auth_client, planner_seed):
 
 
 @pytest.mark.asyncio
+async def test_create_category_and_update_phase(auth_client, planner_seed):
+    phase_id = planner_seed["phase_id"]
+
+    # 카테고리 생성
+    create = await auth_client.post("/api/v1/planner/categories", json={
+        "phase_id": phase_id, "title": "새 카테고리", "icon": "🎯", "subtitle": "서브 타이틀",
+    })
+    assert create.status_code == 201
+    cat_id = create.json()["id"]
+    assert create.json()["title"] == "새 카테고리"
+
+    # 카테고리 업데이트
+    update = await auth_client.put(f"/api/v1/planner/categories/{cat_id}", json={"title": "수정된 카테고리"})
+    assert update.status_code == 200
+    assert update.json()["title"] == "수정된 카테고리"
+
+    # Phase 업데이트 (색상 변경)
+    phase_update = await auth_client.put(f"/api/v1/planner/phases/{phase_id}", json={"color": "green", "months": 6})
+    assert phase_update.status_code == 200
+    assert phase_update.json()["color"] == "green"
+    assert phase_update.json()["months"] == 6
+
+    # 카테고리 삭제
+    del_resp = await auth_client.delete(f"/api/v1/planner/categories/{cat_id}")
+    assert del_resp.status_code == 204
+
+
+@pytest.mark.asyncio
 async def test_update_and_delete_item(auth_client, planner_seed):
     cat_id = planner_seed["category_id"]
 
