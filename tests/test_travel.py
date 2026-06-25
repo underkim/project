@@ -126,3 +126,47 @@ async def test_travel_summary(auth_client):
 async def test_trip_requires_auth(client):
     resp = await client.get("/api/v1/travel/trips")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_add_and_delete_plan_item(auth_client):
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "일정 여행", "destination": "오사카", "start_date": "2026-11-01", "end_date": "2026-11-03",
+    })).json()
+    trip_id = trip["id"]
+
+    item = (await auth_client.post(
+        f"/api/v1/travel/trips/{trip_id}/plan",
+        json={"day": 1, "title": "오사카 도착 + 도톤보리"},
+    )).json()
+    assert item["day"] == 1
+    assert item["title"] == "오사카 도착 + 도톤보리"
+
+    # 여행 조회 시 plan_items가 포함돼야 함
+    trip_detail = (await auth_client.get(f"/api/v1/travel/trips/{trip_id}")).json()
+    assert any(p["title"] == "오사카 도착 + 도톤보리" for p in trip_detail["plan_items"])
+
+    # 일정 삭제
+    del_resp = await auth_client.delete(f"/api/v1/travel/plan/{item['id']}")
+    assert del_resp.status_code == 204
+
+    trip_detail2 = (await auth_client.get(f"/api/v1/travel/trips/{trip_id}")).json()
+    assert trip_detail2["plan_items"] == []
+
+
+@pytest.mark.asyncio
+async def test_delete_trip_with_plan_and_checklist(auth_client):
+    """plan_items, checklist_items가 있는 여행도 삭제 가능해야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "삭제 여행", "destination": "방콕", "start_date": "2026-12-01", "end_date": "2026-12-05",
+    })).json()
+    trip_id = trip["id"]
+
+    await auth_client.post(f"/api/v1/travel/trips/{trip_id}/plan", json={"day": 1, "title": "왓 아룬 관광"})
+    await auth_client.post(f"/api/v1/travel/trips/{trip_id}/checklist", json={"text": "선크림 챙기기"})
+
+    del_resp = await auth_client.delete(f"/api/v1/travel/trips/{trip_id}")
+    assert del_resp.status_code == 204
+
+    # 여행 자체는 사라져야 함
+    assert (await auth_client.get(f"/api/v1/travel/trips/{trip_id}")).status_code == 404

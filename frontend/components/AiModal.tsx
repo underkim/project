@@ -137,7 +137,7 @@ export default function AiModal() {
     const id = requestAnimationFrame(() => {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     });
-    if (messages.length === 0 || open) inputRef.current?.focus();
+    inputRef.current?.focus();
     return () => cancelAnimationFrame(id);
   }, [open, messages]);
 
