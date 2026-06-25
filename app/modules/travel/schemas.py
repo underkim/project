@@ -65,6 +65,13 @@ class PlanItemCreate(BaseModel):
     title: str
     description: str | None = None
 
+    @field_validator("title")
+    @classmethod
+    def title_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("일정 제목은 비어 있을 수 없습니다")
+        return v.strip()
+
     @field_validator("day")
     @classmethod
     def day_must_be_positive(cls, v: int) -> int:

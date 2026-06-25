@@ -69,6 +69,13 @@ class RoadmapItemCreate(BaseModel):
     text: str
     offset: float = 0.0
 
+    @field_validator("text")
+    @classmethod
+    def text_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("플래너 항목은 비어 있을 수 없습니다")
+        return v.strip()
+
     @field_validator("offset")
     @classmethod
     def offset_non_negative(cls, v: float) -> float:
@@ -109,6 +116,13 @@ class CategoryCreate(BaseModel):
     icon: str = "📌"
     title: str
     subtitle: str = ""
+
+    @field_validator("title")
+    @classmethod
+    def title_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("카테고리 제목은 비어 있을 수 없습니다")
+        return v.strip()
 
 
 class CategoryUpdate(BaseModel):
