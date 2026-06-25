@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from app.modules.finance.schemas import AssetRecordCreate
+from app.modules.finance.schemas import AssetRecordCreate, AssetRecordUpdate
 from app.modules.finance.service import _to_response
 from app.modules.finance.models import AssetRecord
 from datetime import date
@@ -48,6 +48,13 @@ def test_create_schema_validates_negative_amount():
             monthly_income=300,
             monthly_expense=200,
         )
+
+
+def test_update_schema_validates_negative_amount():
+    with pytest.raises(ValidationError):
+        AssetRecordUpdate(total_assets=-1)
+    with pytest.raises(ValidationError):
+        AssetRecordUpdate(monthly_income=-100)
 
 
 def test_finance_routes_registered(app):

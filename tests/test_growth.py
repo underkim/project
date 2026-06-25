@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from app.modules.growth.schemas import BookRecordCreate, BookStatus, EnglishLogCreate
+from app.modules.growth.schemas import BookRecordCreate, BookRecordUpdate, BookStatus, EnglishLogCreate
 
 
 def test_book_default_status_is_planned():
@@ -11,6 +11,13 @@ def test_book_default_status_is_planned():
 def test_book_rating_must_be_1_to_5():
     with pytest.raises(ValidationError):
         BookRecordCreate(title="책", rating=6)
+
+
+def test_book_update_rating_must_be_1_to_5():
+    with pytest.raises(ValidationError):
+        BookRecordUpdate(rating=0)
+    with pytest.raises(ValidationError):
+        BookRecordUpdate(rating=6)
 
 
 def test_english_log_duration_must_be_positive():
