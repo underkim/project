@@ -2,7 +2,7 @@
 import pytest
 from datetime import date
 from pydantic import ValidationError
-from app.modules.travel.schemas import TripCreate, PlanItemCreate
+from app.modules.travel.schemas import TripCreate, TripUpdate, PlanItemCreate
 
 
 def test_trip_end_must_be_after_start():
@@ -13,6 +13,11 @@ def test_trip_end_must_be_after_start():
             start_date=date(2026, 8, 5),
             end_date=date(2026, 8, 1),
         )
+
+
+def test_trip_update_end_before_start_rejected():
+    with pytest.raises(ValidationError):
+        TripUpdate(start_date=date(2026, 8, 5), end_date=date(2026, 8, 1))
 
 
 def test_trip_name_cannot_be_empty():

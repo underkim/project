@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Literal
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 TripStatus = Literal["planned", "ongoing", "completed"]
 
@@ -63,6 +63,13 @@ class TripUpdate(BaseModel):
         if v is not None and not v.strip():
             raise ValueError("여행명과 목적지는 비어 있을 수 없습니다")
         return v.strip() if v is not None else v
+
+    @model_validator(mode="after")
+    def end_after_start(self) -> "TripUpdate":
+        if self.start_date is not None and self.end_date is not None:
+            if self.end_date < self.start_date:
+                raise ValueError("종료일은 시작일 이후여야 합니다")
+        return self
 
 
 class PlanItemCreate(BaseModel):
