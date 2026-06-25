@@ -152,6 +152,10 @@ export const growthApi = {
     log_date: string; activity_type: string; duration_minutes: number; note?: string;
   }): Promise<EnglishLogResponse> =>
     (await client.post('/api/v1/growth/english', data)).data,
+  updateEnglish: async (id: number, data: Partial<{
+    activity_type: string; duration_minutes: number; note: string;
+  }>): Promise<EnglishLogResponse> =>
+    (await client.put(`/api/v1/growth/english/${id}`, data)).data,
   deleteEnglish: async (id: number) => { await client.delete(`/api/v1/growth/english/${id}`); },
 };
 

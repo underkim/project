@@ -57,3 +57,30 @@ def test_growth_routes_registered(app):
     assert "/api/v1/growth/books" in routes
     assert "/api/v1/growth/english" in routes
     assert "/api/v1/growth/summary" in routes
+
+
+@pytest.mark.asyncio
+async def test_update_book_status(auth_client):
+    create = await auth_client.post("/api/v1/growth/books", json={"title": "파친코"})
+    assert create.status_code == 201
+    book_id = create.json()["id"]
+    assert create.json()["status"] == "planned"
+
+    update = await auth_client.put(f"/api/v1/growth/books/{book_id}", json={"status": "reading"})
+    assert update.status_code == 200
+    assert update.json()["status"] == "reading"
+    assert update.json()["title"] == "파친코"
+
+
+@pytest.mark.asyncio
+async def test_update_english_log(auth_client):
+    create = await auth_client.post("/api/v1/growth/english", json={
+        "log_date": "2026-04-01", "activity_type": "듣기", "duration_minutes": 30,
+    })
+    assert create.status_code == 201
+    log_id = create.json()["id"]
+
+    update = await auth_client.put(f"/api/v1/growth/english/{log_id}", json={"duration_minutes": 45})
+    assert update.status_code == 200
+    assert update.json()["duration_minutes"] == 45
+    assert update.json()["activity_type"] == "듣기"
