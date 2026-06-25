@@ -87,6 +87,34 @@ async def test_update_english_log(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_delete_book(auth_client):
+    create = await auth_client.post("/api/v1/growth/books", json={"title": "삭제할 책", "status": "planned"})
+    assert create.status_code == 201
+    book_id = create.json()["id"]
+
+    del_resp = await auth_client.delete(f"/api/v1/growth/books/{book_id}")
+    assert del_resp.status_code == 204
+
+    books = (await auth_client.get("/api/v1/growth/books")).json()
+    assert all(b["id"] != book_id for b in books)
+
+
+@pytest.mark.asyncio
+async def test_delete_english_log(auth_client):
+    create = await auth_client.post("/api/v1/growth/english", json={
+        "log_date": "2026-06-05", "activity_type": "writing", "duration_minutes": 20,
+    })
+    assert create.status_code == 201
+    log_id = create.json()["id"]
+
+    del_resp = await auth_client.delete(f"/api/v1/growth/english/{log_id}")
+    assert del_resp.status_code == 204
+
+    logs = (await auth_client.get("/api/v1/growth/english")).json()
+    assert all(l["id"] != log_id for l in logs)
+
+
+@pytest.mark.asyncio
 async def test_growth_summary_reflects_reading_books(auth_client):
     await auth_client.post("/api/v1/growth/books", json={"title": "완독 책", "status": "reading"})
     resp = await auth_client.get("/api/v1/growth/summary")
