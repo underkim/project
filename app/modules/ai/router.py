@@ -54,7 +54,7 @@ async def chat(
         err = str(e)
         if "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
             raise HTTPException(status_code=429, detail="API 할당량 초과입니다. Google AI Studio에서 키를 재발급해주세요.")
-        if "API_KEY_INVALID" in err or "invalid" in err.lower():
+        if "API_KEY_INVALID" in err or "PERMISSION_DENIED" in err:
             raise HTTPException(status_code=401, detail="Gemini API 키가 올바르지 않습니다.")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"AI 처리 중 오류: {err}")
@@ -75,7 +75,7 @@ async def weekly_report(
         err = str(e)
         if "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
             raise HTTPException(status_code=429, detail="API 할당량 초과입니다. 잠시 후 다시 시도해주세요.")
-        if "API_KEY_INVALID" in err or "invalid" in err.lower():
+        if "API_KEY_INVALID" in err or "PERMISSION_DENIED" in err:
             raise HTTPException(status_code=401, detail="Gemini API 키가 올바르지 않습니다.")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"리포트 생성 중 오류: {err}")
