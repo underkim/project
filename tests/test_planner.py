@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from pydantic import ValidationError
 
-from app.modules.planner.schemas import ItemStatus, PhaseUpdate, RoadmapItemCreate
+from app.modules.planner.schemas import ItemStatus, PhaseUpdate, RoadmapItemCreate, RoadmapItemUpdate
 from app.modules.planner.service import _item_status, _phase_start
 from app.core.models import Phase
 
@@ -58,6 +58,11 @@ def test_phase_start_second_phase():
 def test_roadmap_item_offset_non_negative():
     with pytest.raises(ValidationError):
         RoadmapItemCreate(category_id=1, text="항목", offset=-1.0)
+
+
+def test_roadmap_item_update_offset_non_negative():
+    with pytest.raises(ValidationError):
+        RoadmapItemUpdate(offset=-0.5)
 
 
 def test_roadmap_item_text_cannot_be_empty():

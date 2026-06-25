@@ -95,6 +95,13 @@ class RoadmapItemUpdate(BaseModel):
             raise ValueError("플래너 항목은 비어 있을 수 없습니다")
         return v.strip() if v is not None else v
 
+    @field_validator("offset")
+    @classmethod
+    def offset_non_negative(cls, v: float | None) -> float | None:
+        if v is not None and v < 0:
+            raise ValueError("offset은 0 이상이어야 합니다")
+        return v
+
 
 class PhaseUpdate(BaseModel):
     name: str | None = None
