@@ -76,6 +76,17 @@ async def test_create_and_list_finance(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_update_finance_record(auth_client):
+    created = (await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-04-01", "total_assets": 4000, "monthly_income": 350, "monthly_expense": 200,
+    })).json()
+    resp = await auth_client.put(f"/api/v1/finance/records/{created['id']}", json={"total_assets": 4500})
+    assert resp.status_code == 200
+    assert resp.json()["total_assets"] == 4500
+    assert resp.json()["monthly_income"] == 350  # 변경하지 않은 필드 유지
+
+
+@pytest.mark.asyncio
 async def test_delete_finance_record(auth_client):
     created = (await auth_client.post("/api/v1/finance/records", json={
         "record_date": "2026-05-01", "total_assets": 3000, "monthly_income": 300, "monthly_expense": 200,
