@@ -130,7 +130,11 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
           <input
             type="date"
             value={startDate}
-            onChange={e => setStartDate(e.target.value)}
+            onChange={e => {
+              const newStart = e.target.value;
+              setStartDate(newStart);
+              if (endDate < newStart) setEndDate(newStart);
+            }}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
           />
         </div>
