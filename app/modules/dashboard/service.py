@@ -1,5 +1,4 @@
 import asyncio
-from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +23,6 @@ from app.modules.travel import service as travel_svc
 async def _planner_snapshot(session: AsyncSession) -> PlannerSnapshot | None:
     try:
         roadmap = await planner_svc.get_roadmap(session)
-        today = date.today()
         total = completed = urgent = overdue = 0
         for phase in roadmap.phases:
             for category in phase.categories:
