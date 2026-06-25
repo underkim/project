@@ -190,7 +190,7 @@ export const travelApi = {
     (await client.post('/api/v1/travel/trips', data)).data,
   updateTrip: async (id: number, data: Partial<{
     name: string; destination: string; start_date: string; end_date: string;
-    status: string; note: string;
+    status: string; note: string | null;
   }>): Promise<TripResponse> =>
     (await client.put(`/api/v1/travel/trips/${id}`, data)).data,
   deleteTrip: async (id: number): Promise<void> => {
