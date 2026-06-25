@@ -48,6 +48,16 @@ def test_dashboard_routes_registered(app):
 
 
 @pytest.mark.asyncio
+async def test_career_settings_get(auth_client):
+    """설정 조회 시 기본값 반환 (데이터 없어도 200)."""
+    resp = await auth_client.get("/api/v1/career/settings")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "cf_handle" in data
+    assert "github_username" in data
+
+
+@pytest.mark.asyncio
 async def test_career_settings_update_and_clear(auth_client):
     resp = await auth_client.put("/api/v1/career/settings", json={"cf_handle": "tourist"})
     assert resp.status_code == 200

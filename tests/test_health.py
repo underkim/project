@@ -80,6 +80,21 @@ async def test_update_exercise_type_and_duration(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_delete_sleep_log(auth_client):
+    create = await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-06-15", "sleep_hours": 7.0, "quality": 4,
+    })
+    assert create.status_code == 201
+    log_id = create.json()["id"]
+
+    del_resp = await auth_client.delete(f"/api/v1/health/sleep/{log_id}")
+    assert del_resp.status_code == 204
+
+    logs = (await auth_client.get("/api/v1/health/sleep")).json()
+    assert all(l["id"] != log_id for l in logs)
+
+
+@pytest.mark.asyncio
 async def test_create_sleep_duplicate_date_returns_409(auth_client):
     payload = {"log_date": "2026-06-01", "sleep_hours": 7.0, "quality": 4}
     resp1 = await auth_client.post("/api/v1/health/sleep", json=payload)
