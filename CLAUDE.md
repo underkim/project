@@ -6,7 +6,8 @@
 풀스택 개인 대시보드. FastAPI 백엔드 + Next.js 프론트엔드, 단일 사용자 기준, 학습 목적 겸 포트폴리오.
 
 **배포**: Render(백엔드) + Supabase(PostgreSQL) + Vercel(프론트엔드)  
-**콜드 스타트 방지**: cron-job.org가 `/api/v1/health`를 14분마다 핑 (DB도 동시에 깨움)
+**콜드 스타트 방지**: cron-job.org가 `/api/v1/health`를 14분마다 핑 (DB도 동시에 깨움)  
+**구현 상태**: 모든 모듈 구현 및 프로덕션 배포 완료 (2026-06-25)
 
 ## 기술 스택
 
@@ -16,7 +17,7 @@
 - **SQLAlchemy 2.0 async** + **asyncpg** (PostgreSQL 드라이버)
 - **Alembic** (마이그레이션 — asyncpg 직접 사용, psycopg2 의존 없음)
 - **pydantic-settings** (환경설정, `.env` 자동 로드)
-- **pytest** + **httpx** (테스트, 79개)
+- **pytest** + **httpx** (테스트, 89개)
 - **PyJWT** (JWT 인증)
 - **python-multipart** (OAuth2 폼 데이터)
 - **google-genai** (Gemini AI — **gemini-3.1-flash-lite** 모델)
@@ -29,30 +30,6 @@
 - **recharts** (차트)
 - **lucide-react** (아이콘)
 
-
-## 작업 방식 (효율 + 품질)
-
-### 단계별 진행 원칙
-- 한 번에 전체 기능 X → 스키마 → CRUD → 라우터 → 테스트 순서로 요청
-- 코드 생성 후 바로 실행 전 "이 코드 문제 있으면 말해줘" 확인 단계 포함
-- 에러 발생 시 트레이스백 전체를 컨텍스트에 포함
-
-### 파일 참조 규칙
-- 작업 관련 파일만 `@파일` 로 참조 (불필요한 파일 참조 금지)
-- `.env` 파일은 절대 `@` 참조 금지
-- 컨텍스트 길어지면 `/compact` → 필요시 `/clear`
-
-### 코드 품질
-- 기존 코드 스타일 유지: "~해줘, 단 기존 코드 스타일 유지"
-- 새 기능 추가 시 테스트 파일도 함께 요청
-- "이 코드 보안 취약점 있어?" 명시적으로 확인
-
-### 보안 규칙
-- `.env`, `*.db`, `.venv`, `__pycache__` 는 `.claudeignore` 등록
-- DB 쿼리는 항상 파라미터 바인딩 (SQL Injection 방지)
-- 인증 관련 코드는 반드시 보안 검토 요청
-
-
 ## 명령어
 
 ```bash
@@ -62,13 +39,39 @@ uv run uvicorn app.main:app --reload
 # 프론트엔드 개발 서버
 cd frontend && npm run dev   # http://localhost:3000
 
-# 테스트 (79개)
+# 테스트 (89개)
 uv run pytest
 
 # 마이그레이션
 uv run alembic upgrade head
 uv run alembic revision --autogenerate -m "설명"
 ```
+
+## Claude Code 규칙
+
+### 보안 (절대 위반 금지)
+- `.env` 파일은 절대 읽거나 참조하지 않는다
+- DB 쿼리는 항상 파라미터 바인딩 (SQL Injection 방지)
+- 인증 관련 코드 변경 시 반드시 보안 검토
+- `.env`, `*.db`, `.venv`, `__pycache__` 는 `.claudeignore` 등록 상태 유지
+
+### 코드 작성 원칙
+- 기존 코드 스타일을 유지한다 (파일을 먼저 읽고 패턴 파악 후 작성)
+- 새 기능 추가 시 테스트도 함께 작성한다
+- 기능 추가 없이 불필요한 리팩토링 금지 — 요청한 것만 변경
+- 주석은 WHY가 비명백할 때만 작성, 코드 설명 주석 금지
+
+### SQLAlchemy async 필수 규칙
+- **Lazy loading 절대 금지** — 비동기에서 `MissingGreenlet` 발생
+- 관계 로딩은 `selectinload` / `joinedload` 명시 필수
+- 세션은 `Depends(get_db)`로 주입, service가 자체 세션 생성 금지
+- 트랜잭션은 `async with session.begin():` 또는 `commit()`/`rollback()` 명시
+
+### AI 서비스 한정 규칙
+- `ai/service.py`의 `_create`/`_update`/`_delete` 내부에서 `session.begin()` 사용 금지 — 중첩 트랜잭션 오류
+- 최상위에서 `await session.commit()` / `await session.rollback()` 으로 일괄 관리
+- 다중 액션 시 `_create` 후 `await session.flush()` 필수 — 이후 액션이 해당 레코드를 조회할 수 있도록
+- 타 모듈 service 대신 ORM 객체 직접 `session.add()` 사용 (트랜잭션 중첩 방지)
 
 ## 프로젝트 구조
 
@@ -146,7 +149,8 @@ project/
 ### Modular Monolith (ADR-0001)
 코드는 도메인(기능) 단위로 묶는다.
 
-**모듈 간 통신 규칙**: 다른 모듈의 `service layer`만 호출한다. 다른 모듈의 model·repository를 직접 import하지 않는다.
+**모듈 간 통신 규칙**: 다른 모듈의 `service layer`만 호출한다. 다른 모듈의 model·repository를 직접 import하지 않는다.  
+**예외**: `ai/service.py`는 트랜잭션 중첩 방지를 위해 ORM 모델 직접 import 허용 (의도적 설계).
 
 ### BFF 하이브리드 패턴 (ADR-0002)
 - **홈 화면**: `dashboard` 모듈의 단일 집계 엔드포인트 (`GET /api/v1/dashboard/overview`)
@@ -180,7 +184,8 @@ AI 응답에 `actions` 배열이 있으면 순서대로 처리한다.
   - 이번 주 vs 지난 주 운동 비교, 자산 3개월 추이, 수면 전주 비교, Phase별 진행률 포함
   - 예정·진행 중 여행의 plan_items(Day별) + 체크리스트 진행률 포함
 - `_load_categories_context`: 플래너 카테고리 목록 (Phase 날짜 범위 + 미완료 항목 3개)
-날짜 변수 10개를 시스템 프롬프트에 주입: today, yesterday, tomorrow, week_start, last_week_start 등
+
+날짜 변수 11개를 시스템 프롬프트에 주입: `today`, `yesterday`, `tomorrow`, `day_before_yesterday`, `week_start`, `last_week_start`, `next_week_start`, `month_start`, `last_month_start`, `week_start_plus1`, `week_start_plus2`
 
 ### 플래너 다중 선택 삭제 패턴
 `handleBulkCategoryDelete`는 `Promise.allSettled`로 병렬 처리한다.
@@ -207,42 +212,40 @@ Trip → name, destination, start_date, end_date, status, note
 - FK에 `ON DELETE CASCADE` 적용 (migration)
 - `TripResponse`는 항상 `checklist_items`와 `plan_items`를 `selectinload`로 eager load
 
-## 알려진 문제 / 수정 필요
+## 테스트 패턴
 
-없음 — 코드 리뷰 버그 6개 + 추가 발견 버그 모두 수정 완료.
+```python
+# conftest.py 구조
+# - async_client: httpx.AsyncClient (실제 DB 대상)
+# - 각 테스트 함수는 async def test_*
+# - 인증 헤더: headers={"Authorization": f"Bearer {token}"}
 
-## 현재 구현 상태
+# 새 모듈 테스트 작성 패턴 (test_travel.py 참고)
+@pytest.mark.asyncio
+async def test_create_xxx(async_client, auth_headers):
+    res = await async_client.post("/api/v1/xxx", json={...}, headers=auth_headers)
+    assert res.status_code == 201
+    data = res.json()
+    assert data["field"] == expected
 
-| 항목 | 상태 |
-|------|------|
-| FastAPI 앱 골격 (팩토리 패턴) | 완료 |
-| `GET /api/v1/health` (DB ping 포함) | 완료 |
-| DB 설정 (async 엔진·세션·DI) | 완료 |
-| Alembic 마이그레이션 (5개 버전, asyncpg 직접) | 완료 |
-| Auth 모듈 (`POST /api/v1/auth/token`, JWT, `secrets.compare_digest`) | 완료 |
-| Planner 모듈 (로드맵 CRUD + 마감일 날짜 피커 + 다중 선택 삭제) | 완료 |
-| Finance 모듈 (자산 기록 CRUD + 요약 + CSV 내보내기) | 완료 |
-| Health 모듈 (운동/수면 CRUD + 요약 + CSV 내보내기) | 완료 |
-| Growth 모듈 (독서/영어 CRUD + 요약 + CSV 내보내기) | 완료 |
-| Career 모듈 (CF 레이팅 CRUD + 요약 + CSV 내보내기) | 완료 |
-| Travel 모듈 (여행 CRUD + 체크리스트 + 일정 탭 + CSV 내보내기) | 완료 |
-| Export 모듈 (`GET /api/v1/export/{module}` CSV, 7개 엔드포인트) | 완료 |
-| AI 모듈 — 기본 (Gemini gemini-3.1-flash-lite, 자연어 기록/수정/삭제, 삭제 확인) | 완료 |
-| AI 모듈 — 멀티턴 (Gemini native multi-turn, system_instruction 분리) | 완료 |
-| AI 모듈 — 다중 액션 (`actions` 배열, session.flush() 순서 보장) | 완료 |
-| AI 모듈 — suggestions (후속 질문 칩 2-3개, 조회·분석 응답 후만 포함) | 완료 |
-| AI 모듈 — 주간 리포트 (`GET /api/v1/ai/weekly-report`, Gemini 생성) | 완료 |
-| AI 컨텍스트 강화 (이번 주/지난 주 운동, 자산 추이, 수면 비교, Phase 진행률 등) | 완료 |
-| AI 지원 도메인 (운동·수면·재테크·독서·영어·CF레이팅·여행·체크리스트·여행일정·플래너항목·카테고리) | 완료 |
-| Dashboard 모듈 (`GET /api/v1/dashboard/overview` BFF 집계) | 완료 |
-| Next.js 프론트엔드 (8개 페이지 + AI FAB 모달 + Toast) | 완료 |
-| AiModal — 마크다운 렌더링 (bold·list·heading, XSS-safe) | 완료 |
-| AiModal — suggestion 칩, 복사 버튼, textarea 자동 높이, 2단계 초기화 확인 | 완료 |
-| 인앱 가이드 & 매뉴얼 페이지 (`/help`) | 완료 |
-| 테스트 (79개) | 완료 |
-| 프로덕션 배포 (Render + Supabase + Vercel) | 완료 |
-| 콜드 스타트 방지 (cron-job.org 14분 핑) | 완료 |
-| 배포 관리 가이드 (`docs/deployment.md`) | 완료 |
+# 실행
+uv run pytest                    # 전체
+uv run pytest tests/test_xxx.py  # 특정 파일
+uv run pytest -k "test_name"     # 특정 테스트
+```
+
+**중요**: mock DB 사용 금지 — 실제 DB(SQLite in-memory via test config)에서 실행.
+
+## 자주 발생하는 실수 방지
+
+| 상황 | 잘못된 방법 | 올바른 방법 |
+|------|-----------|-----------|
+| 관계 데이터 로딩 | `trip.plan_items` 직접 접근 | `selectinload(Trip.plan_items)` 쿼리에 포함 |
+| AI 서비스 저장 | `await finance_svc.create(session, data)` | `session.add(AssetRecord(**data))` 직접 |
+| 다중 액션 순서 보장 | `_create` 후 바로 다음 액션 | `_create` 후 `await session.flush()` |
+| 날짜 필드 수정 | `setattr(record, "log_date", "2026-01-01")` | `_safe_date()` 변환 후 set |
+| 트래블 체크리스트 생성 | `trip_id` 직접 사용 | `trip_name`으로 Trip 조회 후 `trip.id` 사용 |
+| 카테고리 삭제 | DB CASCADE만 믿기 | `planner_category`는 `RoadmapItem` 먼저 명시 삭제 |
 
 ## 새 모듈 추가 패턴
 
@@ -265,6 +268,13 @@ frontend/lib/api.ts   # <name>Api 객체 추가
 frontend/types/index.ts # 응답 인터페이스 추가
 ```
 
+### 체크리스트
+- [ ] 백엔드: models → schemas → service → router → main.py 등록
+- [ ] 테스트: `tests/test_<name>.py` 작성 (CRUD 최소)
+- [ ] 프론트엔드: types → api.ts → page.tsx
+- [ ] AI 지원 필요 시: `ai/service.py`의 `_create`, `_update`, `_delete`, `_find_record` 에 모듈 추가
+- [ ] CSV 내보내기 필요 시: `export/service.py` + `export/router.py` 에 엔드포인트 추가
+
 ## 환경변수
 
 `.env` 파일 (pydantic-settings가 자동 로드):
@@ -286,3 +296,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 > **주의**: `DATABASE_URL`은 Supabase **Session Pooler** URL 사용 (Direct Connection은 IPv6 — Render 무료 티어 불가)
+
+## 알려진 기술 부채
+
+- `ai/service.py`가 타 모듈 ORM model 직접 import — AI 트랜잭션 패턴 때문에 불가피, 리팩토링 대비 이득 낮음
