@@ -1,7 +1,7 @@
 from datetime import date
 from enum import Enum
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, computed_field, field_validator
 
 
 class ItemStatus(str, Enum):
@@ -69,6 +69,13 @@ class RoadmapItemCreate(BaseModel):
     text: str
     offset: float = 0.0
 
+    @field_validator("offset")
+    @classmethod
+    def offset_non_negative(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("offset은 0 이상이어야 합니다")
+        return v
+
 
 class RoadmapItemUpdate(BaseModel):
     text: str | None = None
@@ -80,6 +87,13 @@ class PhaseUpdate(BaseModel):
     label: str | None = None
     months: int | None = None
     color: str | None = None
+
+    @field_validator("months")
+    @classmethod
+    def months_positive(cls, v: int | None) -> int | None:
+        if v is not None and v < 1:
+            raise ValueError("Phase 기간은 1개월 이상이어야 합니다")
+        return v
 
 
 class PhaseUpdateResponse(BaseModel):

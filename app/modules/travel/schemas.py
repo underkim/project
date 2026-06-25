@@ -51,6 +51,13 @@ class PlanItemCreate(BaseModel):
     title: str
     description: str | None = None
 
+    @field_validator("day")
+    @classmethod
+    def day_must_be_positive(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("일정 Day는 1 이상이어야 합니다")
+        return v
+
 
 class PlanItemResponse(BaseModel):
     id: int
