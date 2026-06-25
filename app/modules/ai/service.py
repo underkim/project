@@ -493,11 +493,21 @@ async def _load_user_context(session: AsyncSession) -> str:
 
         if settings_row and settings_row.start_date:
             roadmap_start = settings_row.start_date
+            # category_id → 해당 phase 시작일 매핑 (phase_rows는 order_index 순 정렬)
+            cat_to_phase_start: dict[int, date] = {}
+            _acc = 0
+            for ph in phase_rows:
+                _ph_start = roadmap_start + timedelta(days=int(_acc * 30.44))
+                for cat in ph.categories:
+                    cat_to_phase_start[cat.id] = _ph_start
+                _acc += (ph.months or 0)
+
             deadline_list = []
             for item in all_items:
                 if item.is_completed:
                     continue
-                dl = roadmap_start + timedelta(days=int(item.offset * 30.44))
+                _phase_start = cat_to_phase_start.get(item.category_id, roadmap_start)
+                dl = _phase_start + timedelta(days=int(item.offset * 30.44))
                 days_left = (dl - today).days
                 deadline_list.append((item.text, days_left))
             deadline_list.sort(key=lambda x: x[1])
