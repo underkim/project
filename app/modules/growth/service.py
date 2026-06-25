@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.growth.models import BookRecord, EnglishLog
@@ -90,25 +90,23 @@ async def get_summary(session: AsyncSession) -> GrowthSummaryResponse:
     year_start = date(today.year, 1, 1)
     month_start = date(today.year, today.month, 1)
 
-    book_result = await session.execute(select(BookRecord))
-    books = book_result.scalars().all()
-
-    completed_this_year = sum(
-        1 for b in books
-        if b.status == "completed" and b.end_date and b.end_date >= year_start
-    )
-    reading = sum(1 for b in books if b.status == "reading")
+    book_row = (await session.execute(
+        select(
+            func.count(case((and_(BookRecord.status == "completed", BookRecord.end_date >= year_start), 1))).label("completed_this_year"),
+            func.count(case((BookRecord.status == "reading", 1))).label("reading"),
+        ).select_from(BookRecord)
+    )).one()
 
     eng_result = await session.execute(
         select(EnglishLog).where(EnglishLog.log_date >= month_start)
     )
     logs = eng_result.scalars().all()
-    eng_days = len({l.log_date for l in logs})
-    eng_minutes = sum(l.duration_minutes for l in logs)
+    eng_days = len({log.log_date for log in logs})
+    eng_minutes = sum(log.duration_minutes for log in logs)
 
     return GrowthSummaryResponse(
-        books_completed_this_year=completed_this_year,
-        books_reading=reading,
+        books_completed_this_year=book_row.completed_this_year,
+        books_reading=book_row.reading,
         english_days_this_month=eng_days,
         english_minutes_this_month=eng_minutes,
     )

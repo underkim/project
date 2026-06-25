@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -155,11 +155,17 @@ async def delete_plan_item(session: AsyncSession, item_id: int) -> bool:
 
 
 async def get_summary(session: AsyncSession) -> TravelSummaryResponse:
-    result = await session.execute(select(Trip))
-    trips = result.scalars().all()
+    row = (await session.execute(
+        select(
+            func.count().label("total"),
+            func.count(case((Trip.status == "planned", 1))).label("planned"),
+            func.count(case((Trip.status == "ongoing", 1))).label("ongoing"),
+            func.count(case((Trip.status == "completed", 1))).label("completed"),
+        ).select_from(Trip)
+    )).one()
     return TravelSummaryResponse(
-        total=len(trips),
-        planned=sum(1 for t in trips if t.status == "planned"),
-        ongoing=sum(1 for t in trips if t.status == "ongoing"),
-        completed=sum(1 for t in trips if t.status == "completed"),
+        total=row.total,
+        planned=row.planned,
+        ongoing=row.ongoing,
+        completed=row.completed,
     )
