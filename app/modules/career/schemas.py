@@ -1,5 +1,5 @@
 from datetime import date
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, field_validator
 
 
 class CareerSettingsResponse(BaseModel):
@@ -19,6 +19,13 @@ class CFRatingLogCreate(BaseModel):
     log_date: date
     rating: int
     rank_name: str
+
+    @field_validator("rating")
+    @classmethod
+    def rating_positive(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("레이팅은 0 이상이어야 합니다")
+        return v
 
 
 class CFRatingLogResponse(BaseModel):
