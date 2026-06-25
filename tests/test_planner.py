@@ -2,8 +2,9 @@ from datetime import date
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from pydantic import ValidationError
 
-from app.modules.planner.schemas import ItemStatus
+from app.modules.planner.schemas import ItemStatus, PhaseUpdate, RoadmapItemCreate
 from app.modules.planner.service import _item_status, _phase_start
 from app.core.models import Phase
 
@@ -52,6 +53,16 @@ def test_phase_start_second_phase():
     ]
     start = _phase_start(date(2026, 1, 1), phases, target_order=2)
     assert start == date(2027, 1, 1)
+
+
+def test_roadmap_item_offset_non_negative():
+    with pytest.raises(ValidationError):
+        RoadmapItemCreate(category_id=1, text="항목", offset=-1.0)
+
+
+def test_phase_update_months_must_be_positive():
+    with pytest.raises(ValidationError):
+        PhaseUpdate(months=0)
 
 
 # --- 라우터 등록 확인 테스트 ---

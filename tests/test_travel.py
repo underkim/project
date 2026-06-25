@@ -1,5 +1,23 @@
 """Travel 모듈 통합 테스트 (인메모리 SQLite)."""
 import pytest
+from datetime import date
+from pydantic import ValidationError
+from app.modules.travel.schemas import TripCreate, PlanItemCreate
+
+
+def test_trip_end_must_be_after_start():
+    with pytest.raises(ValidationError):
+        TripCreate(
+            name="테스트",
+            destination="서울",
+            start_date=date(2026, 8, 5),
+            end_date=date(2026, 8, 1),
+        )
+
+
+def test_plan_item_day_must_be_positive():
+    with pytest.raises(ValidationError):
+        PlanItemCreate(day=0, title="일정")
 
 
 def test_travel_routes_registered(app):
