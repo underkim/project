@@ -159,7 +159,7 @@ export const careerApi = {
   getSettings: async (): Promise<CareerSettingsResponse> =>
     (await client.get('/api/v1/career/settings')).data,
   updateSettings: async (data: {
-    cf_handle?: string; github_username?: string; blog_url?: string;
+    cf_handle?: string | null; github_username?: string | null; blog_url?: string | null;
   }): Promise<CareerSettingsResponse> =>
     (await client.put('/api/v1/career/settings', data)).data,
   listCFRatings: async (limit = 20, offset = 0): Promise<CFRatingLogResponse[]> =>

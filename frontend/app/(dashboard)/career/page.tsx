@@ -77,9 +77,9 @@ export default function CareerPage() {
     e.preventDefault();
     try {
       await careerApi.updateSettings({
-        cf_handle: settings.cf_handle || undefined,
-        github_username: settings.github_username || undefined,
-        blog_url: settings.blog_url || undefined,
+        cf_handle: settings.cf_handle,
+        github_username: settings.github_username,
+        blog_url: settings.blog_url,
       });
       showToast('프로필 저장됨');
     } catch {

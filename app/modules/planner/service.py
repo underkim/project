@@ -161,13 +161,7 @@ async def update_item(session: AsyncSession, item_id: int, data: RoadmapItemUpda
 
 async def delete_item(session: AsyncSession, item_id: int) -> bool:
     async with session.begin():
-        stmt = (
-            select(RoadmapItem)
-            .where(RoadmapItem.id == item_id)
-            .options(selectinload(RoadmapItem.category))
-        )
-        result = await session.execute(stmt)
-        item = result.scalar_one_or_none()
+        item = await session.get(RoadmapItem, item_id)
         if item is None:
             return False
         await session.delete(item)

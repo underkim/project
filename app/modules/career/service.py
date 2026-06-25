@@ -29,7 +29,7 @@ async def update_settings(
             settings = CareerSettings(id=1, **data.model_dump())
             session.add(settings)
         else:
-            for field, value in data.model_dump(exclude_none=True).items():
+            for field, value in data.model_dump(exclude_unset=True).items():
                 setattr(settings, field, value)
     return CareerSettingsResponse.model_validate(settings)
 
