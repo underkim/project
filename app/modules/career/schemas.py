@@ -14,6 +14,13 @@ class CareerSettingsUpdate(BaseModel):
     github_username: str | None = None
     blog_url: str | None = None
 
+    @field_validator("cf_handle", "github_username", "blog_url")
+    @classmethod
+    def not_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("값이 비어 있을 수 없습니다 (삭제하려면 null을 보내세요)")
+        return v.strip() if v is not None else v
+
 
 class CFRatingLogCreate(BaseModel):
     log_date: date

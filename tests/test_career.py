@@ -1,7 +1,7 @@
 import pytest
 from datetime import date
 from pydantic import ValidationError
-from app.modules.career.schemas import CFRatingLogCreate
+from app.modules.career.schemas import CFRatingLogCreate, CareerSettingsUpdate
 
 
 def test_cf_rating_rejects_negative():
@@ -17,6 +17,21 @@ def test_cf_rating_allows_zero():
 def test_cf_rank_name_cannot_be_empty():
     with pytest.raises(ValidationError):
         CFRatingLogCreate(log_date=date(2026, 1, 1), rating=1500, rank_name="  ")
+
+
+def test_career_settings_rejects_empty_handle():
+    with pytest.raises(ValidationError):
+        CareerSettingsUpdate(cf_handle="")
+
+
+def test_career_settings_rejects_blank_username():
+    with pytest.raises(ValidationError):
+        CareerSettingsUpdate(github_username="   ")
+
+
+def test_career_settings_allows_none_to_clear():
+    s = CareerSettingsUpdate(cf_handle=None)
+    assert s.cf_handle is None
 
 
 def test_career_routes_registered(app):
