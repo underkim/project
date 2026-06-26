@@ -540,6 +540,7 @@ async def _process_multi_actions(session: AsyncSession, reply: str, actions: lis
     """actions 배열의 create/update를 순서대로 처리. 삭제는 배제(개별 확인 필요)."""
     saved_count = 0
     saved_modules: list[str] = []
+    saved_action_types: set[str] = set()
     error_parts: list[str] = []
 
     for act in actions:
@@ -570,12 +571,13 @@ async def _process_multi_actions(session: AsyncSession, reply: str, actions: lis
             elif action == "update":
                 updated = await _update(session, module, filter_, data)
                 if not updated:
-                    error_parts.append(f"수정 대상을 찾지 못했어요")
+                    error_parts.append("수정 대상을 찾지 못했어요")
                     continue
             else:
                 continue
 
             saved_count += 1
+            saved_action_types.add(action)
             if module not in saved_modules:
                 saved_modules.append(module)
 
@@ -605,7 +607,7 @@ async def _process_multi_actions(session: AsyncSession, reply: str, actions: lis
         "saved_count": saved_count,
         "module": saved_modules[0] if saved_modules else None,
         "modules": saved_modules if saved_modules else None,
-        "action": "create" if saved_count > 0 else None,
+        "action": ("update" if saved_action_types == {"update"} else "create") if saved_count > 0 else None,
         "suggestions": None,
     }
 
