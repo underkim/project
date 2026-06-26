@@ -247,3 +247,30 @@ async def test_chat_no_api_key(auth_client):
     data = resp.json()
     assert data["saved"] is False
     assert "GEMINI_API_KEY" in data["reply"] or "API" in data["reply"]
+
+
+@pytest.mark.asyncio
+async def test_chat_update_record_not_found(auth_client):
+    """update 액션 — 대상 기록이 없으면 saved: False."""
+    import json
+    mock_payload = {
+        "reply": "수정할게요!",
+        "action": "update",
+        "module": "growth_book",
+        "filter": {"title": "존재하지않는책제목XXXYYY"},
+        "data": {"status": "completed"},
+    }
+
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "책 완독했어"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is False
+    assert data["action"] == "update"
