@@ -115,6 +115,24 @@ async def test_update_sleep_not_found_returns_404(auth_client):
     assert resp.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_create_exercise_invalid_duration_returns_422(auth_client):
+    """duration_minutes = 0 이면 422여야 한다."""
+    resp = await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-06-20", "exercise_type": "러닝", "duration_minutes": 0,
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_sleep_invalid_quality_returns_422(auth_client):
+    """quality가 범위(1~5) 벗어나면 422여야 한다."""
+    resp = await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-06-20", "sleep_hours": 7.0, "quality": 6,
+    })
+    assert resp.status_code == 422
+
+
 async def test_health_returns_200(client):
     response = await client.get("/api/v1/health")
     assert response.status_code == 200
