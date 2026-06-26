@@ -97,6 +97,21 @@ async def test_overview_finance_reflected(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_overview_travel_next_trip_reflected(auth_client):
+    """예정된 여행 생성 후 overview.travel.next_trip_name이 반영되어야 한다."""
+    await auth_client.post("/api/v1/travel/trips", json={
+        "name": "다음 여행지 방콕", "destination": "태국",
+        "start_date": "2026-11-01", "end_date": "2026-11-05", "status": "planned",
+    })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["travel"] is not None
+    assert data["travel"]["next_trip_name"] == "다음 여행지 방콕"
+    assert data["travel"]["next_trip_destination"] == "태국"
+
+
+@pytest.mark.asyncio
 async def test_overview_career_reflected(auth_client):
     """CF 레이팅 기록 후 overview.career.latest_cf_rating이 반영되어야 한다."""
     await auth_client.put("/api/v1/career/settings", json={"cf_handle": "testcoder"})

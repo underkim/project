@@ -231,3 +231,15 @@ async def test_update_sleep_invalid_hours_returns_422(auth_client):
     log_id = create.json()["id"]
     resp = await auth_client.put(f"/api/v1/health/sleep/{log_id}", json={"sleep_hours": 0})
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_health_summary_empty_db(auth_client):
+    """데이터 없을 때 summary는 0과 None을 반환해야 한다."""
+    resp = await auth_client.get("/api/v1/health/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["exercise_days_this_week"] == 0
+    assert data["total_exercise_minutes_this_week"] == 0
+    assert data["avg_sleep_hours_this_week"] is None
+    assert data["avg_sleep_quality_this_week"] is None
