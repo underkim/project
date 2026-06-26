@@ -15,8 +15,8 @@ function calcDateToOffset(phaseStartDate: string, dateStr: string): number {
 
 // ─── 상태 계산 ──────────────────────────────────────────
 function computeStatus(deadline: string | null, isCompleted: boolean): ItemStatus | null {
-  if (!deadline) return null;
   if (isCompleted) return 'completed';
+  if (!deadline) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const dl = new Date(deadline);

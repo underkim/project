@@ -26,10 +26,10 @@ from app.modules.planner.schemas import (
 
 
 def _item_status(deadline: date | None, is_completed: bool) -> ItemStatus | None:
-    if deadline is None:
-        return None
     if is_completed:
         return ItemStatus.completed
+    if deadline is None:
+        return None
     today = date.today()
     if deadline < today:
         return ItemStatus.overdue
@@ -182,7 +182,7 @@ async def create_category(session: AsyncSession, data: CategoryCreate) -> Catego
             icon=data.icon,
             title=data.title,
             subtitle=data.subtitle,
-            order_index=(max_order or -1) + 1,
+            order_index=(max_order + 1) if max_order is not None else 0,
         )
         session.add(cat)
         await session.flush()

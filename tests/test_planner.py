@@ -33,6 +33,11 @@ def test_item_status_completed():
     assert _item_status(date(2025, 1, 1), is_completed=True) == ItemStatus.completed
 
 
+def test_item_status_completed_without_deadline():
+    """완료된 항목은 마감일이 없어도 completed를 반환해야 한다."""
+    assert _item_status(None, is_completed=True) == ItemStatus.completed
+
+
 def test_item_status_overdue():
     assert _item_status(date(2020, 1, 1), is_completed=False) == ItemStatus.overdue
 
@@ -297,3 +302,73 @@ async def test_planner_item_create_empty_text_returns_422(auth_client, planner_s
         "category_id": planner_seed["category_id"], "text": "  ", "offset": 1.0,
     })
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_planner_requires_auth(client):
+    """비인증 요청은 401을 반환해야 한다."""
+    resp = await client.get("/api/v1/planner/roadmap")
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_completed_item_without_start_date_has_completed_status(auth_client, planner_seed):
+    """시작일 없이 완료된 항목의 status는 completed여야 한다 (대시보드 집계 정확성)."""
+    cat_id = planner_seed["category_id"]
+    create = await auth_client.post("/api/v1/planner/items", json={
+        "category_id": cat_id, "text": "완료 상태 검증 항목", "offset": 1.0,
+    })
+    item_id = create.json()["id"]
+
+    await auth_client.patch(f"/api/v1/planner/items/{item_id}/toggle")
+
+    roadmap = (await auth_client.get("/api/v1/planner/roadmap")).json()
+    all_items = [
+        item
+        for phase in roadmap["phases"]
+        for cat in phase["categories"]
+        for item in cat["items"]
+    ]
+    found = next((i for i in all_items if i["id"] == item_id), None)
+    assert found is not None
+    assert found["is_completed"] is True
+    assert found["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_create_category_order_index_no_collision(auth_client, planner_seed):
+    """카테고리를 연속 추가해도 order_index가 충돌하지 않아야 한다."""
+    phase_id = planner_seed["phase_id"]
+
+    # planner_seed 이미 order_index=0 카테고리 존재
+    cat1 = (await auth_client.post("/api/v1/planner/categories", json={
+        "phase_id": phase_id, "title": "두 번째 카테고리", "icon": "🎯",
+    })).json()
+    cat2 = (await auth_client.post("/api/v1/planner/categories", json={
+        "phase_id": phase_id, "title": "세 번째 카테고리", "icon": "🚀",
+    })).json()
+
+    assert cat1["order_index"] != cat2["order_index"]
+    assert cat1["order_index"] > 0  # 0은 이미 seed에 있으므로 1 이상이어야 함
+
+
+@pytest.mark.asyncio
+async def test_roadmap_with_start_date_shows_deadlines(auth_client, planner_seed):
+    """시작일 설정 후 항목에 마감일과 status가 나타나야 한다."""
+    cat_id = planner_seed["category_id"]
+    await auth_client.post("/api/v1/planner/items", json={
+        "category_id": cat_id, "text": "마감일 검증 항목", "offset": 3.0,
+    })
+    await auth_client.put("/api/v1/planner/settings", json={"start_date": "2020-01-01"})
+
+    roadmap = (await auth_client.get("/api/v1/planner/roadmap")).json()
+    all_items = [
+        item
+        for phase in roadmap["phases"]
+        for cat in phase["categories"]
+        for item in cat["items"]
+    ]
+    found = next((i for i in all_items if i["text"] == "마감일 검증 항목"), None)
+    assert found is not None
+    assert found["deadline"] is not None
+    assert found["status"] == "overdue"  # 2020-01-01 기준 → 이미 지남
