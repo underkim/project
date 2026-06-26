@@ -118,3 +118,19 @@ async def test_cf_rating_list_returns_200(auth_client):
     resp = await auth_client.get("/api/v1/career/cf-ratings")
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_update_career_settings_blank_handle_returns_422(auth_client):
+    """cf_handle을 공백 문자열로 수정하면 422여야 한다 (null을 써야 함)."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"cf_handle": "   "})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_cf_rating_blank_rank_returns_422(auth_client):
+    """rank_name이 공백이면 422여야 한다."""
+    resp = await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-07-01", "rating": 1500, "rank_name": "  ",
+    })
+    assert resp.status_code == 422

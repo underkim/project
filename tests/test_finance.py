@@ -142,6 +142,20 @@ async def test_delete_finance_record_not_found_returns_404(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_list_finance_records_returns_list(auth_client):
+    """재테크 기록 목록이 리스트로 반환되어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-07-10", "total_assets": 6000,
+        "monthly_income": 400, "monthly_expense": 250,
+    })
+    resp = await auth_client.get("/api/v1/finance/records")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+    assert len(resp.json()) >= 1
+    assert resp.json()[0]["total_assets"] == 6000
+
+
+@pytest.mark.asyncio
 async def test_update_finance_record_negative_value_returns_422(auth_client):
     """자산/수입/지출에 음수 값으로 수정하면 422여야 한다."""
     create = await auth_client.post("/api/v1/finance/records", json={
