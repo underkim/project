@@ -254,3 +254,28 @@ async def test_growth_summary_reflects_english(auth_client):
     data = resp.json()
     assert data["english_days_this_month"] >= 1
     assert data["english_minutes_this_month"] >= 40
+
+
+@pytest.mark.asyncio
+async def test_growth_summary_books_accuracy(auth_client):
+    """올해 완독한 책과 독서 중인 책이 summary에 정확히 반영되어야 한다."""
+    from datetime import date
+    this_year = str(date.today().year)
+
+    await auth_client.post("/api/v1/growth/books", json={
+        "title": "완독 책 A", "status": "completed",
+        "start_date": f"{this_year}-01-01", "end_date": f"{this_year}-02-01",
+    })
+    await auth_client.post("/api/v1/growth/books", json={
+        "title": "완독 책 B", "status": "completed",
+        "start_date": f"{this_year}-03-01", "end_date": f"{this_year}-04-01",
+    })
+    await auth_client.post("/api/v1/growth/books", json={
+        "title": "읽는 중 책", "status": "reading",
+    })
+
+    resp = await auth_client.get("/api/v1/growth/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["books_completed_this_year"] >= 2
+    assert data["books_reading"] >= 1
