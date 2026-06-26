@@ -716,10 +716,10 @@ async def parse_and_save(
                 "action": action,
                 "suggestions": None,
             }
-        except Exception as exc:
+        except Exception:
             await session.rollback()
             return {
-                "reply": f"저장에 필요한 정보가 부족해요. 좀 더 구체적으로 말씀해 주세요.\n({type(exc).__name__}: {exc})",
+                "reply": "저장에 필요한 정보가 부족해요. 좀 더 구체적으로 말씀해 주세요.",
                 "saved": False,
                 "module": module,
                 "action": action,
@@ -732,10 +732,10 @@ async def parse_and_save(
             updated = await _update(session, module, parsed.get("filter") or {}, parsed.get("data") or {})
             if updated:
                 await session.commit()
-        except Exception as exc:
+        except Exception:
             await session.rollback()
             return {
-                "reply": f"수정에 필요한 정보가 부족해요. 좀 더 구체적으로 말씀해 주세요.\n({type(exc).__name__}: {exc})",
+                "reply": "수정에 필요한 정보가 부족해요. 좀 더 구체적으로 말씀해 주세요.",
                 "saved": False,
                 "saved_count": 0,
                 "module": module,
@@ -743,7 +743,7 @@ async def parse_and_save(
                 "suggestions": None,
             }
         if not updated:
-            return {"reply": "수정할 기록을 찾지 못했어요.", "saved": False, "saved_count": 0, "module": module, "action": action, "suggestions": None}
+            return {"reply": f"{reply}\n\n⚠️ 수정할 기록을 찾지 못했어요.", "saved": False, "saved_count": 0, "module": module, "action": action, "suggestions": None}
         return {"reply": reply, "saved": True, "saved_count": 1, "module": module, "action": "update", "suggestions": None}
 
     if action == "delete":
@@ -791,24 +791,32 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
     from app.modules.travel.models import Trip
 
     if module == "health_exercise":
+        log_date = _safe_date(filter_.get("log_date", ""))
+        exercise_type = filter_.get("exercise_type")
+        if not log_date and not exercise_type:
+            return None
         q = select(ExerciseLog)
-        if d := _safe_date(filter_.get("log_date", "")):
-            q = q.where(ExerciseLog.log_date == d)
-        if t := filter_.get("exercise_type"):
-            q = q.where(ExerciseLog.exercise_type.ilike(f"%{_escape_like(t)}%", escape="\\"))
+        if log_date:
+            q = q.where(ExerciseLog.log_date == log_date)
+        if exercise_type:
+            q = q.where(ExerciseLog.exercise_type.ilike(f"%{_escape_like(exercise_type)}%", escape="\\"))
         return (await session.execute(q.order_by(ExerciseLog.log_date.desc()).limit(1))).scalars().first()
 
     if module == "health_sleep":
-        q = select(SleepLog)
-        if d := _safe_date(filter_.get("log_date", "")):
-            q = q.where(SleepLog.log_date == d)
-        return (await session.execute(q.order_by(SleepLog.log_date.desc()).limit(1))).scalars().first()
+        log_date = _safe_date(filter_.get("log_date", ""))
+        if not log_date:
+            return None
+        return (await session.execute(
+            select(SleepLog).where(SleepLog.log_date == log_date).limit(1)
+        )).scalars().first()
 
     if module == "finance_record":
-        q = select(AssetRecord)
-        if d := _safe_date(filter_.get("record_date", "")):
-            q = q.where(AssetRecord.record_date == d)
-        return (await session.execute(q.order_by(AssetRecord.record_date.desc()).limit(1))).scalars().first()
+        record_date = _safe_date(filter_.get("record_date", ""))
+        if not record_date:
+            return None
+        return (await session.execute(
+            select(AssetRecord).where(AssetRecord.record_date == record_date).limit(1)
+        )).scalars().first()
 
     if module == "growth_book":
         title_q = filter_.get("title", "")
@@ -818,18 +826,24 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
         return (await session.execute(q.order_by(BookRecord.id.desc()).limit(1))).scalars().first()
 
     if module == "growth_english":
+        log_date = _safe_date(filter_.get("log_date", ""))
+        activity_type = filter_.get("activity_type")
+        if not log_date and not activity_type:
+            return None
         q = select(EnglishLog)
-        if d := _safe_date(filter_.get("log_date", "")):
-            q = q.where(EnglishLog.log_date == d)
-        if t := filter_.get("activity_type"):
-            q = q.where(EnglishLog.activity_type.ilike(f"%{_escape_like(t)}%", escape="\\"))
+        if log_date:
+            q = q.where(EnglishLog.log_date == log_date)
+        if activity_type:
+            q = q.where(EnglishLog.activity_type.ilike(f"%{_escape_like(activity_type)}%", escape="\\"))
         return (await session.execute(q.order_by(EnglishLog.log_date.desc()).limit(1))).scalars().first()
 
     if module == "career_cf_rating":
-        q = select(CFRatingLog)
-        if d := _safe_date(filter_.get("log_date", "")):
-            q = q.where(CFRatingLog.log_date == d)
-        return (await session.execute(q.order_by(CFRatingLog.log_date.desc()).limit(1))).scalars().first()
+        log_date = _safe_date(filter_.get("log_date", ""))
+        if not log_date:
+            return None
+        return (await session.execute(
+            select(CFRatingLog).where(CFRatingLog.log_date == log_date).limit(1)
+        )).scalars().first()
 
     if module == "travel_trip":
         # name 매치 우선, 없으면 destination 매치
