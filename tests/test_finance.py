@@ -120,3 +120,13 @@ async def test_delete_finance_record(auth_client):
     assert all(r["id"] != record_id for r in list_resp.json())
 
 
+@pytest.mark.asyncio
+async def test_update_finance_record_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/finance/records/99999", json={"total_assets": 5000})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_finance_record_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/finance/records/99999")
+    assert resp.status_code == 404

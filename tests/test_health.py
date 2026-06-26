@@ -103,6 +103,18 @@ async def test_create_sleep_duplicate_date_returns_409(auth_client):
     assert resp2.status_code == 409
 
 
+@pytest.mark.asyncio
+async def test_update_exercise_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/health/exercise/99999", json={"duration_minutes": 30})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_sleep_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/health/sleep/99999", json={"quality": 3})
+    assert resp.status_code == 404
+
+
 async def test_health_returns_200(client):
     response = await client.get("/api/v1/health")
     assert response.status_code == 200
