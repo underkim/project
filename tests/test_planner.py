@@ -203,3 +203,33 @@ async def test_update_and_delete_item(auth_client, planner_seed):
 
     del_resp = await auth_client.delete(f"/api/v1/planner/items/{item_id}")
     assert del_resp.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_create_item_with_invalid_category_returns_404(auth_client):
+    """존재하지 않는 category_id로 항목 생성 시 404여야 한다."""
+    resp = await auth_client.post("/api/v1/planner/items", json={
+        "category_id": 99999, "text": "유효하지 않은 카테고리", "offset": 1.0,
+    })
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_category_with_invalid_phase_returns_404(auth_client):
+    """존재하지 않는 phase_id로 카테고리 생성 시 404여야 한다."""
+    resp = await auth_client.post("/api/v1/planner/categories", json={
+        "phase_id": 99999, "title": "유효하지 않은 Phase", "icon": "🎯",
+    })
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_item_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/planner/items/99999", json={"text": "없는 항목"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_category_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/planner/categories/99999")
+    assert resp.status_code == 404
