@@ -250,8 +250,8 @@ async def _load_categories_context(session: AsyncSession) -> str:
     running_months = 0
     for phase in phases:
         if roadmap_start:
-            ph_start = roadmap_start + timedelta(days=int(running_months * 30.44))
-            ph_end = ph_start + timedelta(days=int((phase.months or 0) * 30.44))
+            ph_start = roadmap_start + relativedelta(months=running_months)
+            ph_end = ph_start + relativedelta(months=(phase.months or 0))
             date_range = f" {ph_start.strftime('%Y.%m')}~{ph_end.strftime('%Y.%m')}"
         else:
             date_range = ""
