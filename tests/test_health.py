@@ -133,6 +133,18 @@ async def test_create_sleep_invalid_quality_returns_422(auth_client):
     assert resp.status_code == 422
 
 
+@pytest.mark.asyncio
+async def test_delete_exercise_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/health/exercise/99999")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_sleep_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/health/sleep/99999")
+    assert resp.status_code == 404
+
+
 async def test_health_returns_200(client):
     response = await client.get("/api/v1/health")
     assert response.status_code == 200

@@ -184,3 +184,15 @@ async def test_create_english_zero_duration_returns_422(auth_client):
         "log_date": "2026-06-15", "activity_type": "reading", "duration_minutes": 0,
     })
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_delete_book_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/growth/books/99999")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_english_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/growth/english/99999")
+    assert resp.status_code == 404
