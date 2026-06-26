@@ -94,3 +94,18 @@ async def test_overview_finance_reflected(auth_client):
     data = resp.json()
     assert data["finance"] is not None
     assert data["finance"]["latest_total_assets"] == 8888
+
+
+@pytest.mark.asyncio
+async def test_overview_career_reflected(auth_client):
+    """CF 레이팅 기록 후 overview.career.latest_cf_rating이 반영되어야 한다."""
+    await auth_client.put("/api/v1/career/settings", json={"cf_handle": "testcoder"})
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-06-01", "rating": 1800, "rank_name": "master",
+    })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["career"] is not None
+    assert data["career"]["cf_handle"] == "testcoder"
+    assert data["career"]["latest_cf_rating"] == 1800

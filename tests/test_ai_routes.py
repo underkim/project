@@ -250,6 +250,62 @@ async def test_chat_no_api_key(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_chat_create_finance_record(auth_client):
+    """create 액션 — finance_record 모듈 저장 시 saved: True."""
+    import json
+    mock_payload = {
+        "reply": "자산 기록 완료!",
+        "action": "create",
+        "module": "finance_record",
+        "data": {
+            "record_date": "2026-06-01",
+            "total_assets": 5000,
+            "monthly_income": 400,
+            "monthly_expense": 250,
+        },
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "6월 자산 기록해줘"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["module"] == "finance_record"
+    assert data["action"] == "create"
+
+
+@pytest.mark.asyncio
+async def test_chat_create_growth_book(auth_client):
+    """create 액션 — growth_book 모듈 저장 시 saved: True."""
+    import json
+    mock_payload = {
+        "reply": "독서 목록에 추가했어요!",
+        "action": "create",
+        "module": "growth_book",
+        "data": {"title": "클린 코드", "status": "planned"},
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "클린 코드 읽을 예정이야"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["module"] == "growth_book"
+
+
+@pytest.mark.asyncio
 async def test_chat_update_record_not_found(auth_client):
     """update 액션 — 대상 기록이 없으면 saved: False."""
     import json
