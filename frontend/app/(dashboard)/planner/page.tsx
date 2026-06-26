@@ -748,6 +748,7 @@ export default function PlannerPage() {
   const [selectedCatIds, setSelectedCatIds] = useState<Set<number>>(new Set());
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const hasAutoFocused = useRef(false);
 
   useEffect(() => {
     if (!error) return;
@@ -759,6 +760,11 @@ export default function PlannerPage() {
     const roadmap = await plannerApi.getRoadmap();
     setPhases(roadmap.phases);
     if (roadmap.start_date) setStartDate(roadmap.start_date);
+    // 최초 로드 시 is_current Phase로 자동 이동
+    if (!hasAutoFocused.current && roadmap.phases.length > 0) {
+      const idx = roadmap.phases.findIndex((p: PhaseResponse) => p.is_current);
+      if (idx !== -1) { setActiveTab(idx); hasAutoFocused.current = true; }
+    }
   }
 
   useEffect(() => {
@@ -952,7 +958,7 @@ export default function PlannerPage() {
     );
   }
 
-  const activePhase = phases[activeTab];
+  const activePhase = phases[activeTab] ?? phases[0];
   const allItems = phases.flatMap(p => p.categories.flatMap(c => c.items));
   const totalItems = allItems.length;
   const doneItems = allItems.filter(i => i.is_completed).length;
@@ -1001,18 +1007,58 @@ export default function PlannerPage() {
         </div>
       )}
 
-      {/* 전체 진행률 바 */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-slate-700">전체 진행률</span>
-          <span className="text-sm font-semibold text-slate-900">{completionPct}%</span>
+      {!startDate && phases.length > 0 && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
+          <span className="shrink-0">💡</span>
+          <span>오른쪽 상단에서 <strong>로드맵 시작일</strong>을 설정하면 마감일과 진행 상태가 자동으로 계산됩니다.</span>
         </div>
-        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-slate-900 rounded-full transition-all duration-700"
-            style={{ width: `${completionPct}%` }}
-          />
+      )}
+
+      {/* 전체 진행률 + Phase별 분리 */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 space-y-4">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-slate-700">전체 진행률</span>
+            <span className="text-sm font-semibold text-slate-900">{completionPct}%</span>
+          </div>
+          <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-slate-900 rounded-full transition-all duration-700"
+              style={{ width: `${completionPct}%` }}
+            />
+          </div>
         </div>
+        {phases.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            {phases.map((phase, idx) => {
+              const phItems = phase.categories.flatMap(c => c.items);
+              const phDone = phItems.filter(i => i.is_completed).length;
+              const phTotal = phItems.length;
+              const phPct = phTotal > 0 ? Math.round((phDone / phTotal) * 100) : 0;
+              const isActive = activeTab === idx;
+              return (
+                <button
+                  key={phase.id}
+                  onClick={() => { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); cancelSelectMode(); }}
+                  className={`text-left rounded-xl p-2.5 transition-colors hover:bg-slate-50 ${isActive ? 'bg-slate-50 ring-1 ring-slate-200' : ''}`}
+                >
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: phase.color }} />
+                    <span className="text-xs font-semibold text-slate-700 truncate">{phase.name}</span>
+                    {phase.is_current && <span className="text-[9px] text-emerald-500 font-black shrink-0">●</span>}
+                  </div>
+                  <div className="h-1 bg-slate-100 rounded-full overflow-hidden mb-1">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${phPct}%`, backgroundColor: phase.color }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400">{phDone}/{phTotal} · {phPct}%</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 임박/지연 항목 */}
@@ -1073,8 +1119,16 @@ export default function PlannerPage() {
               </div>
               <div className="text-[11px] font-normal text-slate-400">{phase.label}</div>
               <div className="text-[11px] font-normal opacity-60">{pDone}/{pTotal}</div>
+              {pTotal > 0 && (
+                <div className="mt-1.5 h-1 bg-slate-200/60 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round(pDone / pTotal * 100)}%`, backgroundColor: phase.color }}
+                  />
+                </div>
+              )}
               {phase.is_current && (
-                <div className="mt-0.5">
+                <div className="mt-1">
                   <span className="inline-block text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">진행 중</span>
                 </div>
               )}
@@ -1093,21 +1147,37 @@ export default function PlannerPage() {
       )}
 
       {/* Phase 메타 정보 */}
-      {activePhase && editingPhaseId !== activePhase.id && (
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 px-1">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: activePhase.color }} />
-            <span>{activePhase.months}개월</span>
-          </span>
-          {activePhase.start_date && activePhase.end_date && (
-            <span>{activePhase.start_date} → {activePhase.end_date}</span>
-          )}
-          <span className="font-medium text-slate-600">
-            {activePhase.categories.flatMap(c => c.items).filter(i => i.is_completed).length}
-            /{activePhase.categories.flatMap(c => c.items).length} 완료
-          </span>
-        </div>
-      )}
+      {activePhase && editingPhaseId !== activePhase.id && (() => {
+        const phItems = activePhase.categories.flatMap(c => c.items);
+        const phDone = phItems.filter(i => i.is_completed).length;
+        const phTotal = phItems.length;
+        const phPct = phTotal > 0 ? Math.round(phDone / phTotal * 100) : 0;
+        return (
+          <div className="space-y-2 px-1">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: activePhase.color }} />
+                <span>{activePhase.months}개월</span>
+              </span>
+              {activePhase.start_date && activePhase.end_date && (
+                <span>{activePhase.start_date} → {activePhase.end_date}</span>
+              )}
+              {activePhase.is_current && (
+                <span className="text-emerald-600 font-semibold">현재 진행 중</span>
+              )}
+              <span className="font-medium text-slate-600 ml-auto">{phDone}/{phTotal} 완료 ({phPct}%)</span>
+            </div>
+            {phTotal > 0 && (
+              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${phPct}%`, backgroundColor: activePhase.color }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 카테고리 선택 툴바 */}
       {activePhase && (
@@ -1172,7 +1242,18 @@ export default function PlannerPage() {
 
       {/* 카테고리 그리드 */}
       {activePhase && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {activePhase.categories.length === 0 && !showAddCategory && (
+            <div className="col-span-full py-12 text-center">
+              <p className="text-sm text-slate-400 mb-3">이 Phase에 카테고리가 없습니다.</p>
+              <button
+                onClick={() => setShowAddCategory(true)}
+                className="text-sm text-slate-600 hover:text-slate-900 underline"
+              >
+                첫 카테고리 추가하기
+              </button>
+            </div>
+          )}
           {activePhase.categories.map(cat => (
             <CategoryCard
               key={cat.id}
