@@ -41,6 +41,8 @@ class PhaseResponse(BaseModel):
     months: int
     color: str
     start_date: date | None = None
+    end_date: date | None = None
+    is_current: bool = False
     categories: list[CategoryResponse] = []
 
     model_config = {"from_attributes": True}

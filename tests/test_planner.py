@@ -372,3 +372,28 @@ async def test_roadmap_with_start_date_shows_deadlines(auth_client, planner_seed
     assert found is not None
     assert found["deadline"] is not None
     assert found["status"] == "overdue"  # 2020-01-01 기준 → 이미 지남
+
+
+@pytest.mark.asyncio
+async def test_roadmap_phase_end_date_and_is_current(auth_client, planner_seed):
+    """시작일 설정 후 Phase에 end_date와 is_current가 포함되어야 한다."""
+    from datetime import timedelta
+    today = date.today()
+    # Phase months=12, 오늘 기준 3개월 전 시작 → is_current True
+    start = (today - timedelta(days=90)).isoformat()
+    await auth_client.put("/api/v1/planner/settings", json={"start_date": start})
+
+    roadmap = (await auth_client.get("/api/v1/planner/roadmap")).json()
+    assert roadmap["phases"]
+    phase = roadmap["phases"][0]
+
+    assert "end_date" in phase
+    assert phase["end_date"] is not None
+    assert "is_current" in phase
+    assert phase["is_current"] is True  # 시작 후 12개월 이내이므로
+
+    # end_date가 start_date보다 이후여야 한다
+    from datetime import datetime
+    s = datetime.fromisoformat(phase["start_date"])
+    e = datetime.fromisoformat(phase["end_date"])
+    assert e > s

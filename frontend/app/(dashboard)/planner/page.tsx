@@ -615,12 +615,17 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
   const [color, setColor] = useState(phase.color);
   const [saving, setSaving] = useState(false);
 
-  // 종료일 파생: phase.start_date + months
+  // 종료일 파생: months 미변경이면 서버 값 사용, 변경 시 overflow-safe 계산
   const computedEndDate = (() => {
     if (!phase.start_date || !months || isNaN(Number(months))) return null;
-    const d = new Date(phase.start_date);
-    d.setMonth(d.getMonth() + Number(months));
-    return d.toISOString().split('T')[0];
+    const n = Number(months);
+    if (n === phase.months && phase.end_date) return phase.end_date;
+    const [y, mo, d] = phase.start_date.split('-').map(Number);
+    const tgt = mo - 1 + n;
+    const ty = y + Math.floor(tgt / 12);
+    const tm = tgt % 12;
+    const last = new Date(ty, tm + 1, 0).getDate();
+    return new Date(ty, tm, Math.min(d, last)).toISOString().split('T')[0];
   })();
 
   function handleEndDateChange(val: string) {
@@ -1068,6 +1073,11 @@ export default function PlannerPage() {
               </div>
               <div className="text-[11px] font-normal text-slate-400">{phase.label}</div>
               <div className="text-[11px] font-normal opacity-60">{pDone}/{pTotal}</div>
+              {phase.is_current && (
+                <div className="mt-0.5">
+                  <span className="inline-block text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">진행 중</span>
+                </div>
+              )}
             </div>
           );
         })}
@@ -1089,16 +1099,8 @@ export default function PlannerPage() {
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: activePhase.color }} />
             <span>{activePhase.months}개월</span>
           </span>
-          {activePhase.start_date && (
-            <span>
-              {activePhase.start_date}
-              {' → '}
-              {(() => {
-                const d = new Date(activePhase.start_date);
-                d.setMonth(d.getMonth() + activePhase.months);
-                return d.toISOString().split('T')[0];
-              })()}
-            </span>
+          {activePhase.start_date && activePhase.end_date && (
+            <span>{activePhase.start_date} → {activePhase.end_date}</span>
           )}
           <span className="font-medium text-slate-600">
             {activePhase.categories.flatMap(c => c.items).filter(i => i.is_completed).length}

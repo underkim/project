@@ -81,9 +81,16 @@ async def get_roadmap(session: AsyncSession) -> RoadmapResponse:
     result = await session.execute(stmt)
     phases = result.scalars().all()
 
+    today = date.today()
     phase_responses = []
     for phase in phases:
         phase_start = _phase_start(start_date, list(phases), phase.order_index) if start_date else None
+        phase_end = (phase_start + relativedelta(months=phase.months)) if phase_start else None
+        is_current = (
+            phase_start is not None
+            and phase_end is not None
+            and phase_start <= today < phase_end
+        )
 
         category_responses = []
         for category in phase.categories:
@@ -121,6 +128,8 @@ async def get_roadmap(session: AsyncSession) -> RoadmapResponse:
                 months=phase.months,
                 color=phase.color,
                 start_date=phase_start,
+                end_date=phase_end,
+                is_current=is_current,
                 categories=category_responses,
             )
         )

@@ -28,6 +28,8 @@ export interface PhaseResponse {
   months: number;
   color: string;
   start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
   categories: CategoryResponse[];
 }
 
