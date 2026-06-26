@@ -196,3 +196,23 @@ async def test_delete_book_not_found_returns_404(auth_client):
 async def test_delete_english_not_found_returns_404(auth_client):
     resp = await auth_client.delete("/api/v1/growth/english/99999")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_english_invalid_duration_returns_422(auth_client):
+    """영어 학습 시간 0 이하로 수정하면 422여야 한다."""
+    create = await auth_client.post("/api/v1/growth/english", json={
+        "log_date": "2026-07-01", "activity_type": "reading", "duration_minutes": 30,
+    })
+    log_id = create.json()["id"]
+    resp = await auth_client.put(f"/api/v1/growth/english/{log_id}", json={"duration_minutes": 0})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_book_invalid_rating_returns_422(auth_client):
+    """도서 평점 범위(1~5) 벗어난 값으로 수정하면 422여야 한다."""
+    create = await auth_client.post("/api/v1/growth/books", json={"title": "평점 검증 책"})
+    book_id = create.json()["id"]
+    resp = await auth_client.put(f"/api/v1/growth/books/{book_id}", json={"rating": 6})
+    assert resp.status_code == 422

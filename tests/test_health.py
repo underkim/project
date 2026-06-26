@@ -145,6 +145,28 @@ async def test_delete_sleep_not_found_returns_404(auth_client):
     assert resp.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_update_sleep_invalid_quality_returns_422(auth_client):
+    """수면 품질 범위(1~5) 벗어난 값으로 수정하면 422여야 한다."""
+    create = await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-07-01", "sleep_hours": 7.0, "quality": 4,
+    })
+    log_id = create.json()["id"]
+    resp = await auth_client.put(f"/api/v1/health/sleep/{log_id}", json={"quality": 0})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_exercise_invalid_duration_returns_422(auth_client):
+    """운동 시간 0분 이하로 수정하면 422여야 한다."""
+    create = await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-07-02", "exercise_type": "줄넘기", "duration_minutes": 20,
+    })
+    log_id = create.json()["id"]
+    resp = await auth_client.put(f"/api/v1/health/exercise/{log_id}", json={"duration_minutes": -1})
+    assert resp.status_code == 422
+
+
 async def test_health_returns_200(client):
     response = await client.get("/api/v1/health")
     assert response.status_code == 200
