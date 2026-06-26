@@ -13,6 +13,31 @@ function calcDateToOffset(phaseStartDate: string, dateStr: string): number {
   return parseFloat((diffMs / (1000 * 60 * 60 * 24 * 30.44)).toFixed(2));
 }
 
+// ─── 달력 기반 월 연산 유틸 ─────────────────────────────
+function addMonthsNoOverflow(startDateStr: string, n: number): string {
+  const [y, mo, d] = startDateStr.split('-').map(Number);
+  const tgt = mo - 1 + n;
+  const ty = y + Math.floor(tgt / 12);
+  const tm = tgt % 12;
+  const last = new Date(ty, tm + 1, 0).getDate();
+  return new Date(ty, tm, Math.min(d, last)).toISOString().split('T')[0];
+}
+
+function calendarMonthsDiff(startDateStr: string, endDateStr: string): number {
+  const [sy, sm] = startDateStr.split('-').map(Number);
+  const [ey, em] = endDateStr.split('-').map(Number);
+  return Math.max(1, (ey - sy) * 12 + (em - sm));
+}
+
+// ─── Phase 진행률 계산 헬퍼 ─────────────────────────────
+function phaseProgress(phase: PhaseResponse) {
+  const items = phase.categories.flatMap(c => c.items);
+  const done = items.filter(i => i.is_completed).length;
+  const total = items.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  return { done, total, pct };
+}
+
 // ─── 상태 계산 ──────────────────────────────────────────
 function computeStatus(deadline: string | null, isCompleted: boolean): ItemStatus | null {
   if (isCompleted) return 'completed';
@@ -615,26 +640,17 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
   const [color, setColor] = useState(phase.color);
   const [saving, setSaving] = useState(false);
 
-  // 종료일 파생: months 미변경이면 서버 값 사용, 변경 시 overflow-safe 계산
+  // months 미변경이면 서버 end_date 사용, 변경 시 addMonthsNoOverflow로 재계산
   const computedEndDate = (() => {
     if (!phase.start_date || !months || isNaN(Number(months))) return null;
     const n = Number(months);
     if (n === phase.months && phase.end_date) return phase.end_date;
-    const [y, mo, d] = phase.start_date.split('-').map(Number);
-    const tgt = mo - 1 + n;
-    const ty = y + Math.floor(tgt / 12);
-    const tm = tgt % 12;
-    const last = new Date(ty, tm + 1, 0).getDate();
-    return new Date(ty, tm, Math.min(d, last)).toISOString().split('T')[0];
+    return addMonthsNoOverflow(phase.start_date, n);
   })();
 
   function handleEndDateChange(val: string) {
     if (!val || !phase.start_date) return;
-    const start = new Date(phase.start_date);
-    const end = new Date(val);
-    const diffMs = end.getTime() - start.getTime();
-    const diffMonths = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30.44)));
-    setMonths(String(diffMonths));
+    setMonths(String(calendarMonthsDiff(phase.start_date, val)));
   }
 
   async function handleSave() {
@@ -760,11 +776,6 @@ export default function PlannerPage() {
     const roadmap = await plannerApi.getRoadmap();
     setPhases(roadmap.phases);
     if (roadmap.start_date) setStartDate(roadmap.start_date);
-    // 최초 로드 시 is_current Phase로 자동 이동
-    if (!hasAutoFocused.current && roadmap.phases.length > 0) {
-      const idx = roadmap.phases.findIndex((p: PhaseResponse) => p.is_current);
-      if (idx !== -1) { setActiveTab(idx); hasAutoFocused.current = true; }
-    }
   }
 
   useEffect(() => {
@@ -773,6 +784,16 @@ export default function PlannerPage() {
       .catch((err: Error) => setError(err.message || '데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
   }, []);
+
+  // 최초 로드 후 is_current Phase로 자동 이동 (loadRoadmap과 분리)
+  useEffect(() => {
+    if (hasAutoFocused.current || phases.length === 0) return;
+    const idx = phases.findIndex(p => p.is_current);
+    if (idx !== -1) {
+      setActiveTab(idx);
+      hasAutoFocused.current = true;
+    }
+  }, [phases]);
 
   useAiRefresh(['planner'], loadRoadmap);
 
@@ -859,10 +880,14 @@ export default function PlannerPage() {
   async function handlePhaseUpdate(id: number, name: string, label: string, months: number, color: string) {
     try {
       await plannerApi.updatePhase(id, { name, label, months, color });
-      setPhases(prev => prev.map(p =>
-        p.id === id ? { ...p, name, label, months, color } : p
-      ));
-      // 기간이 바뀌면 deadline도 바뀌므로 전체 재조회
+      const todayStr = new Date().toISOString().split('T')[0];
+      setPhases(prev => prev.map(p => {
+        if (p.id !== id) return p;
+        const end_date = p.start_date ? addMonthsNoOverflow(p.start_date, months) : null;
+        const is_current = !!p.start_date && !!end_date && p.start_date <= todayStr && todayStr < end_date;
+        return { ...p, name, label, months, color, end_date, is_current };
+      }));
+      // 기간 변경 시 이후 Phase들의 start_date·deadline도 바뀌므로 전체 재조회
       await loadRoadmap();
     } catch {
       setError('Phase 수정에 실패했습니다.');
@@ -963,6 +988,7 @@ export default function PlannerPage() {
   const totalItems = allItems.length;
   const doneItems = allItems.filter(i => i.is_completed).length;
   const completionPct = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
+  const activePhaseProg = activePhase ? phaseProgress(activePhase) : { done: 0, total: 0, pct: 0 };
 
   const urgentItems: UrgentItem[] = phases.flatMap(p =>
     p.categories.flatMap(c =>
@@ -1031,10 +1057,7 @@ export default function PlannerPage() {
         {phases.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
             {phases.map((phase, idx) => {
-              const phItems = phase.categories.flatMap(c => c.items);
-              const phDone = phItems.filter(i => i.is_completed).length;
-              const phTotal = phItems.length;
-              const phPct = phTotal > 0 ? Math.round((phDone / phTotal) * 100) : 0;
+              const { done: phDone, total: phTotal, pct: phPct } = phaseProgress(phase);
               const isActive = activeTab === idx;
               return (
                 <button
@@ -1088,8 +1111,7 @@ export default function PlannerPage() {
       {/* Phase 탭 */}
       <div className="flex gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl">
         {phases.map((phase, idx) => {
-          const pDone = phase.categories.flatMap(c => c.items).filter(i => i.is_completed).length;
-          const pTotal = phase.categories.flatMap(c => c.items).length;
+          const { done: pDone, total: pTotal, pct: pPct } = phaseProgress(phase);
           const isActive = activeTab === idx;
           return (
             <div
@@ -1123,7 +1145,7 @@ export default function PlannerPage() {
                 <div className="mt-1.5 h-1 bg-slate-200/60 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.round(pDone / pTotal * 100)}%`, backgroundColor: phase.color }}
+                    style={{ width: `${pPct}%`, backgroundColor: phase.color }}
                   />
                 </div>
               )}
@@ -1147,37 +1169,33 @@ export default function PlannerPage() {
       )}
 
       {/* Phase 메타 정보 */}
-      {activePhase && editingPhaseId !== activePhase.id && (() => {
-        const phItems = activePhase.categories.flatMap(c => c.items);
-        const phDone = phItems.filter(i => i.is_completed).length;
-        const phTotal = phItems.length;
-        const phPct = phTotal > 0 ? Math.round(phDone / phTotal * 100) : 0;
-        return (
-          <div className="space-y-2 px-1">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: activePhase.color }} />
-                <span>{activePhase.months}개월</span>
-              </span>
-              {activePhase.start_date && activePhase.end_date && (
-                <span>{activePhase.start_date} → {activePhase.end_date}</span>
-              )}
-              {activePhase.is_current && (
-                <span className="text-emerald-600 font-semibold">현재 진행 중</span>
-              )}
-              <span className="font-medium text-slate-600 ml-auto">{phDone}/{phTotal} 완료 ({phPct}%)</span>
-            </div>
-            {phTotal > 0 && (
-              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${phPct}%`, backgroundColor: activePhase.color }}
-                />
-              </div>
+      {activePhase && editingPhaseId !== activePhase.id && (
+        <div className="space-y-2 px-1">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: activePhase.color }} />
+              <span>{activePhase.months}개월</span>
+            </span>
+            {activePhase.start_date && activePhase.end_date && (
+              <span>{activePhase.start_date} → {activePhase.end_date}</span>
             )}
+            {activePhase.is_current && (
+              <span className="text-emerald-600 font-semibold">현재 진행 중</span>
+            )}
+            <span className="font-medium text-slate-600 ml-auto">
+              {activePhaseProg.done}/{activePhaseProg.total} 완료 ({activePhaseProg.pct}%)
+            </span>
           </div>
-        );
-      })()}
+          {activePhaseProg.total > 0 && (
+            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${activePhaseProg.pct}%`, backgroundColor: activePhase.color }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 카테고리 선택 툴바 */}
       {activePhase && (
