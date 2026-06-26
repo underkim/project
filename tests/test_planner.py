@@ -261,3 +261,39 @@ async def test_update_phase_not_found_returns_404(auth_client):
 async def test_update_category_not_found_returns_404(auth_client):
     resp = await auth_client.put("/api/v1/planner/categories/99999", json={"title": "없는 카테고리"})
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_roadmap_with_seeded_item(auth_client, planner_seed):
+    """Phase·Category·Item이 있을 때 GET /roadmap이 올바른 구조를 반환해야 한다."""
+    cat_id = planner_seed["category_id"]
+
+    # 날짜 기반 deadl이 없어도 항목은 표시돼야 함 (start_date 없음 → deadline=None)
+    await auth_client.post("/api/v1/planner/items", json={
+        "category_id": cat_id, "text": "로드맵 테스트 항목", "offset": 1.0,
+    })
+
+    resp = await auth_client.get("/api/v1/planner/roadmap")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["phases"]) >= 1
+
+    # 생성한 항목이 categories 안에 있어야 함
+    all_items = [
+        item
+        for phase in data["phases"]
+        for cat in phase["categories"]
+        for item in cat["items"]
+    ]
+    found = next((i for i in all_items if i["text"] == "로드맵 테스트 항목"), None)
+    assert found is not None
+    assert found["is_completed"] is False
+
+
+@pytest.mark.asyncio
+async def test_planner_item_create_empty_text_returns_422(auth_client, planner_seed):
+    """텍스트가 공백인 항목 생성 시 422를 반환해야 한다."""
+    resp = await auth_client.post("/api/v1/planner/items", json={
+        "category_id": planner_seed["category_id"], "text": "  ", "offset": 1.0,
+    })
+    assert resp.status_code == 422
