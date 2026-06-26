@@ -243,3 +243,35 @@ async def test_health_summary_empty_db(auth_client):
     assert data["total_exercise_minutes_this_week"] == 0
     assert data["avg_sleep_hours_this_week"] is None
     assert data["avg_sleep_quality_this_week"] is None
+
+
+@pytest.mark.asyncio
+async def test_exercise_multiple_same_day_allowed(auth_client):
+    """같은 날짜에 서로 다른 운동을 여러 번 기록할 수 있어야 한다."""
+    r1 = await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-06-25", "exercise_type": "러닝", "duration_minutes": 30,
+    })
+    r2 = await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-06-25", "exercise_type": "수영", "duration_minutes": 45,
+    })
+    assert r1.status_code == 201
+    assert r2.status_code == 201
+    logs = (await auth_client.get("/api/v1/health/exercise")).json()
+    same_day = [e for e in logs if e["log_date"] == "2026-06-25"]
+    assert len(same_day) == 2
+
+
+@pytest.mark.asyncio
+async def test_exercise_list_ordered_newest_first(auth_client):
+    """운동 기록 목록은 최신 날짜 순으로 반환되어야 한다."""
+    await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-01-01", "exercise_type": "걷기", "duration_minutes": 20,
+    })
+    await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-06-01", "exercise_type": "러닝", "duration_minutes": 30,
+    })
+    resp = await auth_client.get("/api/v1/health/exercise")
+    assert resp.status_code == 200
+    logs = resp.json()
+    assert len(logs) >= 2
+    assert logs[0]["log_date"] > logs[1]["log_date"]

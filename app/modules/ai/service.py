@@ -256,7 +256,7 @@ async def _load_categories_context(session: AsyncSession) -> str:
             date_range = ""
         running_months += (phase.months or 0)
 
-        for cat in sorted(phase.categories, key=lambda c: c.order_index):
+        for cat in phase.categories:
             subtitle = f" — {cat.subtitle}" if cat.subtitle else ""
             incomplete = [i for i in cat.items if not i.is_completed]
             if incomplete:

@@ -346,3 +346,21 @@ async def test_delete_trip_with_plan_and_checklist(auth_client):
 
     # 여행 자체는 사라져야 함
     assert (await auth_client.get(f"/api/v1/travel/trips/{trip_id}")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_trips_ordered_by_start_date_desc(auth_client):
+    """여행 목록은 시작일 최신순으로 반환되어야 한다."""
+    await auth_client.post("/api/v1/travel/trips", json={
+        "name": "옛날 여행", "destination": "도쿄",
+        "start_date": "2025-01-01", "end_date": "2025-01-05",
+    })
+    await auth_client.post("/api/v1/travel/trips", json={
+        "name": "최근 여행", "destination": "방콕",
+        "start_date": "2026-11-01", "end_date": "2026-11-05",
+    })
+    resp = await auth_client.get("/api/v1/travel/trips")
+    assert resp.status_code == 200
+    trips = resp.json()
+    assert len(trips) >= 2
+    assert trips[0]["start_date"] > trips[1]["start_date"]

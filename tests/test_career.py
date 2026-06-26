@@ -164,3 +164,32 @@ async def test_career_settings_get_returns_all_fields(auth_client):
     assert "cf_handle" in data
     assert "github_username" in data
     assert "blog_url" in data
+
+
+@pytest.mark.asyncio
+async def test_cf_ratings_ordered_newest_first(auth_client):
+    """CF 레이팅 목록은 최신 날짜 순으로 반환되어야 한다."""
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-01-01", "rating": 1200, "rank_name": "pupil",
+    })
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-06-01", "rating": 1500, "rank_name": "specialist",
+    })
+    resp = await auth_client.get("/api/v1/career/cf-ratings")
+    assert resp.status_code == 200
+    ratings = resp.json()
+    assert len(ratings) >= 2
+    assert ratings[0]["log_date"] > ratings[1]["log_date"]
+
+
+@pytest.mark.asyncio
+async def test_cf_rating_multiple_same_day_allowed(auth_client):
+    """같은 날짜에 CF 레이팅 기록을 2개 이상 저장할 수 있어야 한다."""
+    r1 = await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-05-15", "rating": 1500, "rank_name": "specialist",
+    })
+    r2 = await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-05-15", "rating": 1520, "rank_name": "specialist",
+    })
+    assert r1.status_code == 201
+    assert r2.status_code == 201
