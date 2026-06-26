@@ -114,6 +114,7 @@ travel_trip      : filter(name 또는 destination), data(status, name, destinati
 travel_checklist : filter(trip_name, text), data(text, is_checked)
 travel_plan      : filter(trip_name, title), data(title, time, description, day, sort_order)
 planner_item     : filter(text), data(text, offset, is_completed)
+planner_category : filter(title), data(icon, title, subtitle)
 
 === delete 필터 ===
 health_exercise  : log_date, exercise_type
@@ -126,7 +127,8 @@ travel_trip      : name 또는 destination
 travel_checklist : trip_name, text
 travel_plan      : trip_name, title
 planner_item     : text
-planner_category : title (⚠️ 카테고리 삭제 시 하위 아이템 전체 삭제됨 — reply에 반드시 경고 포함)
+planner_category      : title (⚠️ 카테고리 삭제 시 하위 아이템 전체 삭제됨 — reply에 반드시 경고 포함)
+planner_items_by_phase: phase_name (⚠️ Phase 전체 아이템 일괄 삭제 — reply에 반드시 경고 포함, 카테고리 구조는 유지됨)
 
 === 자주 쓰는 패턴 ===
 - "책 완독했어" → growth_book update, data: {{"status":"completed","end_date":"{today}"}}
@@ -137,6 +139,8 @@ planner_category : title (⚠️ 카테고리 삭제 시 하위 아이템 전체
 - "영어 말하기/쉐도잉" → growth_english create, activity_type: "speaking"
 - "영어 단어 공부" → growth_english create, activity_type: "vocab"
 - "플래너 항목 완료했어" → planner_item update, data: {{"is_completed":true}}
+- "커리어 카테고리 아이콘 💻로 바꿔줘" → planner_category update, filter: {{"title":"커리어"}}, data: {{"icon":"💻"}}
+- "Phase 1 아이템 전부 초기화해줘" → planner_items_by_phase delete, filter: {{"phase_name":"Phase 1"}} (⚠️ 경고 포함)
 - "플래너 항목 미완료로 되돌려" → planner_item update, data: {{"is_completed":false}}
 - "여행 다녀왔어 / 완료 처리해줘" → travel_trip update, data: {{"status":"completed"}}
 - "여행 체크리스트 체크해줘" → travel_checklist update, data: {{"is_checked":true}}
@@ -1020,6 +1024,27 @@ async def _create(session: AsyncSession, module: str, data: dict) -> None:
 async def _delete(session: AsyncSession, module: str, filter_: dict) -> bool:
     """filter로 대상을 찾아 삭제. 커밋은 호출부(execute_delete)에서 처리."""
     from sqlalchemy import delete as sa_delete
+
+    # Phase 전체 아이템 일괄 삭제 (카테고리 구조는 유지)
+    if module == "planner_items_by_phase":
+        from app.core.models import Phase, Category, RoadmapItem
+        phase_name = filter_.get("phase_name", "")
+        if not phase_name:
+            return False
+        phase = (await session.execute(
+            select(Phase).where(Phase.name.ilike(f"%{_escape_like(phase_name)}%", escape="\\"))
+        )).scalar_one_or_none()
+        if phase is None:
+            return False
+        cat_ids = (await session.execute(
+            select(Category.id).where(Category.phase_id == phase.id)
+        )).scalars().all()
+        if not cat_ids:
+            return False
+        result = await session.execute(
+            sa_delete(RoadmapItem).where(RoadmapItem.category_id.in_(cat_ids))
+        )
+        return result.rowcount > 0
 
     match = await _find_record(session, module, filter_)
     if match is None:
