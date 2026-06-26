@@ -75,7 +75,7 @@ function Badge({ status }: { status: ItemStatus | null }) {
 interface ItemRowProps {
   item: RoadmapItemResponse;
   phaseStartDate: string | null;
-  onToggle: (id: number) => void;
+  onToggle: (id: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onEditSave: (id: number, data: { text?: string; offset?: number }) => void;
 }
@@ -86,6 +86,7 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
   const [editingDeadline, setEditingDeadline] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -135,18 +136,27 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
     }
   }
 
+  async function handleToggleClick() {
+    if (toggling) return;
+    setToggling(true);
+    try { await onToggle(item.id); } finally { setToggling(false); }
+  }
+
   return (
     <div className={`flex items-center gap-2.5 py-2 px-2 rounded-lg group transition-colors hover:bg-slate-50 ${item.is_completed ? 'opacity-55' : ''}`}>
       <button
-        onClick={() => onToggle(item.id)}
-        className={`shrink-0 rounded-md border-2 flex items-center justify-center transition-all ${
+        onClick={handleToggleClick}
+        disabled={toggling}
+        className={`shrink-0 rounded-md border-2 flex items-center justify-center transition-all disabled:opacity-60 ${
           item.is_completed
             ? 'bg-emerald-500 border-emerald-500'
             : 'border-slate-300 hover:border-slate-500'
         }`}
         style={{ width: 18, height: 18 }}
       >
-        {item.is_completed && <Check size={11} className="text-white" strokeWidth={3} />}
+        {toggling
+          ? <Loader2 size={10} className="animate-spin text-slate-400" />
+          : item.is_completed && <Check size={11} className="text-white" strokeWidth={3} />}
       </button>
 
       {editing ? (
@@ -331,8 +341,8 @@ function AddItemForm({ categoryId: _cid, phaseStartDate, onSave, onCancel }: Add
             <span className="text-[10px] text-slate-400">개월 후</span>
           </>
         )}
-        {phaseStartDate && (
-          <span className="text-[10px] text-slate-400 shrink-0">({offset}개월 후)</span>
+        {phaseStartDate && offset && (
+          <span className="text-[10px] text-slate-400 shrink-0">({parseFloat(Number(offset).toFixed(1))}개월 후)</span>
         )}
       </div>
     </form>
@@ -343,11 +353,11 @@ function AddItemForm({ categoryId: _cid, phaseStartDate, onSave, onCancel }: Add
 interface CategoryCardProps {
   cat: PhaseResponse['categories'][0];
   phaseStartDate: string | null;
-  onToggle: (id: number) => void;
+  onToggle: (id: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onEditSave: (id: number, data: { text?: string; offset?: number }) => void;
   onAddItem: (categoryId: number, text: string, offset: number) => Promise<void>;
-  onCategoryUpdate: (id: number, icon: string, title: string, subtitle: string) => Promise<void>;
+  onCategoryUpdate: (id: number, icon: string, title: string, subtitle: string) => Promise<boolean>;
   onCategoryDelete: (id: number) => Promise<void>;
   selectMode?: boolean;
   isSelected?: boolean;
@@ -381,9 +391,9 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
   async function saveMeta() {
     if (!metaTitle.trim()) return;
     setMetaSaving(true);
-    await onCategoryUpdate(cat.id, metaIcon.trim() || cat.icon, metaTitle.trim(), metaSubtitle.trim());
+    const ok = await onCategoryUpdate(cat.id, metaIcon.trim() || cat.icon, metaTitle.trim(), metaSubtitle.trim());
     setMetaSaving(false);
-    setEditingMeta(false);
+    if (ok) setEditingMeta(false);
   }
 
   function cancelMeta() { setEditingMeta(false); }
@@ -809,7 +819,7 @@ export default function PlannerPage() {
     }
   }
 
-  async function handleToggle(id: number) {
+  async function handleToggle(id: number): Promise<void> {
     try {
       const result = await plannerApi.toggleItem(id);
       setPhases(prev => prev.map(p => ({
@@ -896,7 +906,7 @@ export default function PlannerPage() {
     }
   }
 
-  async function handleCategoryUpdate(id: number, icon: string, title: string, subtitle: string) {
+  async function handleCategoryUpdate(id: number, icon: string, title: string, subtitle: string): Promise<boolean> {
     try {
       await plannerApi.updateCategory(id, { icon, title, subtitle });
       setPhases(prev => prev.map(p => ({
@@ -905,8 +915,10 @@ export default function PlannerPage() {
           c.id === id ? { ...c, icon, title, subtitle } : c
         ),
       })));
+      return true;
     } catch {
       setError('카테고리 수정에 실패했습니다.');
+      return false;
     }
   }
 
