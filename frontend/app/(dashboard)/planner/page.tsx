@@ -629,7 +629,7 @@ function AddCategoryForm({ phaseId, onSave, onCancel }: AddCategoryFormProps) {
 // ─── Phase 편집 패널 ──────────────────────────────────────
 interface PhaseEditPanelProps {
   phase: PhaseResponse;
-  onSave: (id: number, name: string, label: string, months: number, color: string) => Promise<void>;
+  onSave: (id: number, name: string, label: string, months: number, color: string) => Promise<boolean>;
   onClose: () => void;
 }
 
@@ -654,11 +654,11 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
   }
 
   async function handleSave() {
-    if (!name.trim() || !label.trim() || !months) return;
+    if (!name.trim() || !label.trim() || !months || Number(months) < 1) return;
     setSaving(true);
-    await onSave(phase.id, name.trim(), label.trim(), Number(months), color);
+    const ok = await onSave(phase.id, name.trim(), label.trim(), Number(months), color);
     setSaving(false);
-    onClose();
+    if (ok) onClose();
   }
 
   return (
@@ -738,7 +738,7 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
         </button>
         <button
           onClick={handleSave}
-          disabled={saving || !name.trim() || !label.trim()}
+          disabled={saving || !name.trim() || !label.trim() || !months || Number(months) < 1}
           className="px-4 py-2 text-sm bg-slate-900 text-white rounded-xl hover:bg-slate-700 disabled:opacity-50 font-medium"
         >
           {saving ? '저장 중...' : '저장'}
@@ -877,7 +877,7 @@ export default function PlannerPage() {
     }
   }
 
-  async function handlePhaseUpdate(id: number, name: string, label: string, months: number, color: string) {
+  async function handlePhaseUpdate(id: number, name: string, label: string, months: number, color: string): Promise<boolean> {
     try {
       await plannerApi.updatePhase(id, { name, label, months, color });
       const todayStr = new Date().toISOString().split('T')[0];
@@ -889,8 +889,10 @@ export default function PlannerPage() {
       }));
       // 기간 변경 시 이후 Phase들의 start_date·deadline도 바뀌므로 전체 재조회
       await loadRoadmap();
+      return true;
     } catch {
       setError('Phase 수정에 실패했습니다.');
+      return false;
     }
   }
 
