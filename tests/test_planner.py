@@ -120,6 +120,16 @@ async def test_roadmap_returns_empty_without_seed(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_settings_get_when_not_set(auth_client):
+    """settings가 없을 때 GET /settings는 start_date: null을 반환해야 한다."""
+    resp = await auth_client.get("/api/v1/planner/settings")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "start_date" in data
+    assert data["start_date"] is None
+
+
+@pytest.mark.asyncio
 async def test_settings_update_and_get(auth_client):
     resp = await auth_client.put("/api/v1/planner/settings", json={"start_date": "2026-01-01"})
     assert resp.status_code == 200

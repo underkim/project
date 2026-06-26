@@ -250,6 +250,35 @@ async def test_chat_no_api_key(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_execute_delete_finance_record(auth_client):
+    """execute — finance_record 삭제 시 saved: True."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-05-01", "total_assets": 3000,
+        "monthly_income": 300, "monthly_expense": 200,
+    })
+    resp = await auth_client.post("/api/v1/ai/execute", json={
+        "module": "finance_record",
+        "filter": {"record_date": "2026-05-01"},
+    })
+    assert resp.status_code == 200
+    assert resp.json()["saved"] is True
+    assert resp.json()["action"] == "delete"
+
+
+@pytest.mark.asyncio
+async def test_execute_delete_growth_book(auth_client):
+    """execute — growth_book 삭제 시 saved: True."""
+    await auth_client.post("/api/v1/growth/books", json={"title": "삭제될 책", "status": "planned"})
+    resp = await auth_client.post("/api/v1/ai/execute", json={
+        "module": "growth_book",
+        "filter": {"title": "삭제될 책"},
+    })
+    assert resp.status_code == 200
+    assert resp.json()["saved"] is True
+    assert resp.json()["action"] == "delete"
+
+
+@pytest.mark.asyncio
 async def test_chat_create_finance_record(auth_client):
     """create 액션 — finance_record 모듈 저장 시 saved: True."""
     import json
