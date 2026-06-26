@@ -173,3 +173,77 @@ async def test_weekly_report_success(auth_client):
 async def test_weekly_report_route_registered(app):
     routes = {r.path for r in app.routes}
     assert "/api/v1/ai/weekly-report" in routes
+
+
+@pytest.mark.asyncio
+async def test_chat_update_action(auth_client):
+    """update 액션 — 기존 기록 수정 시 saved: True."""
+    # 먼저 실제 운동 기록 생성 (update 대상)
+    await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-06-20", "exercise_type": "러닝", "duration_minutes": 30,
+    })
+
+    import json
+    mock_payload = {
+        "reply": "러닝 60분으로 수정했어요!",
+        "action": "update",
+        "module": "health_exercise",
+        "filter": {"log_date": "2026-06-20", "exercise_type": "러닝"},
+        "data": {"duration_minutes": 60},
+    }
+
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "러닝 60분으로 수정해줘"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["action"] == "update"
+
+
+@pytest.mark.asyncio
+async def test_chat_multi_actions_create(auth_client):
+    """actions 배열 — 여러 create 액션이 한 번에 처리되어야 한다."""
+    import json
+    mock_payload = {
+        "reply": "운동 2개 기록했어요!",
+        "actions": [
+            {"action": "create", "module": "health_exercise",
+             "data": {"log_date": "2026-07-01", "exercise_type": "러닝", "duration_minutes": 30}},
+            {"action": "create", "module": "health_exercise",
+             "data": {"log_date": "2026-07-02", "exercise_type": "수영", "duration_minutes": 45}},
+        ],
+    }
+
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "이틀치 운동 기록해줘"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["saved_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_chat_no_api_key(auth_client):
+    """Gemini API 키 없을 때 → saved: False, 친절한 안내 메시지."""
+    with patch("app.modules.ai.service.settings") as mock_settings:
+        mock_settings.gemini_api_key = None
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "안녕"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is False
+    assert "GEMINI_API_KEY" in data["reply"] or "API" in data["reply"]
