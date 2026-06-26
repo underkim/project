@@ -910,10 +910,11 @@ async def _update(session: AsyncSession, module: str, filter_: dict, data: dict)
     if record is None:
         return False
     for field, value in data.items():
-        if value is not None and hasattr(record, field):
-            if field in _DATE_FIELDS and isinstance(value, str):
-                value = _safe_date(value)
-            setattr(record, field, value)
+        if not hasattr(record, field):
+            continue
+        if value is not None and field in _DATE_FIELDS and isinstance(value, str):
+            value = _safe_date(value)
+        setattr(record, field, value)
     return True
 
 
