@@ -394,6 +394,56 @@ async def test_chat_create_growth_book(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_chat_create_growth_english(auth_client):
+    """create 액션 — growth_english 저장 시 saved: True."""
+    import json
+    mock_payload = {
+        "reply": "영어 학습 기록했어요!",
+        "action": "create",
+        "module": "growth_english",
+        "data": {"log_date": "2026-06-15", "activity_type": "listening", "duration_minutes": 30},
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "영어 듣기 30분 했어"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["module"] == "growth_english"
+
+
+@pytest.mark.asyncio
+async def test_chat_create_career_cf_rating(auth_client):
+    """create 액션 — career_cf_rating 저장 시 saved: True."""
+    import json
+    mock_payload = {
+        "reply": "CF 레이팅 기록했어요!",
+        "action": "create",
+        "module": "career_cf_rating",
+        "data": {"log_date": "2026-06-20", "rating": 1600, "rank_name": "expert"},
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "CF 레이팅 1600 기록해줘"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["module"] == "career_cf_rating"
+
+
+@pytest.mark.asyncio
 async def test_chat_update_record_not_found(auth_client):
     """update 액션 — 대상 기록이 없으면 saved: False."""
     import json
