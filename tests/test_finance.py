@@ -168,6 +168,25 @@ async def test_update_finance_record_negative_value_returns_422(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_finance_records_ordered_newest_first(auth_client):
+    """재테크 기록 목록은 최신 날짜 순으로 반환되어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-01-01", "total_assets": 1000,
+        "monthly_income": 200, "monthly_expense": 100,
+    })
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-06-01", "total_assets": 3000,
+        "monthly_income": 350, "monthly_expense": 180,
+    })
+    resp = await auth_client.get("/api/v1/finance/records")
+    assert resp.status_code == 200
+    records = resp.json()
+    assert len(records) >= 2
+    # 최신(6월)이 먼저 와야 함
+    assert records[0]["record_date"] > records[1]["record_date"]
+
+
+@pytest.mark.asyncio
 async def test_finance_summary_accuracy(auth_client):
     """summary가 최신 자산과 평균 저축률을 정확하게 계산해야 한다."""
     await auth_client.post("/api/v1/finance/records", json={

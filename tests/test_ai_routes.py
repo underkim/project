@@ -394,6 +394,44 @@ async def test_chat_create_growth_book(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_chat_multi_actions_create_and_update(auth_client):
+    """actions 배열 — create + update 혼합 처리 시 saved_count가 정확해야 한다."""
+    import json
+    # 먼저 수정할 운동 기록 생성
+    await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-07-10", "exercise_type": "러닝", "duration_minutes": 30,
+    })
+
+    mock_payload = {
+        "reply": "오늘 운동 추가하고 어제 기록도 수정했어요!",
+        "actions": [
+            {
+                "action": "create", "module": "health_exercise",
+                "data": {"log_date": "2026-07-11", "exercise_type": "수영", "duration_minutes": 45},
+            },
+            {
+                "action": "update", "module": "health_exercise",
+                "filter": {"log_date": "2026-07-10", "exercise_type": "러닝"},
+                "data": {"duration_minutes": 60},
+            },
+        ],
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "운동 기록 추가하고 수정해줘"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["saved_count"] == 2
+
+
+@pytest.mark.asyncio
 async def test_chat_create_growth_english(auth_client):
     """create 액션 — growth_english 저장 시 saved: True."""
     import json

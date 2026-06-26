@@ -288,6 +288,23 @@ async def test_delete_plan_item_not_found_returns_404(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_update_trip_status_to_completed(auth_client):
+    """여행 상태를 planned → completed로 변경할 수 있어야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "상태 변경 여행", "destination": "뉴욕",
+        "start_date": "2026-07-01", "end_date": "2026-07-05",
+        "status": "planned",
+    })).json()
+    trip_id = trip["id"]
+    assert trip["status"] == "planned"
+
+    resp = await auth_client.put(f"/api/v1/travel/trips/{trip_id}", json={"status": "completed"})
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "completed"
+    assert resp.json()["name"] == "상태 변경 여행"
+
+
+@pytest.mark.asyncio
 async def test_add_checklist_empty_text_returns_422(auth_client):
     """체크리스트 항목 text가 공백이면 422여야 한다."""
     trip = (await auth_client.post("/api/v1/travel/trips", json={
