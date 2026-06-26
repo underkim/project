@@ -206,3 +206,28 @@ async def test_health_summary_reflects_sleep(auth_client):
     assert data["avg_sleep_hours_this_week"] is not None
     assert data["avg_sleep_hours_this_week"] == 8.0
     assert data["avg_sleep_quality_this_week"] == 5.0
+
+
+@pytest.mark.asyncio
+async def test_create_sleep_invalid_sleep_hours_returns_422(auth_client):
+    """수면 시간이 0이거나 24를 초과하면 422여야 한다."""
+    resp_zero = await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-09-01", "sleep_hours": 0, "quality": 3,
+    })
+    assert resp_zero.status_code == 422
+
+    resp_over = await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-09-02", "sleep_hours": 25, "quality": 3,
+    })
+    assert resp_over.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_sleep_invalid_hours_returns_422(auth_client):
+    """수면 시간을 0 또는 25로 수정하면 422여야 한다."""
+    create = await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-09-03", "sleep_hours": 7.0, "quality": 3,
+    })
+    log_id = create.json()["id"]
+    resp = await auth_client.put(f"/api/v1/health/sleep/{log_id}", json={"sleep_hours": 0})
+    assert resp.status_code == 422
