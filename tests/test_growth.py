@@ -216,3 +216,41 @@ async def test_update_book_invalid_rating_returns_422(auth_client):
     book_id = create.json()["id"]
     resp = await auth_client.put(f"/api/v1/growth/books/{book_id}", json={"rating": 6})
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_book_list_returns_list(auth_client):
+    """도서 목록 조회 시 리스트가 반환되어야 한다."""
+    await auth_client.post("/api/v1/growth/books", json={"title": "목록 테스트 책", "author": "저자"})
+    resp = await auth_client.get("/api/v1/growth/books")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+    assert len(resp.json()) >= 1
+    assert resp.json()[0]["title"] == "목록 테스트 책"
+
+
+@pytest.mark.asyncio
+async def test_english_list_returns_list(auth_client):
+    """영어 학습 목록 조회 시 리스트가 반환되어야 한다."""
+    await auth_client.post("/api/v1/growth/english", json={
+        "log_date": "2026-08-01", "activity_type": "읽기", "duration_minutes": 25,
+    })
+    resp = await auth_client.get("/api/v1/growth/english")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+    assert len(resp.json()) >= 1
+
+
+@pytest.mark.asyncio
+async def test_growth_summary_reflects_english(auth_client):
+    """영어 학습 기록이 이번 달 summary에 반영되어야 한다."""
+    from datetime import date
+    today = date.today().isoformat()
+    await auth_client.post("/api/v1/growth/english", json={
+        "log_date": today, "activity_type": "listening", "duration_minutes": 40,
+    })
+    resp = await auth_client.get("/api/v1/growth/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["english_days_this_month"] >= 1
+    assert data["english_minutes_this_month"] >= 40

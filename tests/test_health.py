@@ -177,3 +177,32 @@ async def test_health_returns_correct_payload(client):
     data = response.json()
     assert data["status"] == "ok"
     assert data["app"] == "Life Dashboard"
+
+
+@pytest.mark.asyncio
+async def test_sleep_list_returns_list(auth_client):
+    """수면 기록 목록이 리스트로 반환되어야 한다."""
+    await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-08-01", "sleep_hours": 7.5, "quality": 4,
+    })
+    resp = await auth_client.get("/api/v1/health/sleep")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+    assert len(resp.json()) >= 1
+    assert resp.json()[0]["sleep_hours"] == 7.5
+
+
+@pytest.mark.asyncio
+async def test_health_summary_reflects_sleep(auth_client):
+    """이번 주 수면 기록이 summary에 반영되어야 한다."""
+    from datetime import date
+    today = date.today().isoformat()
+    await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": today, "sleep_hours": 8.0, "quality": 5,
+    })
+    resp = await auth_client.get("/api/v1/health/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["avg_sleep_hours_this_week"] is not None
+    assert data["avg_sleep_hours_this_week"] == 8.0
+    assert data["avg_sleep_quality_this_week"] == 5.0
