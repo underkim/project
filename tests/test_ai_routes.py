@@ -279,6 +279,65 @@ async def test_execute_delete_growth_book(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_execute_delete_sleep_log(auth_client):
+    """execute — health_sleep 삭제 시 saved: True."""
+    await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-04-10", "sleep_hours": 7.0, "quality": 4,
+    })
+    resp = await auth_client.post("/api/v1/ai/execute", json={
+        "module": "health_sleep",
+        "filter": {"log_date": "2026-04-10"},
+    })
+    assert resp.status_code == 200
+    assert resp.json()["saved"] is True
+    assert resp.json()["action"] == "delete"
+
+
+@pytest.mark.asyncio
+async def test_chat_multi_actions_trip_and_plan(auth_client):
+    """actions 배열 — travel_trip 생성 후 travel_plan 생성 (flush 패턴) 테스트."""
+    import json
+    mock_payload = {
+        "reply": "제주 여행이랑 1일차 일정 추가했어요!",
+        "actions": [
+            {
+                "action": "create", "module": "travel_trip",
+                "data": {
+                    "name": "AI 제주 여행", "destination": "제주도",
+                    "start_date": "2026-09-01", "end_date": "2026-09-03",
+                },
+            },
+            {
+                "action": "create", "module": "travel_plan",
+                "data": {
+                    "trip_name": "AI 제주 여행", "day": 1,
+                    "title": "성산일출봉 등반", "time": "09:00",
+                },
+            },
+        ],
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "제주 여행이랑 일정 추가해줘"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["saved_count"] == 2
+
+    # 실제로 trip과 plan이 DB에 저장되어 있어야 함
+    trips = (await auth_client.get("/api/v1/travel/trips")).json()
+    ai_trip = next((t for t in trips if t["name"] == "AI 제주 여행"), None)
+    assert ai_trip is not None
+    assert any(p["title"] == "성산일출봉 등반" for p in ai_trip["plan_items"])
+
+
+@pytest.mark.asyncio
 async def test_chat_create_finance_record(auth_client):
     """create 액션 — finance_record 모듈 저장 시 saved: True."""
     import json
