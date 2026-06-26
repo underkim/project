@@ -96,3 +96,9 @@ async def test_career_summary_reflects_latest_rating(auth_client):
     assert data["cf_handle"] == "coder123"
     assert data["latest_cf_rating"] == 1700
     assert data["latest_cf_rank"] == "expert"
+
+
+@pytest.mark.asyncio
+async def test_delete_cf_rating_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/career/cf-ratings/99999")
+    assert resp.status_code == 404
