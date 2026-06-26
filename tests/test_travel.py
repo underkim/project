@@ -241,6 +241,42 @@ async def test_delete_trip_not_found_returns_404(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_update_trip_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/travel/trips/99999", json={"status": "completed"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_toggle_checklist_item_not_found_returns_404(auth_client):
+    resp = await auth_client.patch("/api/v1/travel/checklist/99999/toggle")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_checklist_item_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/travel/checklist/99999")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_add_checklist_to_missing_trip_returns_404(auth_client):
+    resp = await auth_client.post("/api/v1/travel/trips/99999/checklist", json={"text": "여권"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_add_plan_to_missing_trip_returns_404(auth_client):
+    resp = await auth_client.post("/api/v1/travel/trips/99999/plan", json={"day": 1, "title": "관광"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_plan_item_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/travel/plan/99999")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_delete_trip_with_plan_and_checklist(auth_client):
     """plan_items, checklist_items가 있는 여행도 삭제 가능해야 한다."""
     trip = (await auth_client.post("/api/v1/travel/trips", json={
