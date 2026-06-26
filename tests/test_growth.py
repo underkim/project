@@ -163,3 +163,24 @@ async def test_update_book_not_found_returns_404(auth_client):
 async def test_update_english_not_found_returns_404(auth_client):
     resp = await auth_client.put("/api/v1/growth/english/99999", json={"duration_minutes": 30})
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_book_empty_title_returns_422(auth_client):
+    resp = await auth_client.post("/api/v1/growth/books", json={"title": "   "})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_book_invalid_rating_returns_422(auth_client):
+    """평점이 1~5 범위 밖이면 422여야 한다."""
+    resp = await auth_client.post("/api/v1/growth/books", json={"title": "테스트 책", "rating": 6})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_english_zero_duration_returns_422(auth_client):
+    resp = await auth_client.post("/api/v1/growth/english", json={
+        "log_date": "2026-06-15", "activity_type": "reading", "duration_minutes": 0,
+    })
+    assert resp.status_code == 422

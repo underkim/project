@@ -102,3 +102,19 @@ async def test_career_summary_reflects_latest_rating(auth_client):
 async def test_delete_cf_rating_not_found_returns_404(auth_client):
     resp = await auth_client.delete("/api/v1/career/cf-ratings/99999")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_cf_rating_negative_returns_422(auth_client):
+    """음수 레이팅은 422여야 한다."""
+    resp = await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-06-01", "rating": -1, "rank_name": "newbie",
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_cf_rating_list_returns_200(auth_client):
+    resp = await auth_client.get("/api/v1/career/cf-ratings")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
