@@ -165,3 +165,23 @@ async def test_update_finance_record_negative_value_returns_422(auth_client):
     record_id = create.json()["id"]
     resp = await auth_client.put(f"/api/v1/finance/records/{record_id}", json={"monthly_income": -1})
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_finance_summary_accuracy(auth_client):
+    """summary가 최신 자산과 평균 저축률을 정확하게 계산해야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-03-01", "total_assets": 1000,
+        "monthly_income": 200, "monthly_expense": 100,
+    })
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-04-01", "total_assets": 2000,
+        "monthly_income": 400, "monthly_expense": 200,
+    })
+    resp = await auth_client.get("/api/v1/finance/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    # 최신 기록(2026-04)의 총자산이 반영되어야 함
+    assert data["latest_total_assets"] == 2000
+    # 두 기록 모두 저축률 50% → 평균 50.0
+    assert data["avg_savings_rate"] == 50.0

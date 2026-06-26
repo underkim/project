@@ -80,3 +80,17 @@ async def test_overview_travel_snapshot_reflected(auth_client):
     assert data["travel"] is not None
     assert data["travel"]["total"] >= 1
     assert data["travel"]["upcoming"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_overview_finance_reflected(auth_client):
+    """재테크 기록 후 overview.finance.latest_total_assets가 반영되어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-06-01", "total_assets": 8888,
+        "monthly_income": 500, "monthly_expense": 300,
+    })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["finance"] is not None
+    assert data["finance"]["latest_total_assets"] == 8888

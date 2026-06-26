@@ -288,6 +288,32 @@ async def test_delete_plan_item_not_found_returns_404(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_add_checklist_empty_text_returns_422(auth_client):
+    """체크리스트 항목 text가 공백이면 422여야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "공백 검증 여행", "destination": "서울",
+        "start_date": "2026-10-01", "end_date": "2026-10-03",
+    })).json()
+    resp = await auth_client.post(
+        f"/api/v1/travel/trips/{trip['id']}/checklist", json={"text": "   "},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_add_plan_item_invalid_day_returns_422(auth_client):
+    """일정 Day가 0이면 422여야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "Day 검증 여행", "destination": "도쿄",
+        "start_date": "2026-11-01", "end_date": "2026-11-03",
+    })).json()
+    resp = await auth_client.post(
+        f"/api/v1/travel/trips/{trip['id']}/plan", json={"day": 0, "title": "관광"},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_delete_trip_with_plan_and_checklist(auth_client):
     """plan_items, checklist_items가 있는 여행도 삭제 가능해야 한다."""
     trip = (await auth_client.post("/api/v1/travel/trips", json={
