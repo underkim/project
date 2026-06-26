@@ -193,3 +193,25 @@ async def test_cf_rating_multiple_same_day_allowed(auth_client):
     })
     assert r1.status_code == 201
     assert r2.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_career_summary_no_ratings_returns_null(auth_client):
+    """CF 레이팅 기록이 없을 때 summary의 레이팅 필드는 None이어야 한다."""
+    resp = await auth_client.get("/api/v1/career/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["latest_cf_rating"] is None
+    assert data["latest_cf_rank"] is None
+
+
+@pytest.mark.asyncio
+async def test_cf_rating_list_pagination(auth_client):
+    """limit 파라미터로 CF 레이팅 목록 페이지네이션이 동작해야 한다."""
+    for i in range(1, 6):
+        await auth_client.post("/api/v1/career/cf-ratings", json={
+            "log_date": f"2026-0{i}-01", "rating": 1400 + i * 10, "rank_name": "specialist",
+        })
+    resp = await auth_client.get("/api/v1/career/cf-ratings?limit=3")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 3

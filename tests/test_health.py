@@ -275,3 +275,19 @@ async def test_exercise_list_ordered_newest_first(auth_client):
     logs = resp.json()
     assert len(logs) >= 2
     assert logs[0]["log_date"] > logs[1]["log_date"]
+
+
+@pytest.mark.asyncio
+async def test_sleep_list_ordered_newest_first(auth_client):
+    """수면 기록 목록은 최신 날짜 순으로 반환되어야 한다."""
+    await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-01-10", "sleep_hours": 6.0, "quality": 3,
+    })
+    await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": "2026-06-10", "sleep_hours": 8.0, "quality": 5,
+    })
+    resp = await auth_client.get("/api/v1/health/sleep")
+    assert resp.status_code == 200
+    logs = resp.json()
+    assert len(logs) >= 2
+    assert logs[0]["log_date"] > logs[1]["log_date"]

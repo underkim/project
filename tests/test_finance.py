@@ -204,3 +204,30 @@ async def test_finance_summary_accuracy(auth_client):
     assert data["latest_total_assets"] == 2000
     # 두 기록 모두 저축률 50% → 평균 50.0
     assert data["avg_savings_rate"] == 50.0
+
+
+@pytest.mark.asyncio
+async def test_finance_list_pagination(auth_client):
+    """limit 파라미터로 페이지네이션이 동작해야 한다."""
+    for i in range(1, 6):
+        await auth_client.post("/api/v1/finance/records", json={
+            "record_date": f"2026-0{i}-01", "total_assets": i * 1000,
+            "monthly_income": 300, "monthly_expense": 200,
+        })
+    resp = await auth_client.get("/api/v1/finance/records?limit=3")
+    assert resp.status_code == 200
+    records = resp.json()
+    assert len(records) == 3
+
+
+@pytest.mark.asyncio
+async def test_finance_summary_zero_income_savings_rate_none(auth_client):
+    """수입이 0이면 저축률은 None이어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-02-01", "total_assets": 1000,
+        "monthly_income": 0, "monthly_expense": 0,
+    })
+    resp = await auth_client.get("/api/v1/finance/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["avg_savings_rate"] is None
