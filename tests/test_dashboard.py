@@ -39,3 +39,44 @@ async def test_overview_with_data(auth_client):
 async def test_overview_requires_auth(client):
     resp = await client.get("/api/v1/dashboard/overview")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_overview_growth_books_reading_reflected(auth_client):
+    """읽는 중 도서 생성 후 overview.growth.books_reading이 반영되어야 한다."""
+    await auth_client.post("/api/v1/growth/books", json={"title": "대시보드 테스트 책", "status": "reading"})
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["growth"] is not None
+    assert data["growth"]["books_reading"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_overview_health_exercise_reflected(auth_client):
+    """운동 기록 후 overview.health.exercise_days_this_week가 반영되어야 한다."""
+    from datetime import date
+    await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": date.today().isoformat(), "exercise_type": "헬스", "duration_minutes": 60,
+    })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["health"] is not None
+    assert data["health"]["exercise_days_this_week"] >= 1
+    assert data["health"]["total_exercise_minutes_this_week"] >= 60
+
+
+@pytest.mark.asyncio
+async def test_overview_travel_snapshot_reflected(auth_client):
+    """여행 생성 후 overview.travel.total이 반영되어야 한다."""
+    await auth_client.post("/api/v1/travel/trips", json={
+        "name": "대시보드 테스트 여행", "destination": "서울",
+        "start_date": "2026-12-01", "end_date": "2026-12-03", "status": "planned",
+    })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["travel"] is not None
+    assert data["travel"]["total"] >= 1
+    assert data["travel"]["upcoming"] >= 1
