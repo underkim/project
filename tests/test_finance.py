@@ -121,6 +121,15 @@ async def test_delete_finance_record(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_create_record_negative_assets_returns_422(auth_client):
+    resp = await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-07-01", "total_assets": -1000,
+        "monthly_income": 300, "monthly_expense": 200,
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_update_finance_record_not_found_returns_404(auth_client):
     resp = await auth_client.put("/api/v1/finance/records/99999", json={"total_assets": 5000})
     assert resp.status_code == 404

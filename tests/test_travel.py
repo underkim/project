@@ -210,6 +210,25 @@ async def test_delete_checklist_item(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_create_trip_invalid_dates_returns_422(auth_client):
+    """종료일이 시작일보다 이전이면 422여야 한다."""
+    resp = await auth_client.post("/api/v1/travel/trips", json={
+        "name": "날짜 오류 여행", "destination": "서울",
+        "start_date": "2026-09-05", "end_date": "2026-09-01",
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_trip_empty_name_returns_422(auth_client):
+    resp = await auth_client.post("/api/v1/travel/trips", json={
+        "name": "  ", "destination": "서울",
+        "start_date": "2026-09-01", "end_date": "2026-09-05",
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_get_trip_not_found_returns_404(auth_client):
     resp = await auth_client.get("/api/v1/travel/trips/99999")
     assert resp.status_code == 404
