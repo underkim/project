@@ -5,6 +5,7 @@ import json
 import re
 from datetime import date, timedelta
 
+from dateutil.relativedelta import relativedelta
 from google import genai
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -497,7 +498,7 @@ async def _load_user_context(session: AsyncSession) -> str:
             cat_to_phase_start: dict[int, date] = {}
             _acc = 0
             for ph in phase_rows:
-                _ph_start = roadmap_start + timedelta(days=int(_acc * 30.44))
+                _ph_start = roadmap_start + relativedelta(months=_acc)
                 for cat in ph.categories:
                     cat_to_phase_start[cat.id] = _ph_start
                 _acc += (ph.months or 0)
@@ -584,15 +585,15 @@ async def _process_multi_actions(session: AsyncSession, reply: str, actions: lis
             saved_modules = []
             await session.rollback()
             error_parts.append("중복 기록이 있어요")
-        except Exception as e:
-            error_parts.append(f"저장 실패: {str(e)[:40]}")
+        except Exception:
+            error_parts.append("저장에 필요한 정보가 부족해요")
 
     if saved_count > 0:
         try:
             await session.commit()
-        except Exception as e:
+        except Exception:
             await session.rollback()
-            return {"reply": f"저장 중 오류가 발생했어요: {str(e)[:60]}", "saved": False, "saved_count": 0}
+            return {"reply": "저장 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.", "saved": False, "saved_count": 0}
 
     final_reply = reply
     if error_parts:
