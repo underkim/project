@@ -134,3 +134,33 @@ async def test_create_cf_rating_blank_rank_returns_422(auth_client):
         "log_date": "2026-07-01", "rating": 1500, "rank_name": "  ",
     })
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_career_settings_update_and_clear_blog_url(auth_client):
+    """blog_url 설정 → null로 지우기가 가능해야 한다."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"blog_url": "https://myblog.com"})
+    assert resp.status_code == 200
+    assert resp.json()["blog_url"] == "https://myblog.com"
+
+    resp2 = await auth_client.put("/api/v1/career/settings", json={"blog_url": None})
+    assert resp2.status_code == 200
+    assert resp2.json()["blog_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_career_settings_blank_blog_url_returns_422(auth_client):
+    """blog_url을 공백 문자열로 설정하면 422여야 한다."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"blog_url": "   "})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_career_settings_get_returns_all_fields(auth_client):
+    """설정 조회 시 cf_handle, github_username, blog_url 모두 포함되어야 한다."""
+    resp = await auth_client.get("/api/v1/career/settings")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "cf_handle" in data
+    assert "github_username" in data
+    assert "blog_url" in data

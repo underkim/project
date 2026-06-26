@@ -155,3 +155,27 @@ async def test_export_content_disposition_filename(auth_client):
     resp = await auth_client.get("/api/v1/export/finance")
     disposition = resp.headers["content-disposition"]
     assert "finance.csv" in disposition
+
+
+@pytest.mark.asyncio
+async def test_export_travel_includes_plan_and_checklist(auth_client):
+    """여행 export에 일정·체크리스트 내용이 포함되어야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "방콕 여행", "destination": "태국",
+        "start_date": "2026-10-01", "end_date": "2026-10-05",
+    })).json()
+    trip_id = trip["id"]
+
+    await auth_client.post(f"/api/v1/travel/trips/{trip_id}/plan", json={
+        "day": 1, "title": "왓 프라깨우 관광", "time": "10:00",
+    })
+    await auth_client.post(f"/api/v1/travel/trips/{trip_id}/checklist", json={
+        "text": "선크림 챙기기",
+    })
+
+    resp = await auth_client.get("/api/v1/export/travel")
+    assert resp.status_code == 200
+    content = resp.content.decode("utf-8-sig")
+    assert "방콕 여행" in content
+    assert "왓 프라깨우 관광" in content
+    assert "선크림 챙기기" in content
