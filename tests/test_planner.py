@@ -233,3 +233,21 @@ async def test_update_item_not_found_returns_404(auth_client):
 async def test_delete_category_not_found_returns_404(auth_client):
     resp = await auth_client.delete("/api/v1/planner/categories/99999")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_item_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/planner/items/99999")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_phase_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/planner/phases/99999", json={"color": "red"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_category_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/planner/categories/99999", json={"title": "없는 카테고리"})
+    assert resp.status_code == 404
