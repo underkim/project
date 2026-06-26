@@ -241,6 +241,17 @@ async def test_delete_trip_not_found_returns_404(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_update_trip_empty_name_returns_422(auth_client):
+    """여행명을 빈 문자열로 수정하면 422여야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "이름 검증 여행", "destination": "서울",
+        "start_date": "2026-11-01", "end_date": "2026-11-03",
+    })).json()
+    resp = await auth_client.put(f"/api/v1/travel/trips/{trip['id']}", json={"name": "  "})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_update_trip_not_found_returns_404(auth_client):
     resp = await auth_client.put("/api/v1/travel/trips/99999", json={"status": "completed"})
     assert resp.status_code == 404

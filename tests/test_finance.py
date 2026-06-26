@@ -139,3 +139,15 @@ async def test_update_finance_record_not_found_returns_404(auth_client):
 async def test_delete_finance_record_not_found_returns_404(auth_client):
     resp = await auth_client.delete("/api/v1/finance/records/99999")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_finance_record_negative_value_returns_422(auth_client):
+    """자산/수입/지출에 음수 값으로 수정하면 422여야 한다."""
+    create = await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-07-01", "total_assets": 3000,
+        "monthly_income": 300, "monthly_expense": 200,
+    })
+    record_id = create.json()["id"]
+    resp = await auth_client.put(f"/api/v1/finance/records/{record_id}", json={"monthly_income": -1})
+    assert resp.status_code == 422
