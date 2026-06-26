@@ -902,6 +902,7 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
 
 
 _DATE_FIELDS = {"log_date", "record_date", "start_date", "end_date"}
+_PK_FIELDS = {"id", "trip_id", "category_id", "phase_id"}  # AI가 수정해선 안 되는 식별자 필드
 
 
 async def _update(session: AsyncSession, module: str, filter_: dict, data: dict) -> bool:
@@ -910,7 +911,7 @@ async def _update(session: AsyncSession, module: str, filter_: dict, data: dict)
     if record is None:
         return False
     for field, value in data.items():
-        if not hasattr(record, field):
+        if field in _PK_FIELDS or not hasattr(record, field):
             continue
         if value is not None and field in _DATE_FIELDS and isinstance(value, str):
             value = _safe_date(value)
