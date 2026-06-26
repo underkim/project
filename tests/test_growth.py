@@ -135,3 +135,31 @@ async def test_growth_summary_reflects_reading_books(auth_client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["books_reading"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_update_book_clears_nullable_fields(auth_client):
+    """note, author를 null로 전송하면 필드가 지워져야 한다."""
+    create = await auth_client.post("/api/v1/growth/books", json={
+        "title": "nullable 테스트 책", "author": "저자명", "note": "메모",
+    })
+    assert create.status_code == 201
+    book_id = create.json()["id"]
+
+    update = await auth_client.put(f"/api/v1/growth/books/{book_id}", json={"author": None, "note": None})
+    assert update.status_code == 200
+    assert update.json()["author"] is None
+    assert update.json()["note"] is None
+    assert update.json()["title"] == "nullable 테스트 책"  # 다른 필드 유지
+
+
+@pytest.mark.asyncio
+async def test_update_book_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/growth/books/99999", json={"status": "reading"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_english_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/growth/english/99999", json={"duration_minutes": 30})
+    assert resp.status_code == 404
