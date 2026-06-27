@@ -268,6 +268,36 @@ async def test_finance_summary_asset_change_negative(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_update_record_date(auth_client):
+    """record_date를 수정하면 새 날짜로 변경되어야 한다."""
+    create = await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-08-01", "total_assets": 3000, "monthly_income": 300, "monthly_expense": 200,
+    })
+    assert create.status_code == 201
+    record_id = create.json()["id"]
+
+    update = await auth_client.put(f"/api/v1/finance/records/{record_id}", json={"record_date": "2026-08-15"})
+    assert update.status_code == 200
+    assert update.json()["record_date"] == "2026-08-15"
+
+
+@pytest.mark.asyncio
+async def test_update_record_date_duplicate_returns_409(auth_client):
+    """다른 기록과 날짜가 겹치는 수정은 409를 반환해야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-09-01", "total_assets": 1000, "monthly_income": 200, "monthly_expense": 100,
+    })
+    create2 = await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-09-02", "total_assets": 2000, "monthly_income": 200, "monthly_expense": 100,
+    })
+    assert create2.status_code == 201
+    record_id = create2.json()["id"]
+
+    resp = await auth_client.put(f"/api/v1/finance/records/{record_id}", json={"record_date": "2026-09-01"})
+    assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
 async def test_finance_summary_single_record_asset_change_none(auth_client):
     """기록이 1개뿐이면 asset_change는 None이어야 한다."""
     await auth_client.post("/api/v1/finance/records", json={

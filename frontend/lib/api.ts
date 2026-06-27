@@ -97,7 +97,7 @@ export const financeApi = {
   }): Promise<AssetRecordResponse> =>
     (await client.post('/api/v1/finance/records', data)).data,
   updateRecord: async (id: number, data: Partial<{
-    total_assets: number; monthly_income: number; monthly_expense: number; note: string | null;
+    record_date: string; total_assets: number; monthly_income: number; monthly_expense: number; note: string | null;
   }>): Promise<AssetRecordResponse> =>
     (await client.put(`/api/v1/finance/records/${id}`, data)).data,
   deleteRecord: async (id: number): Promise<void> => {

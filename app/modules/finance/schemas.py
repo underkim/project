@@ -18,6 +18,7 @@ class AssetRecordCreate(BaseModel):
 
 
 class AssetRecordUpdate(BaseModel):
+    record_date: date | None = None
     total_assets: int | None = None
     monthly_income: int | None = None
     monthly_expense: int | None = None

@@ -36,7 +36,7 @@ export default function FinancePage() {
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ total_assets: '', monthly_income: '', monthly_expense: '', note: '' });
+  const [editForm, setEditForm] = useState({ record_date: '', total_assets: '', monthly_income: '', monthly_expense: '', note: '' });
   const [assetGoal, setAssetGoal] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
     return parseInt(localStorage.getItem(GOAL_KEY) ?? '0', 10) || 0;
@@ -121,13 +121,14 @@ export default function FinancePage() {
 
   function startEdit(r: AssetRecordResponse) {
     setEditingId(r.id);
-    setEditForm({ total_assets: String(r.total_assets), monthly_income: String(r.monthly_income), monthly_expense: String(r.monthly_expense), note: r.note ?? '' });
+    setEditForm({ record_date: r.record_date, total_assets: String(r.total_assets), monthly_income: String(r.monthly_income), monthly_expense: String(r.monthly_expense), note: r.note ?? '' });
   }
 
   async function handleUpdate() {
     if (!editingId) return;
     try {
       await financeApi.updateRecord(editingId, {
+        record_date: editForm.record_date || undefined,
         total_assets: Number(editForm.total_assets),
         monthly_income: Number(editForm.monthly_income),
         monthly_expense: Number(editForm.monthly_expense),
@@ -136,8 +137,13 @@ export default function FinancePage() {
       setEditingId(null);
       showToast('기록 수정됨');
       await load();
-    } catch {
-      showToast('수정에 실패했습니다.', 'error');
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        showToast('해당 날짜에 이미 재테크 기록이 있어요.', 'error');
+      } else {
+        showToast('수정에 실패했습니다.', 'error');
+      }
     }
   }
 
@@ -561,7 +567,7 @@ export default function FinancePage() {
                     const inCls = 'w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400';
                     return (
                       <tr key={r.id} className="bg-blue-50">
-                        <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{r.record_date}</td>
+                        <td className="px-2 py-2"><input type="date" value={editForm.record_date} onChange={e => setEditForm({ ...editForm, record_date: e.target.value })} className={inCls} /></td>
                         <td className="px-2 py-2"><input type="number" value={editForm.total_assets} onChange={e => setEditForm({ ...editForm, total_assets: e.target.value })} className={inCls} /></td>
                         <td className="px-2 py-2"><input type="number" value={editForm.monthly_income} onChange={e => setEditForm({ ...editForm, monthly_income: e.target.value })} className={inCls} /></td>
                         <td className="px-2 py-2"><input type="number" value={editForm.monthly_expense} onChange={e => setEditForm({ ...editForm, monthly_expense: e.target.value })} className={inCls} /></td>

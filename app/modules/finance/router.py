@@ -65,7 +65,10 @@ async def update_record(
     _: CurrentUser,
     session: AsyncSession = Depends(get_db),
 ):
-    result = await service.update_record(session, record_id, data)
+    try:
+        result = await service.update_record(session, record_id, data)
+    except IntegrityError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="해당 날짜에 이미 재테크 기록이 있어요.")
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="재테크 기록을 찾을 수 없습니다.")
     return result
