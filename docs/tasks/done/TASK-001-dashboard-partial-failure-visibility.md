@@ -1,6 +1,6 @@
 # TASK-001: Dashboard Partial Failure Visibility
 
-status: implemented
+status: done
 type: feature
 priority: medium
 created_by: codex
@@ -11,11 +11,11 @@ created_at: 2026-06-28
 approved_at: 2026-06-28
 implemented_at: 2026-06-28
 reviewed_at:
-merged_at:
+merged_at: 2026-06-28
 
 branch: feature/TASK-001-dashboard-partial-failure-visibility
-pr: (gh CLI 미설치 — GitHub 웹에서 PR 생성 필요)
-merge_commit:
+pr: merged directly into main
+merge_commit: f056f22
 
 ---
 
