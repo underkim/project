@@ -42,6 +42,19 @@ class CFRatingLogCreate(BaseModel):
         return v
 
 
+class CFRatingLogUpdate(BaseModel):
+    log_date: date | None = None
+    rating: int | None = None
+    rank_name: str | None = None
+
+    @field_validator("rating")
+    @classmethod
+    def rating_positive(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("레이팅은 0 이상이어야 합니다")
+        return v
+
+
 class CFRatingLogResponse(BaseModel):
     id: int
     log_date: date
@@ -55,3 +68,5 @@ class CareerSummaryResponse(BaseModel):
     github_username: str | None
     latest_cf_rating: int | None
     latest_cf_rank: str | None
+    peak_cf_rating: int | None = None
+    rating_delta: int | None = None

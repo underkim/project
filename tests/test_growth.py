@@ -279,3 +279,95 @@ async def test_growth_summary_books_accuracy(auth_client):
     data = resp.json()
     assert data["books_completed_this_year"] >= 2
     assert data["books_reading"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_create_book_with_wishlist_status(auth_client):
+    """wishlist 상태로 책을 추가할 수 있어야 한다."""
+    resp = await auth_client.post("/api/v1/growth/books", json={
+        "title": "읽고 싶은 책", "author": "좋은 저자", "status": "wishlist",
+    })
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["status"] == "wishlist"
+    assert data["title"] == "읽고 싶은 책"
+
+
+@pytest.mark.asyncio
+async def test_update_book_to_wishlist_status(auth_client):
+    """기존 책을 wishlist 상태로 변경할 수 있어야 한다."""
+    create = await auth_client.post("/api/v1/growth/books", json={
+        "title": "상태 변경 책", "status": "planned",
+    })
+    assert create.status_code == 201
+    book_id = create.json()["id"]
+
+    update = await auth_client.put(f"/api/v1/growth/books/{book_id}", json={"status": "wishlist"})
+    assert update.status_code == 200
+    assert update.json()["status"] == "wishlist"
+
+
+@pytest.mark.asyncio
+async def test_wishlist_book_not_counted_as_reading_or_completed(auth_client):
+    """wishlist 상태 책은 summary의 books_reading, books_completed_this_year에 포함되지 않아야 한다."""
+    from datetime import date
+    this_year = str(date.today().year)
+
+    before = (await auth_client.get("/api/v1/growth/summary")).json()
+    before_reading = before["books_reading"]
+    before_completed = before["books_completed_this_year"]
+
+    await auth_client.post("/api/v1/growth/books", json={
+        "title": "위시리스트 책", "status": "wishlist",
+    })
+
+    after = (await auth_client.get("/api/v1/growth/summary")).json()
+    assert after["books_reading"] == before_reading
+    assert after["books_completed_this_year"] == before_completed
+
+
+@pytest.mark.asyncio
+async def test_english_streak_consecutive_days(auth_client):
+    """연속으로 영어 학습하면 summary의 english_streak에 반영되어야 한다."""
+    from datetime import date, timedelta
+    today = date.today()
+    for i in range(3):
+        d = (today - timedelta(days=2 - i)).isoformat()
+        await auth_client.post("/api/v1/growth/english", json={
+            "log_date": d, "activity_type": "읽기", "duration_minutes": 30,
+        })
+    resp = await auth_client.get("/api/v1/growth/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["english_streak"] >= 3
+
+
+@pytest.mark.asyncio
+async def test_english_streak_broken_returns_zero(auth_client):
+    """영어 학습 스트릭이 끊어지면 english_streak이 0이어야 한다."""
+    from datetime import date, timedelta
+    today = date.today()
+    for i in [5, 4, 3]:
+        d = (today - timedelta(days=i)).isoformat()
+        await auth_client.post("/api/v1/growth/english", json={
+            "log_date": d, "activity_type": "듣기", "duration_minutes": 20,
+        })
+    resp = await auth_client.get("/api/v1/growth/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["english_streak"] == 0
+
+
+@pytest.mark.asyncio
+async def test_growth_summary_books_wishlist_count(auth_client):
+    """wishlist 상태 책이 summary의 books_wishlist에 반영되어야 한다."""
+    before = (await auth_client.get("/api/v1/growth/summary")).json()
+    before_wishlist = before["books_wishlist"]
+
+    await auth_client.post("/api/v1/growth/books", json={"title": "찜 책 1", "status": "wishlist"})
+    await auth_client.post("/api/v1/growth/books", json={"title": "찜 책 2", "status": "wishlist"})
+
+    resp = await auth_client.get("/api/v1/growth/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["books_wishlist"] == before_wishlist + 2

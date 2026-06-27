@@ -7,6 +7,7 @@ class BookStatus(str, Enum):
     planned = "planned"
     reading = "reading"
     completed = "completed"
+    wishlist = "wishlist"
 
 
 class BookRecordCreate(BaseModel):
@@ -136,5 +137,7 @@ class EnglishLogUpdate(BaseModel):
 class GrowthSummaryResponse(BaseModel):
     books_completed_this_year: int
     books_reading: int
+    books_wishlist: int = 0
     english_days_this_month: int
     english_minutes_this_month: int
+    english_streak: int = 0

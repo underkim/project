@@ -291,3 +291,35 @@ async def test_sleep_list_ordered_newest_first(auth_client):
     logs = resp.json()
     assert len(logs) >= 2
     assert logs[0]["log_date"] > logs[1]["log_date"]
+
+
+@pytest.mark.asyncio
+async def test_exercise_streak_consecutive_days(auth_client):
+    """연속으로 운동한 날짜가 있으면 summary에 exercise_streak이 반영되어야 한다."""
+    from datetime import date, timedelta
+    today = date.today()
+    for i in range(3):
+        d = (today - timedelta(days=2 - i)).isoformat()
+        await auth_client.post("/api/v1/health/exercise", json={
+            "log_date": d, "exercise_type": "러닝", "duration_minutes": 30,
+        })
+    resp = await auth_client.get("/api/v1/health/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["exercise_streak"] >= 3
+
+
+@pytest.mark.asyncio
+async def test_exercise_streak_broken_resets(auth_client):
+    """3일 연속 후 하루 쉬면 스트릭이 끊어져야 한다."""
+    from datetime import date, timedelta
+    today = date.today()
+    for i in [4, 3, 2]:
+        d = (today - timedelta(days=i)).isoformat()
+        await auth_client.post("/api/v1/health/exercise", json={
+            "log_date": d, "exercise_type": "헬스", "duration_minutes": 40,
+        })
+    resp = await auth_client.get("/api/v1/health/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["exercise_streak"] == 0

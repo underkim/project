@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import and_, case, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +96,7 @@ async def get_summary(session: AsyncSession) -> GrowthSummaryResponse:
         select(
             func.count(case((and_(BookRecord.status == "completed", BookRecord.end_date >= year_start), 1))).label("completed_this_year"),
             func.count(case((BookRecord.status == "reading", 1))).label("reading"),
+            func.count(case((BookRecord.status == "wishlist", 1))).label("wishlist"),
         ).select_from(BookRecord)
     )).one()
 
@@ -108,9 +109,27 @@ async def get_summary(session: AsyncSession) -> GrowthSummaryResponse:
     eng_days = eng_row.days
     eng_minutes = eng_row.minutes
 
+    eng_dates_result = await session.execute(
+        select(distinct(EnglishLog.log_date)).order_by(EnglishLog.log_date)
+    )
+    eng_dates = sorted({row[0] for row in eng_dates_result.all()})
+
+    eng_streak = 0
+    if eng_dates:
+        run = 1
+        for i in range(1, len(eng_dates)):
+            if (eng_dates[i] - eng_dates[i - 1]).days == 1:
+                run += 1
+            else:
+                run = 1
+        if eng_dates[-1] >= today - timedelta(days=1):
+            eng_streak = run
+
     return GrowthSummaryResponse(
         books_completed_this_year=book_row.completed_this_year,
         books_reading=book_row.reading,
+        books_wishlist=book_row.wishlist,
         english_days_this_month=eng_days,
         english_minutes_this_month=eng_minutes,
+        english_streak=eng_streak,
     )

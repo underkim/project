@@ -11,6 +11,7 @@ from app.modules.travel.schemas import (
     ChecklistItemResponse,
     PlanItemCreate,
     PlanItemResponse,
+    PlanItemUpdate,
     TravelSummaryResponse,
     TripCreate,
     TripResponse,
@@ -129,6 +130,19 @@ async def add_plan_item(
     result = await service.add_plan_item(session, trip_id, data)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
+    return result
+
+
+@router.put("/plan/{item_id}", response_model=PlanItemResponse)
+async def update_plan_item(
+    item_id: int,
+    data: PlanItemUpdate,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    result = await service.update_plan_item(session, item_id, data)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="일정 항목을 찾을 수 없습니다.")
     return result
 
 

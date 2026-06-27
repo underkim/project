@@ -231,3 +231,50 @@ async def test_finance_summary_zero_income_savings_rate_none(auth_client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["avg_savings_rate"] is None
+
+
+@pytest.mark.asyncio
+async def test_finance_summary_asset_change(auth_client):
+    """summary에 asset_change(직전 기록 대비 자산 증감)가 반영되어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-03-01", "total_assets": 5000,
+        "monthly_income": 300, "monthly_expense": 200,
+    })
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-04-01", "total_assets": 5500,
+        "monthly_income": 350, "monthly_expense": 200,
+    })
+    resp = await auth_client.get("/api/v1/finance/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["asset_change"] == 500  # 5500 - 5000
+
+
+@pytest.mark.asyncio
+async def test_finance_summary_asset_change_negative(auth_client):
+    """자산이 감소하면 asset_change가 음수여야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-05-01", "total_assets": 8000,
+        "monthly_income": 400, "monthly_expense": 250,
+    })
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-06-01", "total_assets": 7500,
+        "monthly_income": 400, "monthly_expense": 450,
+    })
+    resp = await auth_client.get("/api/v1/finance/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["asset_change"] == -500  # 7500 - 8000
+
+
+@pytest.mark.asyncio
+async def test_finance_summary_single_record_asset_change_none(auth_client):
+    """기록이 1개뿐이면 asset_change는 None이어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-07-01", "total_assets": 3000,
+        "monthly_income": 200, "monthly_expense": 100,
+    })
+    resp = await auth_client.get("/api/v1/finance/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["asset_change"] is None

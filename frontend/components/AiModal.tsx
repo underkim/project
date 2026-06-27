@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Bot, Send, Loader2, X, CheckCircle2, Trash2, Eraser, ChevronDown, Copy, Check,
+  Bot, Send, Loader2, X, CheckCircle2, Trash2, Eraser, ChevronDown, Copy, Check, ChevronsDown, BarChart2,
 } from 'lucide-react';
 import { aiApi } from '@/lib/api';
 import type { AiChatResponse } from '@/lib/api';
@@ -58,26 +58,55 @@ function parseBold(text: string) {
   );
 }
 
-function MarkdownText({ text }: { text: string }) {
-  const lines = text.split('\n');
+function parseInlineCode(text: string) {
+  const parts = text.split(/`([^`]+)`/);
   return (
     <>
-      {lines.map((line, i) => {
-        const isBullet = /^[-•] /.test(line);
-        const isHeading = /^#{1,3} /.test(line);
-        const content = isBullet
-          ? line.replace(/^[-•] /, '')
-          : isHeading
-          ? line.replace(/^#{1,3} /, '')
-          : line;
+      {parts.map((part, i) =>
+        i % 2 === 1
+          ? <code key={i} className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded text-[11px] font-mono">{part}</code>
+          : <Fragment key={i}>{parseBold(part)}</Fragment>
+      )}
+    </>
+  );
+}
+
+function MarkdownText({ text }: { text: string }) {
+  // 코드블록(```) 먼저 분리
+  const segments = text.split(/(```[\s\S]*?```)/);
+  return (
+    <>
+      {segments.map((seg, si) => {
+        if (seg.startsWith('```') && seg.endsWith('```')) {
+          const inner = seg.slice(3, -3).replace(/^\w+\n/, '');
+          return (
+            <pre key={si} className="mt-1.5 mb-1.5 bg-slate-800 text-emerald-300 text-[11px] font-mono rounded-xl px-3 py-2.5 overflow-x-auto whitespace-pre leading-relaxed">
+              {inner}
+            </pre>
+          );
+        }
+        const lines = seg.split('\n');
         return (
-          <Fragment key={i}>
-            {i > 0 && <br />}
-            {isBullet && <span className="mr-1 select-none text-slate-400">•</span>}
-            {isHeading
-              ? <strong className="font-semibold text-slate-800">{parseBold(content)}</strong>
-              : parseBold(content)
-            }
+          <Fragment key={si}>
+            {lines.map((line, i) => {
+              const isBullet = /^[-•] /.test(line);
+              const isHeading = /^#{1,3} /.test(line);
+              const content = isBullet
+                ? line.replace(/^[-•] /, '')
+                : isHeading
+                ? line.replace(/^#{1,3} /, '')
+                : line;
+              return (
+                <Fragment key={i}>
+                  {(si > 0 || i > 0) && <br />}
+                  {isBullet && <span className="mr-1 select-none text-slate-400">•</span>}
+                  {isHeading
+                    ? <strong className="font-semibold text-slate-800">{parseInlineCode(content)}</strong>
+                    : parseInlineCode(content)
+                  }
+                </Fragment>
+              );
+            })}
           </Fragment>
         );
       })}
@@ -112,6 +141,7 @@ export default function AiModal() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
+  const [weeklyReportLoading, setWeeklyReportLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -124,6 +154,8 @@ export default function AiModal() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   const autoResize = useCallback(() => {
     const el = inputRef.current;
@@ -140,6 +172,17 @@ export default function AiModal() {
     inputRef.current?.focus();
     return () => cancelAnimationFrame(id);
   }, [open, messages]);
+
+  function handleScroll() {
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollBtn(fromBottom > 100);
+  }
+
+  function scrollToBottom() {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -254,6 +297,23 @@ export default function AiModal() {
     setClearConfirm(false);
   }
 
+  async function handleWeeklyReport() {
+    if (weeklyReportLoading || loading) return;
+    const { time, dateLabel } = makeTimestamp();
+    setMessages(prev => [...prev, { id: ++msgId, role: 'user', text: '주간 리포트 생성해줘', timestamp: time, dateLabel }]);
+    setWeeklyReportLoading(true);
+    setLoading(true);
+    try {
+      const { report } = await aiApi.weeklyReport();
+      setMessages(prev => [...prev, { id: ++msgId, role: 'ai', text: report, timestamp: makeTimestamp().time, dateLabel: makeTimestamp().dateLabel }]);
+    } catch {
+      setMessages(prev => [...prev, { id: ++msgId, role: 'ai', text: '주간 리포트를 가져오지 못했어요. 잠시 후 다시 시도해주세요.' }]);
+    } finally {
+      setWeeklyReportLoading(false);
+      setLoading(false);
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
@@ -275,6 +335,15 @@ export default function AiModal() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              <button
+                onClick={handleWeeklyReport}
+                disabled={weeklyReportLoading || loading}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40"
+                title="주간 리포트"
+              >
+                {weeklyReportLoading ? <Loader2 size={12} className="animate-spin" /> : <BarChart2 size={12} />}
+                <span className="hidden sm:inline">주간 리포트</span>
+              </button>
               {messages.length > 0 && (
                 <button
                   onClick={clearChat}
@@ -299,7 +368,8 @@ export default function AiModal() {
           </div>
 
           {/* 메시지 영역 */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3 min-h-0">
+          <div className="relative flex-1 min-h-0">
+          <div ref={scrollAreaRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 py-3 flex flex-col gap-3">
             {messages.length === 0 && (
               <div className="flex-1 flex flex-col items-center justify-center py-8 gap-3">
                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center">
@@ -310,6 +380,14 @@ export default function AiModal() {
                   <p className="text-xs text-slate-400 mt-1">기록·조회·분석·조언 뭐든지 말해봐요</p>
                 </div>
                 <div className="flex flex-wrap gap-2 justify-center mt-1">
+                  <button
+                    onClick={handleWeeklyReport}
+                    disabled={weeklyReportLoading}
+                    className="text-xs px-3 py-1.5 bg-slate-900 hover:bg-slate-700 text-white rounded-full transition-colors flex items-center gap-1 disabled:opacity-50"
+                  >
+                    {weeklyReportLoading ? <Loader2 size={11} className="animate-spin" /> : <span>📋</span>}
+                    <span>주간 리포트</span>
+                  </button>
                   {[
                     { text: '이번 주 어땠어?', icon: '📊' },
                     { text: '오늘 러닝 40분', icon: '🏃' },
@@ -410,6 +488,16 @@ export default function AiModal() {
               </div>
             )}
             <div ref={bottomRef} />
+          </div>
+          {showScrollBtn && (
+            <button
+              onClick={scrollToBottom}
+              className="absolute bottom-3 right-3 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-full shadow-sm text-slate-500 hover:text-slate-700 hover:border-slate-400 transition-all"
+              title="최신 메시지로"
+            >
+              <ChevronsDown size={14} />
+            </button>
+          )}
           </div>
 
           {/* 입력창 */}

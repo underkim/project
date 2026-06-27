@@ -156,10 +156,26 @@ async def delete_plan_item(session: AsyncSession, item_id: int) -> bool:
     return True
 
 
+async def update_plan_item(
+    session: AsyncSession, item_id: int, data: "PlanItemUpdate"
+) -> "PlanItemResponse | None":
+    from app.modules.travel.schemas import PlanItemUpdate as _PlanItemUpdate, PlanItemResponse as _PlanItemResponse  # noqa
+    async with session.begin():
+        item = await session.get(TripPlanItem, item_id)
+        if item is None:
+            return None
+        update = data.model_dump(exclude_unset=True)
+        for k, v in update.items():
+            setattr(item, k, v)
+        await session.flush()
+        return _PlanItemResponse.model_validate(item)
+
+
 async def get_next_trip(session: AsyncSession) -> Trip | None:
-    """다음 여행 조회 (진행 중 우선, 예정은 가장 가까운 날짜). 관계 로딩 없음."""
+    """다음 여행 조회 (진행 중 우선, 예정은 가장 가까운 날짜)."""
     result = await session.execute(
         select(Trip)
+        .options(selectinload(Trip.checklist_items), selectinload(Trip.plan_items))
         .where(Trip.status.in_(["ongoing", "planned"]))
         .order_by(
             case((Trip.status == "ongoing", 0), else_=1),

@@ -1,10 +1,11 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.career.models import CFRatingLog, CareerSettings
 from app.modules.career.schemas import (
     CFRatingLogCreate,
     CFRatingLogResponse,
+    CFRatingLogUpdate,
     CareerSettingsResponse,
     CareerSettingsUpdate,
     CareerSummaryResponse,
@@ -50,6 +51,18 @@ async def create_cf_rating(
     return CFRatingLogResponse.model_validate(log)
 
 
+async def update_cf_rating(
+    session: AsyncSession, log_id: int, data: CFRatingLogUpdate
+) -> CFRatingLogResponse | None:
+    async with session.begin():
+        log = await session.get(CFRatingLog, log_id)
+        if log is None:
+            return None
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(log, field, value)
+    return CFRatingLogResponse.model_validate(log)
+
+
 async def delete_cf_rating(session: AsyncSession, log_id: int) -> bool:
     async with session.begin():
         log = await session.get(CFRatingLog, log_id)
@@ -61,13 +74,25 @@ async def delete_cf_rating(session: AsyncSession, log_id: int) -> bool:
 
 async def get_summary(session: AsyncSession) -> CareerSummaryResponse:
     settings = await get_settings(session)
-    cf_result = await session.execute(
-        select(CFRatingLog).order_by(CFRatingLog.log_date.desc()).limit(1)
+
+    top2_result = await session.execute(
+        select(CFRatingLog).order_by(CFRatingLog.log_date.desc()).limit(2)
     )
-    latest = cf_result.scalar_one_or_none()
+    top2 = top2_result.scalars().all()
+    latest = top2[0] if top2 else None
+    prev = top2[1] if len(top2) > 1 else None
+
+    peak_row = (await session.execute(
+        select(func.max(CFRatingLog.rating))
+    )).scalar_one_or_none()
+
+    rating_delta = (latest.rating - prev.rating) if (latest and prev) else None
+
     return CareerSummaryResponse(
         cf_handle=settings.cf_handle,
         github_username=settings.github_username,
         latest_cf_rating=latest.rating if latest else None,
         latest_cf_rank=latest.rank_name if latest else None,
+        peak_cf_rating=peak_row,
+        rating_delta=rating_delta,
     )

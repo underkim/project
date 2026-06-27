@@ -96,6 +96,38 @@ function ModuleCard({ title, icon, href, accent = 'bg-slate-50', children }: Mod
   );
 }
 
+function ReportMarkdown({ text }: { text: string }) {
+  const lines = text.split('\n');
+  return (
+    <div className="space-y-1.5 text-sm text-slate-700 leading-relaxed">
+      {lines.map((line, i) => {
+        if (/^### (.+)/.test(line)) {
+          return <p key={i} className="font-bold text-slate-900 text-xs uppercase tracking-wider mt-4 first:mt-0">{line.replace(/^### /, '')}</p>;
+        }
+        if (/^## (.+)/.test(line)) {
+          return <p key={i} className="font-bold text-slate-900 text-base mt-4 first:mt-0">{line.replace(/^## /, '')}</p>;
+        }
+        if (/^# (.+)/.test(line)) {
+          return <p key={i} className="font-bold text-slate-900 text-lg mt-4 first:mt-0">{line.replace(/^# /, '')}</p>;
+        }
+        if (/^[-*] (.+)/.test(line)) {
+          const content = line.replace(/^[-*] /, '');
+          return (
+            <div key={i} className="flex gap-2 items-start">
+              <span className="text-slate-300 mt-1 shrink-0">•</span>
+              <span dangerouslySetInnerHTML={{ __html: content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+            </div>
+          );
+        }
+        if (line.trim() === '') return <div key={i} className="h-1" />;
+        return (
+          <p key={i} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+        );
+      })}
+    </div>
+  );
+}
+
 function WeeklyReportModal({ onClose }: { onClose: () => void }) {
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(true);
@@ -129,7 +161,7 @@ function WeeklyReportModal({ onClose }: { onClose: () => void }) {
           ) : error ? (
             <p className="text-sm text-red-500">{error}</p>
           ) : (
-            <pre className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-sans">{report}</pre>
+            <ReportMarkdown text={report} />
           )}
         </div>
       </div>
@@ -142,6 +174,27 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
+  const [assetGoal] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    return parseInt(localStorage.getItem('asset_goal') ?? '0', 10) || 0;
+  });
+
+  const [bookGoal] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    const year = new Date().getFullYear();
+    return parseInt(localStorage.getItem(`book_goal_${year}`) ?? '0', 10) || 0;
+  });
+
+  const [engGoal] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    const d = new Date();
+    return parseInt(localStorage.getItem(`eng_goal_${d.getFullYear()}_${d.getMonth() + 1}`) ?? '0', 10) || 0;
+  });
+
+  const [cfGoal] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    return parseInt(localStorage.getItem('cf_rating_goal') ?? '0', 10) || 0;
+  });
 
   function load() {
     dashboardApi.getOverview()
@@ -178,6 +231,7 @@ export default function DashboardPage() {
   });
 
   const hasAlert = planner && (planner.urgent_items > 0 || planner.overdue_items > 0);
+  const currentPhase = planner?.phases.find(p => p.is_current) ?? null;
 
   return (
     <div className="space-y-6">
@@ -212,10 +266,12 @@ export default function DashboardPage() {
       <div className="bg-slate-900 text-white rounded-2xl px-6 py-6 flex items-center gap-6">
         {/* 링 */}
         <Link href="/planner" className="relative shrink-0">
-          <RingProgress pct={completionRate} size={96} stroke={8} color="#94a3b8" />
+          <RingProgress pct={completionRate} size={96} stroke={8} color={currentPhase ? currentPhase.color : '#94a3b8'} />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-xl font-bold leading-none">{completionRate}%</span>
-            <span className="text-[9px] text-slate-400 mt-0.5">로드맵</span>
+            <span className="text-[9px] text-slate-400 mt-0.5">
+              {currentPhase ? currentPhase.name : '로드맵'}
+            </span>
           </div>
         </Link>
 
@@ -233,14 +289,21 @@ export default function DashboardPage() {
               label: '이번 주 운동',
               value: `${exerciseDays}일`,
               sub: (health?.total_exercise_minutes_this_week ?? 0) > 0
-                ? `총 ${health?.total_exercise_minutes_this_week}분`
+                ? `${health!.total_exercise_minutes_this_week}분 · 수면 ${health?.avg_sleep_hours_this_week ?? '—'}h`
                 : sleepQuality > 0 ? `수면 ${sleepQuality}/5` : '수면 미입력',
             },
             {
               href: '/growth',
               label: '올해 완독',
               value: `${booksThisYear}권`,
-              sub: `영어 ${growth?.english_days_this_month ?? 0}일/월`,
+              sub: (() => {
+                const days = growth?.english_days_this_month ?? 0;
+                const mins = growth?.english_minutes_this_month ?? 0;
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                return days > 0 ? `영어 ${days}일 · ${timeStr}` : '영어 기록 없음';
+              })(),
             },
             {
               href: '/travel',
@@ -258,6 +321,36 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* 현재 Phase 진행 상황 */}
+      {currentPhase && (
+        <Link href="/planner" className="block">
+          <div className="border border-slate-100 rounded-2xl px-5 py-3.5 hover:border-slate-200 hover:shadow-sm transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: currentPhase.color }} />
+                <span className="text-sm font-semibold text-slate-800">{currentPhase.name}</span>
+                <span className="text-xs text-emerald-500 font-medium bg-emerald-50 px-1.5 py-0.5 rounded-full">현재 단계</span>
+              </div>
+              <span className="text-xs text-slate-400">
+                {currentPhase.completed}/{currentPhase.total}개 완료
+              </span>
+            </div>
+            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${currentPhase.total > 0 ? Math.round((currentPhase.completed / currentPhase.total) * 100) : 0}%`,
+                  backgroundColor: currentPhase.color,
+                }}
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1.5">
+              {currentPhase.label} · {currentPhase.total > 0 ? Math.round((currentPhase.completed / currentPhase.total) * 100) : 0}% 달성
+            </p>
+          </div>
+        </Link>
+      )}
+
       {/* 모듈 카드 그리드 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -271,6 +364,25 @@ export default function DashboardPage() {
             <RingProgress pct={completionRate} size={52} stroke={5} color="#0f172a" />
           </div>
           <ProgressBar value={planner?.completed_items ?? 0} max={planner?.total_items ?? 1} />
+          {planner?.phases && planner.phases.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              {planner.phases.map(p => {
+                const pct = p.total > 0 ? Math.round((p.completed / p.total) * 100) : 0;
+                return (
+                  <div key={p.name} className="flex items-center gap-2">
+                    <span className={`text-[10px] w-16 shrink-0 truncate ${p.is_current ? 'font-semibold text-slate-700' : 'text-slate-400'}`}>
+                      {p.label || p.name}
+                    </span>
+                    <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: p.color || '#0f172a' }} />
+                    </div>
+                    <span className="text-[10px] text-slate-400 w-6 text-right shrink-0">{pct}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="flex gap-4 mt-3">
             {planner?.urgent_items != null && planner.urgent_items > 0 && (
               <span className="text-xs text-amber-600 font-medium">⚡ 임박 {planner.urgent_items}개</span>
@@ -293,9 +405,14 @@ export default function DashboardPage() {
                 <span className="text-sm font-bold text-slate-900">{exerciseDays} / 7일</span>
               </div>
               <WeekDots days={exerciseDays} />
-              {(health?.total_exercise_minutes_this_week ?? 0) > 0 && (
-                <p className="text-[11px] text-slate-400 mt-1.5">총 {health?.total_exercise_minutes_this_week}분</p>
-              )}
+              <div className="flex items-center gap-3 mt-1.5">
+                {(health?.total_exercise_minutes_this_week ?? 0) > 0 && (
+                  <p className="text-[11px] text-slate-400">총 {health?.total_exercise_minutes_this_week}분</p>
+                )}
+                {(health?.exercise_streak ?? 0) >= 2 && (
+                  <p className="text-[11px] text-orange-500 font-medium">🔥 {health!.exercise_streak}일 연속</p>
+                )}
+              </div>
             </div>
             {health?.avg_sleep_hours_this_week && (
               <div className="flex items-center justify-between">
@@ -306,7 +423,12 @@ export default function DashboardPage() {
             {sleepQuality > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500">수면 품질</span>
-                <Stars value={sleepQuality} />
+                <div className="flex items-center gap-1.5">
+                  <Stars value={sleepQuality} />
+                  <span className={`text-[10px] font-medium ${sleepQuality >= 4 ? 'text-emerald-600' : sleepQuality <= 2 ? 'text-red-400' : 'text-slate-400'}`}>
+                    {['', '최악', '나쁨', '보통', '좋음', '최고'][Math.round(sleepQuality)]}
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -317,12 +439,35 @@ export default function DashboardPage() {
           <div className="space-y-3">
             <div>
               <p className="text-xs text-slate-400 mb-0.5">총 자산</p>
-              <p className="text-2xl font-bold text-slate-900">
-                {finance?.latest_total_assets != null
-                  ? `${finance.latest_total_assets.toLocaleString()}만원`
-                  : <span className="text-slate-300 text-base">미입력</span>}
-              </p>
+              <div className="flex items-end gap-2">
+                <p className="text-2xl font-bold text-slate-900">
+                  {finance?.latest_total_assets != null
+                    ? `${finance.latest_total_assets.toLocaleString()}만원`
+                    : <span className="text-slate-300 text-base">미입력</span>}
+                </p>
+                {finance?.asset_change != null && finance.asset_change !== 0 && (
+                  <span className={`text-xs font-semibold mb-0.5 ${finance.asset_change > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {finance.asset_change > 0 ? '+' : ''}{finance.asset_change.toLocaleString()}만
+                  </span>
+                )}
+              </div>
             </div>
+            {assetGoal > 0 && finance?.latest_total_assets != null && (
+              <div>
+                <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+                  <span>목표 달성률</span>
+                  <span className="font-medium text-slate-700">
+                    {Math.min(100, Math.round((finance.latest_total_assets / assetGoal) * 100))}%
+                  </span>
+                </div>
+                <ProgressBar
+                  value={finance.latest_total_assets}
+                  max={assetGoal}
+                  color="bg-blue-500"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">목표 {assetGoal.toLocaleString()}만원</p>
+              </div>
+            )}
             {savingsRate > 0 && (
               <div>
                 <div className="flex justify-between text-xs text-slate-400 mb-1.5">
@@ -346,18 +491,54 @@ export default function DashboardPage() {
               <p className="text-3xl font-bold text-slate-900">{booksThisYear}</p>
               <p className="text-sm text-slate-400 mb-1">권 (올해 완독)</p>
             </div>
+            {bookGoal > 0 && (
+              <div>
+                <div className="flex justify-between text-xs text-slate-400 mb-1">
+                  <span>독서 목표</span>
+                  <span className="font-medium text-slate-600">{booksThisYear} / {bookGoal}권</span>
+                </div>
+                <ProgressBar value={booksThisYear} max={bookGoal} color="bg-violet-500" />
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-500">읽는 중</span>
-              <span className="text-xs font-medium text-slate-700">{growth?.books_reading ?? 0}권</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-700">{growth?.books_reading ?? 0}권</span>
+                {(growth?.books_wishlist ?? 0) > 0 && (
+                  <span className="text-[10px] text-violet-400">찜 {growth!.books_wishlist}권</span>
+                )}
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-500">이번 달 영어</span>
               <div className="flex items-center gap-1">
                 <span className="text-xs font-medium text-slate-700">{growth?.english_days_this_month ?? 0}일</span>
-                <span className="text-[10px] text-slate-300">/ 30일</span>
+                {engGoal > 0
+                  ? <span className="text-[10px] text-slate-300">/ {engGoal}일</span>
+                  : <span className="text-[10px] text-slate-300">/ 30일</span>
+                }
               </div>
             </div>
-            <ProgressBar value={growth?.english_days_this_month ?? 0} max={30} color="bg-violet-500" />
+            <ProgressBar
+              value={growth?.english_days_this_month ?? 0}
+              max={engGoal > 0 ? engGoal : 30}
+              color={engGoal > 0 && (growth?.english_days_this_month ?? 0) >= engGoal ? 'bg-emerald-500' : 'bg-violet-500'}
+            />
+            <div className="flex items-center gap-3">
+              {(growth?.english_minutes_this_month ?? 0) > 0 && (() => {
+                const mins = growth!.english_minutes_this_month;
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                return (
+                  <p className="text-[11px] text-slate-400">
+                    누적 {h > 0 ? `${h}시간 ` : ''}{m > 0 || h === 0 ? `${m}분` : ''}
+                  </p>
+                );
+              })()}
+              {(growth?.english_streak ?? 0) >= 2 && (
+                <p className="text-[11px] text-violet-500 font-medium">🔥 {growth!.english_streak}일 연속</p>
+              )}
+            </div>
           </div>
         </ModuleCard>
 
@@ -367,19 +548,50 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <p className="text-3xl font-bold text-slate-900">{travel?.total ?? 0}</p>
               <div className="text-xs text-slate-400 space-y-0.5">
-                <p>진행 중 {travel?.ongoing ?? 0}개</p>
+                {(travel?.ongoing ?? 0) > 0 && (
+                  <p className="text-sky-600 font-medium">진행 중 {travel!.ongoing}개</p>
+                )}
                 <p>예정 {travel?.upcoming ?? 0}개</p>
+                <p>완료 {(travel?.total ?? 0) - (travel?.upcoming ?? 0) - (travel?.ongoing ?? 0)}개</p>
               </div>
             </div>
             {travel?.next_trip_name && (
-              <div className="flex items-center gap-1.5 mt-1 px-3 py-2 bg-sky-50 rounded-xl">
-                <MapPin size={12} className="text-sky-500 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-slate-700 truncate">{travel.next_trip_name}</p>
-                  {travel.next_trip_destination && (
-                    <p className="text-[10px] text-slate-400 truncate">{travel.next_trip_destination}</p>
-                  )}
+              <div className="mt-1 px-3 py-2 bg-sky-50 rounded-xl space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <MapPin size={12} className="text-sky-500 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-slate-700 truncate">{travel.next_trip_name}</p>
+                    {travel.next_trip_destination && (
+                      <p className="text-[10px] text-slate-400 truncate">{travel.next_trip_destination}</p>
+                    )}
+                  </div>
+                  {travel.next_trip_start_date && (() => {
+                    const todayMs = new Date().setHours(0, 0, 0, 0);
+                    const depMs = new Date(travel.next_trip_start_date!).setHours(0, 0, 0, 0);
+                    const diff = Math.round((depMs - todayMs) / 86400000);
+                    const label = diff === 0 ? 'D-Day' : diff > 0 ? `D-${diff}` : '여행 중';
+                    const cls = diff === 0 ? 'text-red-500' : diff <= 7 ? 'text-amber-500' : 'text-sky-500';
+                    return <span className={`text-[11px] font-bold shrink-0 ${cls}`}>{label}</span>;
+                  })()}
                 </div>
+                {(travel.next_trip_plan_total ?? 0) > 0 && (
+                  <p className="text-[10px] text-slate-400">
+                    일정 <span className="font-medium text-slate-600">{travel.next_trip_plan_total}개</span> 등록됨
+                  </p>
+                )}
+                {(travel.next_trip_checklist_total ?? 0) > 0 && (
+                  <div>
+                    <div className="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                      <span>체크리스트</span>
+                      <span>{travel.next_trip_checklist_done} / {travel.next_trip_checklist_total}</span>
+                    </div>
+                    <ProgressBar
+                      value={travel.next_trip_checklist_done}
+                      max={travel.next_trip_checklist_total}
+                      color={travel.next_trip_checklist_done === travel.next_trip_checklist_total ? 'bg-emerald-500' : 'bg-sky-400'}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -395,7 +607,35 @@ export default function DashboardPage() {
             {career?.latest_cf_rating != null && (
               <div className="flex items-center justify-between px-3 py-2 bg-orange-50 rounded-xl">
                 <span className="text-xs text-slate-500">최근 레이팅</span>
-                <span className="text-sm font-bold text-slate-900">{career.latest_cf_rating}</span>
+                <div className="text-right">
+                  <div className="flex items-center gap-1.5 justify-end">
+                    <span className="text-sm font-bold text-slate-900">{career.latest_cf_rating}</span>
+                    {career.rating_delta != null && career.rating_delta !== 0 && (
+                      <span className={`text-[10px] font-semibold ${career.rating_delta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {career.rating_delta > 0 ? '+' : ''}{career.rating_delta}
+                      </span>
+                    )}
+                  </div>
+                  {career.latest_cf_rank && (
+                    <p className="text-[10px] text-slate-400">{career.latest_cf_rank}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {cfGoal > 0 && career?.latest_cf_rating != null && (
+              <div>
+                <div className="flex justify-between text-xs text-slate-400 mb-1">
+                  <span>목표 레이팅</span>
+                  <span className="font-medium text-slate-600">
+                    {career.latest_cf_rating} / {cfGoal}
+                    {career.latest_cf_rating >= cfGoal && ' 🎉'}
+                  </span>
+                </div>
+                <ProgressBar
+                  value={career.latest_cf_rating}
+                  max={cfGoal}
+                  color={career.latest_cf_rating >= cfGoal ? 'bg-emerald-500' : 'bg-orange-400'}
+                />
               </div>
             )}
           </div>

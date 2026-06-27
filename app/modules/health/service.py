@@ -106,9 +106,26 @@ async def get_summary(session: AsyncSession) -> HealthSummaryResponse:
     avg_sleep = round(sl_row.avg_hours, 1) if sl_row.avg_hours is not None else None
     avg_quality = round(sl_row.avg_quality, 1) if sl_row.avg_quality is not None else None
 
+    dates_result = await session.execute(
+        select(distinct(ExerciseLog.log_date)).order_by(ExerciseLog.log_date)
+    )
+    dates = sorted({row[0] for row in dates_result.all()})
+
+    streak = 0
+    if dates:
+        run = 1
+        for i in range(1, len(dates)):
+            if (dates[i] - dates[i - 1]).days == 1:
+                run += 1
+            else:
+                run = 1
+        if dates[-1] >= today - timedelta(days=1):
+            streak = run
+
     return HealthSummaryResponse(
         exercise_days_this_week=ex_row.days,
         total_exercise_minutes_this_week=ex_row.minutes,
         avg_sleep_hours_this_week=avg_sleep,
         avg_sleep_quality_this_week=avg_quality,
+        exercise_streak=streak,
     )

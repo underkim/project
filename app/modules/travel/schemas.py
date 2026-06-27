@@ -94,6 +94,13 @@ class PlanItemCreate(BaseModel):
         return v
 
 
+class PlanItemUpdate(BaseModel):
+    title: str | None = None
+    time: str | None = None
+    description: str | None = None
+    day: int | None = None
+
+
 class PlanItemResponse(BaseModel):
     id: int
     day: int

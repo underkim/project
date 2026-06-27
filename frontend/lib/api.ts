@@ -172,6 +172,10 @@ export const careerApi = {
     log_date: string; rating: number; rank_name: string;
   }): Promise<CFRatingLogResponse> =>
     (await client.post('/api/v1/career/cf-ratings', data)).data,
+  updateCFRating: async (id: number, data: Partial<{
+    log_date: string; rating: number; rank_name: string;
+  }>): Promise<CFRatingLogResponse> =>
+    (await client.put(`/api/v1/career/cf-ratings/${id}`, data)).data,
   deleteCFRating: async (id: number) => { await client.delete(`/api/v1/career/cf-ratings/${id}`); },
 };
 
@@ -211,6 +215,10 @@ export const travelApi = {
     day: number; title: string; time?: string; description?: string; sort_order?: number;
   }): Promise<TripPlanItemResponse> =>
     (await client.post(`/api/v1/travel/trips/${tripId}/plan`, data)).data,
+  updatePlanItem: async (itemId: number, data: Partial<{
+    title: string; time: string | null; description: string | null; day: number;
+  }>): Promise<TripPlanItemResponse> =>
+    (await client.put(`/api/v1/travel/plan/${itemId}`, data)).data,
   deletePlanItem: async (itemId: number): Promise<void> => {
     await client.delete(`/api/v1/travel/plan/${itemId}`);
   },
@@ -256,6 +264,7 @@ async function _downloadCsv(url: string, filename: string): Promise<void> {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(href), 100);
+    showToast(`${filename} 다운로드를 시작합니다.`, 'success');
   } catch {
     showToast('CSV 내보내기에 실패했습니다.', 'error');
   }

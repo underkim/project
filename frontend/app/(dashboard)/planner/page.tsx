@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
-import { Plus, Trash2, Check, X, Pencil, AlertTriangle, Settings2, Loader2, CalendarClock, CheckSquare } from 'lucide-react';
+import { Plus, Trash2, Check, X, Pencil, AlertTriangle, Settings2, Loader2, CalendarClock, CheckSquare, Eye } from 'lucide-react';
 import { plannerApi } from '@/lib/api';
 import type { PhaseResponse, RoadmapItemResponse, ItemStatus } from '@/types';
 
@@ -362,9 +362,10 @@ interface CategoryCardProps {
   selectMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: number) => void;
+  hideCompleted?: boolean;
 }
 
-function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onAddItem, onCategoryUpdate, onCategoryDelete, selectMode, isSelected, onToggleSelect }: CategoryCardProps) {
+function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onAddItem, onCategoryUpdate, onCategoryDelete, selectMode, isSelected, onToggleSelect, hideCompleted }: CategoryCardProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingMeta, setEditingMeta] = useState(false);
   const [metaIcon, setMetaIcon] = useState(cat.icon);
@@ -546,7 +547,9 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
         {cat.items.length === 0 && !showAdd && (
           <p className="text-xs text-slate-400 py-2 px-2">항목이 없습니다. + 버튼으로 추가하세요.</p>
         )}
-        {cat.items.map(item => (
+        {cat.items
+          .filter(item => !hideCompleted || !item.is_completed)
+          .map(item => (
           <ItemRow
             key={item.id}
             item={item}
@@ -556,6 +559,9 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
             onEditSave={onEditSave}
           />
         ))}
+        {hideCompleted && cat.items.some(i => i.is_completed) && cat.items.filter(i => !i.is_completed).length === 0 && (
+          <p className="text-xs text-slate-400 py-2 px-2">모두 완료됐습니다 🎉</p>
+        )}
         {showAdd && (
           <AddItemForm
             categoryId={cat.id}
@@ -774,6 +780,9 @@ export default function PlannerPage() {
   const [selectedCatIds, setSelectedCatIds] = useState<Set<number>>(new Set());
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [itemSearch, setItemSearch] = useState('');
+  const [hideCompleted, setHideCompleted] = useState(false);
+  const [showDeadlineView, setShowDeadlineView] = useState(false);
   const hasAutoFocused = useRef(false);
 
   useEffect(() => {
@@ -1012,6 +1021,26 @@ export default function PlannerPage() {
     )
   ).sort((a, b) => a.deadline.localeCompare(b.deadline));
 
+  const searchQuery = itemSearch.trim().toLowerCase();
+  const searchResults = searchQuery.length >= 2
+    ? phases.flatMap(p =>
+        p.categories.flatMap(c =>
+          c.items
+            .filter(i => i.text.toLowerCase().includes(searchQuery))
+            .map(i => ({ id: i.id, text: i.text, deadline: i.deadline, status: i.status, phase: p.name, category: c.title, is_completed: i.is_completed }))
+        )
+      )
+    : [];
+
+  // 마감일 순 미완료 항목 목록
+  const deadlineSortedItems = phases.flatMap(p =>
+    p.categories.flatMap(c =>
+      c.items
+        .filter(i => !i.is_completed && i.deadline)
+        .map(i => ({ id: i.id, text: i.text, deadline: i.deadline!, status: i.status, phase: p.name, category: c.title }))
+    )
+  ).sort((a, b) => a.deadline.localeCompare(b.deadline));
+
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -1122,6 +1151,81 @@ export default function PlannerPage() {
         </div>
       )}
 
+      {/* 항목 검색 */}
+      {phases.length > 0 && (
+        <div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={itemSearch}
+              onChange={e => { setItemSearch(e.target.value); if (e.target.value) setShowDeadlineView(false); }}
+              placeholder="항목 검색 (2자 이상)..."
+              className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+            />
+            {deadlineSortedItems.length > 0 && !searchQuery && (
+              <button
+                onClick={() => setShowDeadlineView(v => !v)}
+                className={`px-3.5 py-2.5 rounded-xl text-sm border transition-colors shrink-0 flex items-center gap-1.5 ${
+                  showDeadlineView
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                }`}
+                title="마감일 순 보기"
+              >
+                <CalendarClock size={14} />
+                <span className="hidden sm:inline text-xs font-medium">마감일 순</span>
+              </button>
+            )}
+          </div>
+          {searchQuery.length >= 2 && (
+            <div className="mt-2 border border-slate-100 rounded-xl overflow-hidden bg-white">
+              {searchResults.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-400">'{itemSearch}'에 해당하는 항목이 없어요</p>
+              ) : (
+                <div>
+                  <p className="px-4 py-2 text-xs text-slate-400 border-b border-slate-50">{searchResults.length}개 항목 발견</p>
+                  {searchResults.map(item => (
+                    <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${item.is_completed ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+                      <span className={`flex-1 text-sm truncate ${item.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>{item.text}</span>
+                      {item.status && !item.is_completed && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${statusStyle[item.status]}`}>
+                          {statusLabel[item.status]}
+                        </span>
+                      )}
+                      {item.deadline && (
+                        <span className="text-xs text-slate-400 shrink-0">{item.deadline}</span>
+                      )}
+                      <span className="text-[11px] text-slate-300 shrink-0 hidden sm:inline">{item.phase} / {item.category}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {showDeadlineView && !searchQuery && deadlineSortedItems.length > 0 && (
+            <div className="mt-2 border border-slate-100 rounded-xl overflow-hidden bg-white">
+              <p className="px-4 py-2 text-xs text-slate-400 border-b border-slate-50">
+                미완료 {deadlineSortedItems.length}개 · 마감일 순
+              </p>
+              {deadlineSortedItems.map(item => (
+                <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                  <span className="w-2 h-2 rounded-full shrink-0 bg-slate-300" />
+                  <span className="flex-1 text-sm text-slate-700 truncate">{item.text}</span>
+                  {item.status && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${statusStyle[item.status]}`}>
+                      {statusLabel[item.status]}
+                    </span>
+                  )}
+                  <span className="text-xs text-slate-400 shrink-0 font-medium">{item.deadline}</span>
+                  <span className="text-[11px] text-slate-300 shrink-0 hidden sm:inline">{item.phase} / {item.category}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Phase 탭 */}
       <div className="flex gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl">
         {phases.map((phase, idx) => {
@@ -1136,9 +1240,9 @@ export default function PlannerPage() {
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); cancelSelectMode(); } }}
               className={`flex-1 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 relative group cursor-pointer select-none ${
                 isActive
-                  ? 'bg-white text-slate-800 shadow-sm'
+                  ? 'bg-white text-slate-800 shadow-sm ring-2 ring-slate-200/80'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
-              }`}
+              } ${phase.is_current && !isActive ? 'ring-1 ring-emerald-300 bg-emerald-50/50' : ''}`}
             >
               <div className="flex items-center justify-center gap-1.5 mb-0.5">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: phase.color }} />
@@ -1164,8 +1268,15 @@ export default function PlannerPage() {
                 </div>
               )}
               {phase.is_current && (
-                <div className="mt-1">
+                <div className="mt-1 flex items-center gap-1 flex-wrap">
                   <span className="inline-block text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">진행 중</span>
+                  {phase.end_date && (() => {
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const end = new Date(phase.end_date); end.setHours(0,0,0,0);
+                    const rem = Math.ceil((end.getTime() - today.getTime()) / 86400000);
+                    if (rem <= 0) return null;
+                    return <span className="text-[9px] text-slate-400">D-{rem}</span>;
+                  })()}
                 </div>
               )}
             </div>
@@ -1193,9 +1304,17 @@ export default function PlannerPage() {
             {activePhase.start_date && activePhase.end_date && (
               <span>{activePhase.start_date} → {activePhase.end_date}</span>
             )}
-            {activePhase.is_current && (
-              <span className="text-emerald-600 font-semibold">현재 진행 중</span>
-            )}
+            {activePhase.is_current && (() => {
+              const today = new Date(); today.setHours(0,0,0,0);
+              const end = activePhase.end_date ? new Date(activePhase.end_date) : null;
+              if (end) end.setHours(0,0,0,0);
+              const rem = end ? Math.ceil((end.getTime() - today.getTime()) / 86400000) : null;
+              return (
+                <span className="text-emerald-600 font-semibold">
+                  현재 진행 중{rem != null && rem > 0 ? ` · 종료까지 ${rem}일` : ''}
+                </span>
+              );
+            })()}
             <span className="font-medium text-slate-600 ml-auto">
               {activePhaseProg.done}/{activePhaseProg.total} 완료 ({activePhaseProg.pct}%)
             </span>
@@ -1259,7 +1378,19 @@ export default function PlannerPage() {
               </div>
             </>
           ) : (
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                onClick={() => setHideCompleted(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                  hideCompleted
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                }`}
+                title={hideCompleted ? '완료 항목 보기' : '완료 항목 숨기기'}
+              >
+                <Eye size={13} />
+                {hideCompleted ? '완료 숨김' : '전체 보기'}
+              </button>
               <button
                 onClick={() => { setShowAddCategory(false); setSelectMode(true); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 rounded-lg hover:text-slate-600 hover:bg-slate-100 transition-colors"
@@ -1300,6 +1431,7 @@ export default function PlannerPage() {
               selectMode={selectMode}
               isSelected={selectedCatIds.has(cat.id)}
               onToggleSelect={toggleCatSelect}
+              hideCompleted={hideCompleted}
             />
           ))}
           {showAddCategory && activePhase && (

@@ -9,6 +9,7 @@ from app.modules.career import service
 from app.modules.career.schemas import (
     CFRatingLogCreate,
     CFRatingLogResponse,
+    CFRatingLogUpdate,
     CareerSettingsResponse,
     CareerSettingsUpdate,
     CareerSummaryResponse,
@@ -54,6 +55,19 @@ async def create_cf_rating(
     session: AsyncSession = Depends(get_db),
 ):
     return await service.create_cf_rating(session, data)
+
+
+@router.put("/cf-ratings/{log_id}", response_model=CFRatingLogResponse)
+async def update_cf_rating(
+    log_id: int,
+    data: CFRatingLogUpdate,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    result = await service.update_cf_rating(session, log_id, data)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="레이팅 기록을 찾을 수 없습니다.")
+    return result
 
 
 @router.delete("/cf-ratings/{log_id}", status_code=status.HTTP_204_NO_CONTENT)

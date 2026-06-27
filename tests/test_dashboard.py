@@ -124,3 +124,54 @@ async def test_overview_career_reflected(auth_client):
     assert data["career"] is not None
     assert data["career"]["cf_handle"] == "testcoder"
     assert data["career"]["latest_cf_rating"] == 1800
+
+
+@pytest.mark.asyncio
+async def test_overview_health_exercise_streak_reflected(auth_client):
+    """연속 운동 후 overview.health.exercise_streak이 반영되어야 한다."""
+    from datetime import date, timedelta
+    today = date.today()
+    for i in range(3):
+        d = (today - timedelta(days=2 - i)).isoformat()
+        await auth_client.post("/api/v1/health/exercise", json={
+            "log_date": d, "exercise_type": "러닝", "duration_minutes": 30,
+        })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["health"] is not None
+    assert data["health"]["exercise_streak"] >= 3
+
+
+@pytest.mark.asyncio
+async def test_overview_finance_asset_change_reflected(auth_client):
+    """2개 재테크 기록 후 overview.finance.asset_change가 반영되어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-04-01", "total_assets": 4000,
+        "monthly_income": 300, "monthly_expense": 200,
+    })
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-05-01", "total_assets": 4500,
+        "monthly_income": 350, "monthly_expense": 200,
+    })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["finance"] is not None
+    assert data["finance"]["asset_change"] == 500
+
+
+@pytest.mark.asyncio
+async def test_overview_career_rating_delta_reflected(auth_client):
+    """두 번 CF 레이팅 기록 후 overview.career.rating_delta가 반영되어야 한다."""
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-03-01", "rating": 1500, "rank_name": "specialist",
+    })
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-05-01", "rating": 1700, "rank_name": "expert",
+    })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["career"] is not None
+    assert data["career"]["rating_delta"] == 200

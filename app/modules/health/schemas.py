@@ -107,3 +107,4 @@ class HealthSummaryResponse(BaseModel):
     total_exercise_minutes_this_week: int
     avg_sleep_hours_this_week: float | None
     avg_sleep_quality_this_week: float | None
+    exercise_streak: int = 0

@@ -38,6 +38,18 @@ function formatDateRange(start: string, end: string) {
 function toISODate(d: Date) {
   return d.toISOString().split('T')[0];
 }
+function getDDay(startDate: string, status: TripStatus): { label: string; cls: string } | null {
+  if (status === 'completed') return null;
+  if (status === 'ongoing') return { label: '여행 중', cls: 'bg-emerald-100 text-emerald-700' };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const diff = Math.round((start.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return { label: 'D-Day', cls: 'bg-red-100 text-red-600' };
+  if (diff < 0) return null;
+  return { label: `D-${diff}`, cls: diff <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600' };
+}
 
 // ── 체크리스트 행 ──────────────────────────────────────────
 function ChecklistRow({
@@ -200,6 +212,7 @@ interface TripCardProps {
   onDeleteChecklist: (tripId: number, itemId: number) => void;
   onAddChecklist: (tripId: number, text: string) => void;
   onAddPlanItem: (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => void;
+  onUpdatePlanItem: (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => void;
   onDeletePlanItem: (tripId: number, itemId: number) => void;
 }
 
@@ -207,7 +220,7 @@ function TripCard({
   trip, expanded, onToggleExpand,
   onDelete, onUpdate,
   onToggleChecklist, onDeleteChecklist, onAddChecklist,
-  onAddPlanItem, onDeletePlanItem,
+  onAddPlanItem, onUpdatePlanItem, onDeletePlanItem,
 }: TripCardProps) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(trip.name);
@@ -220,6 +233,7 @@ function TripCard({
   const [planTime, setPlanTime] = useState('');
   const [planTitle, setPlanTitle] = useState('');
   const [planDesc, setPlanDesc] = useState('');
+  const [editingPlan, setEditingPlan] = useState<{ id: number; day: number; title: string; time: string; description: string } | null>(null);
 
   const checked = trip.checklist_items.filter(i => i.is_checked).length;
   const total = trip.checklist_items.length;
@@ -312,8 +326,16 @@ function TripCard({
         ) : (
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1.5">
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <StatusBadge status={trip.status as TripStatus} />
+                {(() => {
+                  const dd = getDDay(trip.start_date, trip.status as TripStatus);
+                  return dd ? (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${dd.cls}`}>
+                      {dd.label}
+                    </span>
+                  ) : null;
+                })()}
                 <h3 className="font-bold text-slate-800 truncate">{trip.name}</h3>
               </div>
               <div className="flex items-center gap-1 text-slate-500 text-sm mb-1">
@@ -356,7 +378,7 @@ function TripCard({
           <div className="mt-3">
             <div className="flex justify-between text-xs text-slate-400 mb-1">
               <span>준비물 체크리스트</span>
-              <span>{checked}/{total}</span>
+              <span>{checked}/{total} · {Math.round((checked / total) * 100)}%</span>
             </div>
             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div
@@ -450,26 +472,93 @@ function TripCard({
                     </p>
                     <div className="space-y-1.5">
                       {items.map((item: TripPlanItemResponse) => (
-                        <div key={item.id} className="flex items-start gap-2 group">
-                          {item.time && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-slate-400 mt-0.5 shrink-0 w-10">
-                              <Clock size={9} />
-                              {item.time}
-                            </span>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-slate-700">{item.title}</p>
-                            {item.description && (
-                              <p className="text-[10px] text-slate-400 mt-0.5">{item.description}</p>
-                            )}
+                        editingPlan?.id === item.id ? (
+                          <div key={item.id} className="bg-blue-50 border-l-2 border-blue-400 rounded-lg p-2 space-y-1.5">
+                            <div className="flex gap-2">
+                              <div>
+                                <label className="text-[10px] text-slate-400 block mb-0.5">Day</label>
+                                <select
+                                  value={editingPlan.day}
+                                  onChange={e => setEditingPlan(p => p ? { ...p, day: Number(e.target.value) } : p)}
+                                  className="border border-slate-200 rounded px-1.5 py-1 text-xs bg-white w-16"
+                                >
+                                  {Array.from({ length: tripDays }, (_, i) => i + 1).map(d => (
+                                    <option key={d} value={d}>Day {d}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-slate-400 block mb-0.5">시간</label>
+                                <input
+                                  type="time"
+                                  value={editingPlan.time}
+                                  onChange={e => setEditingPlan(p => p ? { ...p, time: e.target.value } : p)}
+                                  className="border border-slate-200 rounded px-1.5 py-1 text-xs w-28"
+                                />
+                              </div>
+                            </div>
+                            <input
+                              value={editingPlan.title}
+                              onChange={e => setEditingPlan(p => p ? { ...p, title: e.target.value } : p)}
+                              placeholder="제목"
+                              className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            />
+                            <input
+                              value={editingPlan.description}
+                              onChange={e => setEditingPlan(p => p ? { ...p, description: e.target.value } : p)}
+                              placeholder="메모 (선택)"
+                              className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            />
+                            <div className="flex gap-1.5 justify-end">
+                              <button
+                                onClick={() => setEditingPlan(null)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100"
+                              >
+                                <X size={13} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (!editingPlan.title.trim()) return;
+                                  onUpdatePlanItem(trip.id, editingPlan.id, {
+                                    title: editingPlan.title.trim(),
+                                    time: editingPlan.time || null,
+                                    description: editingPlan.description.trim() || null,
+                                    day: editingPlan.day,
+                                  });
+                                  setEditingPlan(null);
+                                }}
+                                className="p-1 text-slate-700 hover:text-slate-900 rounded hover:bg-slate-100"
+                              >
+                                <Check size={13} />
+                              </button>
+                            </div>
                           </div>
-                          <button
-                            onClick={() => onDeletePlanItem(trip.id, item.id)}
-                            className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-all shrink-0 mt-0.5"
+                        ) : (
+                          <div
+                            key={item.id}
+                            className="flex items-start gap-2 group cursor-pointer hover:bg-slate-100/60 rounded-lg px-1 py-0.5 -mx-1"
+                            onClick={() => setEditingPlan({ id: item.id, day: item.day, title: item.title, time: item.time ?? '', description: item.description ?? '' })}
                           >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
+                            {item.time && (
+                              <span className="flex items-center gap-0.5 text-[10px] text-slate-400 mt-0.5 shrink-0 w-10">
+                                <Clock size={9} />
+                                {item.time}
+                              </span>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-slate-700">{item.title}</p>
+                              {item.description && (
+                                <p className="text-[10px] text-slate-400 mt-0.5">{item.description}</p>
+                              )}
+                            </div>
+                            <button
+                              onClick={e => { e.stopPropagation(); onDeletePlanItem(trip.id, item.id); }}
+                              className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-all shrink-0 mt-0.5"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        )
                       ))}
                     </div>
                   </div>
@@ -544,6 +633,7 @@ export default function TravelPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [filter, setFilter] = useState<TripStatus | 'all'>('all');
+  const [tripSearch, setTripSearch] = useState('');
 
   const load = async () => {
     try {
@@ -568,7 +658,20 @@ export default function TravelPage() {
     completed: trips.filter(t => t.status === 'completed').length,
   };
 
-  const filtered = filter === 'all' ? trips : trips.filter(t => t.status === filter);
+  // 완료 여행 통계
+  const completedTrips = trips.filter(t => t.status === 'completed');
+  const uniqueDestinations = new Set(completedTrips.map(t => t.destination).filter(Boolean)).size;
+  const totalTravelDays = completedTrips.reduce((sum, t) => {
+    if (!t.start_date || !t.end_date) return sum;
+    return sum + Math.round((new Date(t.end_date).getTime() - new Date(t.start_date).getTime()) / 86400000) + 1;
+  }, 0);
+
+  const filtered = trips.filter(t => {
+    const matchStatus = filter === 'all' || t.status === filter;
+    const q = tripSearch.trim().toLowerCase();
+    const matchSearch = !q || t.name.toLowerCase().includes(q) || (t.destination ?? '').toLowerCase().includes(q);
+    return matchStatus && matchSearch;
+  });
 
   const handleCreate = async (data: Parameters<typeof travelApi.createTrip>[0]) => {
     const created = await travelApi.createTrip(data);
@@ -633,6 +736,17 @@ export default function TravelPage() {
     } catch { /* silent */ }
   };
 
+  const handleUpdatePlanItem = async (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => {
+    try {
+      const updated = await travelApi.updatePlanItem(itemId, data);
+      setTrips(prev => prev.map(t =>
+        t.id === tripId
+          ? { ...t, plan_items: (t.plan_items ?? []).map(p => p.id === itemId ? updated : p) }
+          : t
+      ));
+    } catch { await load(); }
+  };
+
   const handleDeletePlanItem = async (tripId: number, itemId: number) => {
     setTrips(prev => prev.map(t =>
       t.id === tripId
@@ -692,25 +806,42 @@ export default function TravelPage() {
         />
       )}
 
-      {/* 요약 바 */}
+      {/* 요약 바 + 검색 */}
       {trips.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          {([
-            ['all', '전체', summary.total, 'bg-slate-100 text-slate-600'],
-            ['planned', '예정', summary.planned, 'bg-blue-100 text-blue-700'],
-            ['ongoing', '진행중', summary.ongoing, 'bg-emerald-100 text-emerald-700'],
-            ['completed', '완료', summary.completed, 'bg-slate-100 text-slate-500'],
-          ] as const).map(([key, label, count, cls]) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key as TripStatus | 'all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                filter === key ? cls + ' ring-2 ring-offset-1 ring-current' : cls + ' opacity-60 hover:opacity-100'
-              }`}
-            >
-              {label} {count}
-            </button>
-          ))}
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {([
+              ['all', '전체', summary.total, 'bg-slate-100 text-slate-600'],
+              ['planned', '예정', summary.planned, 'bg-blue-100 text-blue-700'],
+              ['ongoing', '진행중', summary.ongoing, 'bg-emerald-100 text-emerald-700'],
+              ['completed', '완료', summary.completed, 'bg-slate-100 text-slate-500'],
+            ] as const).map(([key, label, count, cls]) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key as TripStatus | 'all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  filter === key ? cls + ' ring-2 ring-offset-1 ring-current' : cls + ' opacity-60 hover:opacity-100'
+                }`}
+              >
+                {label} {count}
+              </button>
+            ))}
+          </div>
+          {summary.completed > 0 && (
+            <div className="flex gap-3 text-xs text-slate-500">
+              <span>🌍 방문 목적지 <span className="font-semibold text-slate-700">{uniqueDestinations}곳</span></span>
+              {totalTravelDays > 0 && (
+                <span>📅 총 <span className="font-semibold text-slate-700">{totalTravelDays}일</span></span>
+              )}
+            </div>
+          )}
+          {trips.length > 3 && (
+            <input
+              type="text" value={tripSearch} onChange={e => setTripSearch(e.target.value)}
+              placeholder="여행 이름·목적지 검색..."
+              className="text-sm border border-slate-200 rounded-xl px-3.5 py-2 w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+          )}
         </div>
       )}
 
@@ -721,10 +852,10 @@ export default function TravelPage() {
             <Plane size={28} className="text-slate-300" />
           </div>
           <p className="text-slate-700 font-semibold">
-            {filter === 'all' ? '첫 여행을 계획해보세요!' : `${STATUS_META[filter as TripStatus].label} 여행이 없습니다`}
+            {tripSearch ? '검색 결과가 없습니다' : filter === 'all' ? '첫 여행을 계획해보세요!' : `${STATUS_META[filter as TripStatus].label} 여행이 없습니다`}
           </p>
           <p className="text-slate-400 text-sm mt-1">
-            {filter === 'all' ? '오른쪽 상단의 "여행 추가" 버튼을 눌러 시작하세요' : '다른 상태의 여행을 확인해보세요'}
+            {tripSearch ? '다른 키워드나 필터를 시도해보세요' : filter === 'all' ? '오른쪽 상단의 "여행 추가" 버튼을 눌러 시작하세요' : '다른 상태의 여행을 확인해보세요'}
           </p>
         </div>
       ) : (
@@ -741,6 +872,7 @@ export default function TravelPage() {
               onDeleteChecklist={handleDeleteChecklist}
               onAddChecklist={handleAddChecklist}
               onAddPlanItem={handleAddPlanItem}
+              onUpdatePlanItem={handleUpdatePlanItem}
               onDeletePlanItem={handleDeletePlanItem}
             />
           ))}

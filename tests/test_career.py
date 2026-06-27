@@ -149,6 +149,54 @@ async def test_career_settings_update_and_clear_blog_url(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_career_summary_peak_and_delta(auth_client):
+    """summary에 peak_cf_rating과 rating_delta가 올바르게 반환되어야 한다."""
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-01-01", "rating": 1500, "rank_name": "specialist",
+    })
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-03-01", "rating": 1700, "rank_name": "expert",
+    })
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-05-01", "rating": 1650, "rank_name": "expert",
+    })
+    resp = await auth_client.get("/api/v1/career/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["latest_cf_rating"] == 1650
+    assert data["peak_cf_rating"] == 1700
+    assert data["rating_delta"] == -50  # 1650 - 1700
+
+
+@pytest.mark.asyncio
+async def test_career_summary_positive_delta(auth_client):
+    """레이팅이 올랐을 때 rating_delta가 양수여야 한다."""
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-02-01", "rating": 1400, "rank_name": "pupil",
+    })
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-04-01", "rating": 1600, "rank_name": "specialist",
+    })
+    resp = await auth_client.get("/api/v1/career/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["rating_delta"] == 200  # 1600 - 1400
+
+
+@pytest.mark.asyncio
+async def test_career_summary_single_entry_delta_is_none(auth_client):
+    """레이팅 기록이 1개뿐이면 rating_delta는 None이어야 한다."""
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-06-01", "rating": 1800, "rank_name": "candidate-master",
+    })
+    resp = await auth_client.get("/api/v1/career/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["peak_cf_rating"] == 1800
+    assert data["rating_delta"] is None
+
+
+@pytest.mark.asyncio
 async def test_career_settings_blank_blog_url_returns_422(auth_client):
     """blog_url을 공백 문자열로 설정하면 422여야 한다."""
     resp = await auth_client.put("/api/v1/career/settings", json={"blog_url": "   "})
@@ -203,6 +251,32 @@ async def test_career_summary_no_ratings_returns_null(auth_client):
     data = resp.json()
     assert data["latest_cf_rating"] is None
     assert data["latest_cf_rank"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_cf_rating(auth_client):
+    """CF 레이팅 기록을 수정할 수 있어야 한다."""
+    create_resp = await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-08-01", "rating": 1300, "rank_name": "pupil",
+    })
+    assert create_resp.status_code == 201
+    log_id = create_resp.json()["id"]
+
+    update_resp = await auth_client.put(f"/api/v1/career/cf-ratings/{log_id}", json={
+        "rating": 1600, "rank_name": "specialist",
+    })
+    assert update_resp.status_code == 200
+    data = update_resp.json()
+    assert data["rating"] == 1600
+    assert data["rank_name"] == "specialist"
+    assert data["log_date"] == "2026-08-01"
+
+
+@pytest.mark.asyncio
+async def test_update_cf_rating_not_found(auth_client):
+    """존재하지 않는 CF 레이팅 수정 시 404여야 한다."""
+    resp = await auth_client.put("/api/v1/career/cf-ratings/99999", json={"rating": 1500})
+    assert resp.status_code == 404
 
 
 @pytest.mark.asyncio

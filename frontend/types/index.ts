@@ -1,5 +1,5 @@
 export type ItemStatus = 'completed' | 'urgent' | 'on_track' | 'overdue';
-export type BookStatus = 'planned' | 'reading' | 'completed';
+export type BookStatus = 'planned' | 'reading' | 'completed' | 'wishlist';
 
 // Planner
 export interface RoadmapItemResponse {
@@ -53,6 +53,7 @@ export interface AssetRecordResponse {
 export interface FinanceSummaryResponse {
   latest_total_assets: number | null;
   avg_savings_rate: number | null;
+  asset_change: number | null;
   records: AssetRecordResponse[];
 }
 
@@ -78,6 +79,7 @@ export interface HealthSummaryResponse {
   total_exercise_minutes_this_week: number;
   avg_sleep_hours_this_week: number | null;
   avg_sleep_quality_this_week: number | null;
+  exercise_streak: number;
 }
 
 // Growth
@@ -103,8 +105,10 @@ export interface EnglishLogResponse {
 export interface GrowthSummaryResponse {
   books_completed_this_year: number;
   books_reading: number;
+  books_wishlist: number;
   english_days_this_month: number;
   english_minutes_this_month: number;
+  english_streak: number;
 }
 
 // Career
@@ -126,20 +130,33 @@ export interface CareerSummaryResponse {
   github_username: string | null;
   latest_cf_rating: number | null;
   latest_cf_rank: string | null;
+  peak_cf_rating: number | null;
+  rating_delta: number | null;
 }
 
 // Dashboard
+export interface PhaseProgress {
+  name: string;
+  label: string;
+  color: string;
+  total: number;
+  completed: number;
+  is_current: boolean;
+}
+
 export interface PlannerSnapshot {
   start_date: string | null;
   total_items: number;
   completed_items: number;
   urgent_items: number;
   overdue_items: number;
+  phases: PhaseProgress[];
 }
 
 export interface FinanceSnapshot {
   latest_total_assets: number | null;
   avg_savings_rate: number | null;
+  asset_change: number | null;
 }
 
 export interface HealthSnapshot {
@@ -147,19 +164,23 @@ export interface HealthSnapshot {
   total_exercise_minutes_this_week: number;
   avg_sleep_hours_this_week: number | null;
   avg_sleep_quality_this_week: number | null;
+  exercise_streak: number;
 }
 
 export interface GrowthSnapshot {
   books_completed_this_year: number;
   books_reading: number;
+  books_wishlist: number;
   english_days_this_month: number;
   english_minutes_this_month: number;
+  english_streak: number;
 }
 
 export interface CareerSnapshot {
   cf_handle: string | null;
   latest_cf_rating: number | null;
   latest_cf_rank: string | null;
+  rating_delta: number | null;
 }
 
 export interface TravelSnapshot {
@@ -168,6 +189,10 @@ export interface TravelSnapshot {
   ongoing: number;
   next_trip_name: string | null;
   next_trip_destination: string | null;
+  next_trip_start_date: string | null;
+  next_trip_checklist_total: number;
+  next_trip_checklist_done: number;
+  next_trip_plan_total: number;
 }
 
 export interface OverviewResponse {

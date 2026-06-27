@@ -364,3 +364,33 @@ async def test_trips_ordered_by_start_date_desc(auth_client):
     trips = resp.json()
     assert len(trips) >= 2
     assert trips[0]["start_date"] > trips[1]["start_date"]
+
+
+@pytest.mark.asyncio
+async def test_update_plan_item(auth_client):
+    """여행 일정 항목의 제목·시간을 수정할 수 있어야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "일정 수정 여행", "destination": "오사카",
+        "start_date": "2026-10-01", "end_date": "2026-10-03",
+    })).json()
+    item = (await auth_client.post(
+        f"/api/v1/travel/trips/{trip['id']}/plan",
+        json={"day": 1, "title": "오사카 성 방문", "time": "10:00"},
+    )).json()
+
+    update_resp = await auth_client.put(
+        f"/api/v1/travel/plan/{item['id']}",
+        json={"title": "도톤보리 구경", "time": "14:00"},
+    )
+    assert update_resp.status_code == 200
+    data = update_resp.json()
+    assert data["title"] == "도톤보리 구경"
+    assert data["time"] == "14:00"
+    assert data["day"] == 1  # 변경하지 않은 필드는 유지
+
+
+@pytest.mark.asyncio
+async def test_update_plan_item_not_found_returns_404(auth_client):
+    """존재하지 않는 일정 항목 수정 시 404여야 한다."""
+    resp = await auth_client.put("/api/v1/travel/plan/99999", json={"title": "새 제목"})
+    assert resp.status_code == 404
