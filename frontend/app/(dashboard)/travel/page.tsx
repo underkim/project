@@ -227,6 +227,8 @@ function TripCard({
   const [editDest, setEditDest] = useState(trip.destination);
   const [editStatus, setEditStatus] = useState<TripStatus>(trip.status as TripStatus);
   const [editNote, setEditNote] = useState(trip.note ?? '');
+  const [editStartDate, setEditStartDate] = useState(trip.start_date);
+  const [editEndDate, setEditEndDate] = useState(trip.end_date);
   const [checkText, setCheckText] = useState('');
   const [activeTab, setActiveTab] = useState<'checklist' | 'plan'>('checklist');
   const [planDay, setPlanDay] = useState(1);
@@ -267,6 +269,8 @@ function TripCard({
       destination: editDest.trim() || trip.destination,
       status: editStatus,
       note: editNote.trim() || null,
+      start_date: editStartDate,
+      end_date: editEndDate,
     } as Partial<TripResponse>);
     setEditing(false);
   };
@@ -312,6 +316,23 @@ function TripCard({
                 onChange={e => setEditNote(e.target.value)}
                 className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                 placeholder="메모 (선택)"
+              />
+              <input
+                type="date"
+                value={editStartDate}
+                onChange={e => {
+                  const v = e.target.value;
+                  setEditStartDate(v);
+                  if (v > editEndDate) setEditEndDate(v);
+                }}
+                className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              />
+              <input
+                type="date"
+                value={editEndDate}
+                min={editStartDate}
+                onChange={e => setEditEndDate(e.target.value)}
+                className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
             <div className="flex gap-2 justify-end">
