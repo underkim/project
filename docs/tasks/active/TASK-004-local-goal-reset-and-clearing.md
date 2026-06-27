@@ -1,20 +1,20 @@
 # TASK-004: Local Goal Reset and Clearing
 
-status: approved
+status: implemented
 type: improvement
 priority: medium
 created_by: codex
-implemented_by:
+implemented_by: claude
 reviewed_by:
 
 created_at: 2026-06-28
 approved_at: 2026-06-28
-implemented_at:
+implemented_at: 2026-06-28
 reviewed_at:
 merged_at:
 
-branch:
-pr:
+branch: fix/TASK-004-local-goal-reset-and-clearing
+pr: (gh CLI 미설치 — GitHub 웹에서 PR 생성 필요, base: develop)
 merge_commit:
 
 ---
@@ -273,3 +273,50 @@ If a suitable frontend test command already exists and the implementation adds t
 * [ ] Blank or zero-equivalent input does not leave hidden stale `localStorage` values behind
 * [ ] Positive-value validation still blocks out-of-range values where required
 * [ ] No backend/API/schema work was introduced
+
+## 구현 결과
+
+### 변경 파일
+
+* `frontend/app/(dashboard)/finance/page.tsx` — `saveGoal`·`saveBudget`·`saveSrGoal` 빈/0/무효 입력 시 키 제거 + state 0
+* `frontend/app/(dashboard)/growth/page.tsx` — `saveGoal`·`saveEngGoal` 동일 적용
+* `frontend/app/(dashboard)/health/page.tsx` — `saveExGoal`·`saveSlGoal` 동일 적용 (범위 검증 유지)
+* `frontend/e2e/finance.spec.ts` — 자산 목표 clear 플로우 e2e 테스트 추가
+
+### 구현 요약
+
+* 모든 로컬 목표 save 핸들러를 정규화: `Number.isNaN(v) || v <= 0`이면 `localStorage.removeItem(key)` + state `0`, 유효 양수(기존 범위 내)면 정상 저장.
+* 상한이 있는 항목(저축률 ≤100, 운동 ≤7, 수면 1~24)은 범위 초과 시 저장하지 않고 기존 값 유지 — 기존 범위 검증 보존.
+* dashboard `page.tsx`는 `getItem(...) ?? '0'` 패턴이라 키 제거 시 자동으로 `0`(목표 없음)으로 읽혀 read-path 변경 불필요.
+* 모든 목표 에디터는 zero를 "목표 없음"으로 해석하므로 기존 표시 로직과 호환.
+
+### 추가/수정한 테스트
+
+* `frontend/e2e/finance.spec.ts`: "자산 목표를 비우고 저장하면 목표가 제거된다" — localStorage 주입 → 입력 비우고 Enter → "목표 설정" 복귀 + 키 null 확인
+
+### 실행한 검증 명령
+
+```
+cd frontend && npx tsc --noEmit
+```
+
+### 테스트 결과
+
+* TypeScript: 오류 없음 (exit 0)
+* e2e(`npm run e2e`)는 live 백엔드+프론트 서버 필요 — 이 환경에서 미실행. 추가한 finance 목표 clear 테스트는 기존 spec 스타일(안정 텍스트 셀렉터 + Enter 키)을 따름.
+
+### 수동 검증 절차 (growth/health/dashboard)
+
+* 재테크: 자산목표·월예산·저축률목표를 설정 → 에디터 재오픈 후 비우고 확인 → 목표 라벨/진행바 사라짐 확인
+* 자기계발: 연간 독서목표·월 영어목표 clear → 의존 진행 UI 사라짐 확인
+* 건강: 주간 운동목표·수면목표 clear → 요약 위젯의 stale 타깃 사라짐 확인
+* 대시보드 홈: 위 키 clear 후 홈 재진입 → asset/book/English 목표 진행 표시가 더 이상 stale하지 않음 확인
+
+### PR
+
+GitHub 웹에서 PR 생성 필요 (gh CLI 미설치), **base 브랜치: `develop`**
+브랜치: `fix/TASK-004-local-goal-reset-and-clearing`
+
+### 남은 이슈
+
+없음
