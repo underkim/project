@@ -2,7 +2,7 @@
 import pytest
 from datetime import date
 from pydantic import ValidationError
-from app.modules.travel.schemas import TripCreate, TripUpdate, PlanItemCreate
+from app.modules.travel.schemas import TripCreate, TripUpdate, PlanItemCreate, PlanItemUpdate
 
 
 def test_trip_end_must_be_after_start():
@@ -38,6 +38,16 @@ def test_plan_item_day_must_be_positive():
 def test_plan_item_title_cannot_be_empty():
     with pytest.raises(ValidationError):
         PlanItemCreate(day=1, title="")
+
+
+def test_plan_item_update_blank_title_rejected():
+    with pytest.raises(ValidationError):
+        PlanItemUpdate(title="   ")
+
+
+def test_plan_item_update_non_positive_day_rejected():
+    with pytest.raises(ValidationError):
+        PlanItemUpdate(day=0)
 
 
 def test_travel_routes_registered(app):
@@ -157,6 +167,100 @@ async def test_add_and_delete_plan_item(auth_client):
 
     trip_detail2 = (await auth_client.get(f"/api/v1/travel/trips/{trip_id}")).json()
     assert trip_detail2["plan_items"] == []
+
+
+@pytest.mark.asyncio
+async def test_add_plan_item_day_out_of_range_returns_422(auth_client):
+    """여행 기간(11/1~11/3, 3일)을 벗어난 day=4 일정 생성은 422여야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "범위 검증 여행", "destination": "오사카",
+        "start_date": "2026-11-01", "end_date": "2026-11-03",
+    })).json()
+    trip_id = trip["id"]
+
+    # day=3은 유효
+    ok = await auth_client.post(
+        f"/api/v1/travel/trips/{trip_id}/plan", json={"day": 3, "title": "마지막 날"},
+    )
+    assert ok.status_code == 201
+
+    # day=4는 기간 초과 → 422
+    resp = await auth_client.post(
+        f"/api/v1/travel/trips/{trip_id}/plan", json={"day": 4, "title": "존재하지 않는 날"},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_plan_item_day_out_of_range_returns_422(auth_client):
+    """일정 day를 여행 기간 밖으로 수정하면 422여야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "수정 범위 여행", "destination": "교토",
+        "start_date": "2026-11-01", "end_date": "2026-11-03",
+    })).json()
+    trip_id = trip["id"]
+
+    item = (await auth_client.post(
+        f"/api/v1/travel/trips/{trip_id}/plan", json={"day": 1, "title": "교토 도착"},
+    )).json()
+
+    resp = await auth_client.put(f"/api/v1/travel/plan/{item['id']}", json={"day": 4})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_plan_item_day_zero_returns_422(auth_client):
+    """일정 day=0 수정은 422여야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "day0 여행", "destination": "나라",
+        "start_date": "2026-11-01", "end_date": "2026-11-03",
+    })).json()
+    trip_id = trip["id"]
+
+    item = (await auth_client.post(
+        f"/api/v1/travel/trips/{trip_id}/plan", json={"day": 1, "title": "나라 도착"},
+    )).json()
+
+    resp = await auth_client.put(f"/api/v1/travel/plan/{item['id']}", json={"day": 0})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_plan_item_blank_title_returns_422(auth_client):
+    """일정 제목을 공백으로 수정하면 422여야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "제목 검증 여행", "destination": "고베",
+        "start_date": "2026-11-01", "end_date": "2026-11-03",
+    })).json()
+    trip_id = trip["id"]
+
+    item = (await auth_client.post(
+        f"/api/v1/travel/trips/{trip_id}/plan", json={"day": 1, "title": "고베 도착"},
+    )).json()
+
+    resp = await auth_client.put(f"/api/v1/travel/plan/{item['id']}", json={"title": "   "})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_plan_item_valid_change_succeeds(auth_client):
+    """기간 내 day와 정상 제목으로의 수정은 성공해야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "정상 수정 여행", "destination": "삿포로",
+        "start_date": "2026-11-01", "end_date": "2026-11-03",
+    })).json()
+    trip_id = trip["id"]
+
+    item = (await auth_client.post(
+        f"/api/v1/travel/trips/{trip_id}/plan", json={"day": 1, "title": "삿포로 도착"},
+    )).json()
+
+    resp = await auth_client.put(
+        f"/api/v1/travel/plan/{item['id']}", json={"day": 2, "title": "오타루 당일치기"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["day"] == 2
+    assert resp.json()["title"] == "오타루 당일치기"
 
 
 @pytest.mark.asyncio

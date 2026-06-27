@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered, Download,
 } from 'lucide-react';
 import { travelApi, exportApi } from '@/lib/api';
+import { showToast } from '@/lib/toast';
 import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse } from '@/types';
 
 // ── 상태 배지 ──────────────────────────────────────────────
@@ -210,8 +211,8 @@ interface TripCardProps {
   onUpdate: (id: number, data: Partial<TripResponse>) => void;
   onToggleChecklist: (tripId: number, itemId: number) => void;
   onDeleteChecklist: (tripId: number, itemId: number) => void;
-  onAddChecklist: (tripId: number, text: string) => void;
-  onAddPlanItem: (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => void;
+  onAddChecklist: (tripId: number, text: string) => Promise<boolean>;
+  onAddPlanItem: (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => Promise<boolean>;
   onUpdatePlanItem: (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => void;
   onDeletePlanItem: (tripId: number, itemId: number) => void;
 }
@@ -248,14 +249,15 @@ function TripCard({
     return acc;
   }, {} as Record<number, TripPlanItemResponse[]>);
 
-  const handleAddPlan = () => {
+  const handleAddPlan = async () => {
     if (!planTitle.trim()) return;
-    onAddPlanItem(trip.id, {
+    const ok = await onAddPlanItem(trip.id, {
       day: planDay,
       title: planTitle.trim(),
       time: planTime || undefined,
       description: planDesc.trim() || undefined,
     });
+    if (!ok) return;   // 실패 시 입력 내용 유지
     setPlanTitle('');
     setPlanTime('');
     setPlanDesc('');
@@ -271,10 +273,10 @@ function TripCard({
     setEditing(false);
   };
 
-  const handleAddChecklist = (e: React.KeyboardEvent) => {
+  const handleAddChecklist = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && checkText.trim()) {
-      onAddChecklist(trip.id, checkText.trim());
-      setCheckText('');
+      const ok = await onAddChecklist(trip.id, checkText.trim());
+      if (ok) setCheckText('');   // 실패 시 입력 내용 유지
     }
   };
 
@@ -683,14 +685,20 @@ export default function TravelPage() {
   const handleDelete = async (id: number) => {
     setTrips(prev => prev.filter(t => t.id !== id));
     try { await travelApi.deleteTrip(id); }
-    catch { await load(); }
+    catch {
+      showToast('여행 삭제에 실패했습니다.', 'error');
+      await load();
+    }
   };
 
   const handleUpdate = async (id: number, data: Partial<TripResponse>) => {
     try {
       const updated = await travelApi.updateTrip(id, data as Parameters<typeof travelApi.updateTrip>[1]);
       setTrips(prev => prev.map(t => t.id === id ? updated : t));
-    } catch { await load(); }
+    } catch {
+      showToast('여행 수정에 실패했습니다.', 'error');
+      await load();
+    }
   };
 
   const handleToggleChecklist = async (tripId: number, itemId: number) => {
@@ -701,7 +709,10 @@ export default function TravelPage() {
         : t
     ));
     try { await travelApi.toggleChecklistItem(itemId); }
-    catch { await load(); }
+    catch {
+      showToast('체크리스트 변경에 실패했습니다.', 'error');
+      await load();
+    }
   };
 
   const handleDeleteChecklist = async (tripId: number, itemId: number) => {
@@ -711,10 +722,13 @@ export default function TravelPage() {
         : t
     ));
     try { await travelApi.deleteChecklistItem(itemId); }
-    catch { await load(); }
+    catch {
+      showToast('체크리스트 삭제에 실패했습니다.', 'error');
+      await load();
+    }
   };
 
-  const handleAddChecklist = async (tripId: number, text: string) => {
+  const handleAddChecklist = async (tripId: number, text: string): Promise<boolean> => {
     try {
       const item = await travelApi.addChecklistItem(tripId, { text });
       setTrips(prev => prev.map(t =>
@@ -722,10 +736,14 @@ export default function TravelPage() {
           ? { ...t, checklist_items: [...t.checklist_items, item] }
           : t
       ));
-    } catch { /* silent */ }
+      return true;
+    } catch {
+      showToast('체크리스트 추가에 실패했습니다.', 'error');
+      return false;
+    }
   };
 
-  const handleAddPlanItem = async (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => {
+  const handleAddPlanItem = async (tripId: number, data: { day: number; title: string; time?: string; description?: string }): Promise<boolean> => {
     try {
       const item = await travelApi.addPlanItem(tripId, data);
       setTrips(prev => prev.map(t =>
@@ -733,7 +751,11 @@ export default function TravelPage() {
           ? { ...t, plan_items: [...(t.plan_items ?? []), item] }
           : t
       ));
-    } catch { /* silent */ }
+      return true;
+    } catch {
+      showToast('일정 추가에 실패했습니다.', 'error');
+      return false;
+    }
   };
 
   const handleUpdatePlanItem = async (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => {
@@ -744,7 +766,10 @@ export default function TravelPage() {
           ? { ...t, plan_items: (t.plan_items ?? []).map(p => p.id === itemId ? updated : p) }
           : t
       ));
-    } catch { await load(); }
+    } catch {
+      showToast('일정 수정에 실패했습니다.', 'error');
+      await load();
+    }
   };
 
   const handleDeletePlanItem = async (tripId: number, itemId: number) => {
@@ -754,7 +779,10 @@ export default function TravelPage() {
         : t
     ));
     try { await travelApi.deletePlanItem(itemId); }
-    catch { await load(); }
+    catch {
+      showToast('일정 삭제에 실패했습니다.', 'error');
+      await load();
+    }
   };
 
   if (loading) {

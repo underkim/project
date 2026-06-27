@@ -127,7 +127,10 @@ async def add_plan_item(
     _: CurrentUser,
     session: AsyncSession = Depends(get_db),
 ):
-    result = await service.add_plan_item(session, trip_id, data)
+    try:
+        result = await service.add_plan_item(session, trip_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
     return result
@@ -140,7 +143,10 @@ async def update_plan_item(
     _: CurrentUser,
     session: AsyncSession = Depends(get_db),
 ):
-    result = await service.update_plan_item(session, item_id, data)
+    try:
+        result = await service.update_plan_item(session, item_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="일정 항목을 찾을 수 없습니다.")
     return result

@@ -15,6 +15,17 @@ from app.modules.travel.schemas import (
 )
 
 
+def _trip_duration_days(trip: Trip) -> int:
+    """여행의 포함 기간(일수). 시작일과 종료일을 모두 포함한다."""
+    return (trip.end_date - trip.start_date).days + 1
+
+
+def _validate_plan_day(trip: Trip, day: int) -> None:
+    """일정 Day가 여행 기간 범위(1 ~ 포함 일수) 안에 있는지 검증한다."""
+    if day < 1 or day > _trip_duration_days(trip):
+        raise ValueError("일정 Day는 여행 기간 내에 있어야 합니다.")
+
+
 def _trip_to_response(trip: Trip) -> TripResponse:
     return TripResponse(
         id=trip.id,
@@ -134,6 +145,7 @@ async def add_plan_item(
         trip = await session.get(Trip, trip_id)
         if trip is None:
             return None
+        _validate_plan_day(trip, data.day)
         item = TripPlanItem(
             trip_id=trip_id,
             day=data.day,
@@ -165,6 +177,10 @@ async def update_plan_item(
         if item is None:
             return None
         update = data.model_dump(exclude_unset=True)
+        if "day" in update:
+            trip = await session.get(Trip, item.trip_id)
+            if trip is not None:
+                _validate_plan_day(trip, update["day"])
         for k, v in update.items():
             setattr(item, k, v)
         await session.flush()

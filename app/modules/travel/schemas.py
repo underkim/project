@@ -100,6 +100,20 @@ class PlanItemUpdate(BaseModel):
     description: str | None = None
     day: int | None = None
 
+    @field_validator("title")
+    @classmethod
+    def title_not_empty(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("일정 제목은 비어 있을 수 없습니다")
+        return v.strip() if v is not None else v
+
+    @field_validator("day")
+    @classmethod
+    def day_must_be_positive(cls, v: int | None) -> int | None:
+        if v is not None and v < 1:
+            raise ValueError("일정 Day는 1 이상이어야 합니다")
+        return v
+
 
 class PlanItemResponse(BaseModel):
     id: int
