@@ -1,6 +1,6 @@
 # TASK-006: CSV Export Download Feedback
 
-status: working
+status: implemented
 created_by: codex
 created_at: 2026-06-28
 updated_at: 2026-06-28
@@ -289,6 +289,53 @@ Do not edit backend files unless required by a discovered issue directly related
 * Focused frontend validation or E2E coverage confirms duplicate-click prevention for at least one export button.
 * Claude Code commits and pushes the implementation directly to `develop`.
 * This task document is updated to `status: implemented` with commit, push, and validation details.
+
+## 구현 결과
+
+### 변경 파일
+
+* `frontend/app/(dashboard)/finance/page.tsx` — `Loader2` 추가, `exporting` Set state + `handleExport`, 버튼 업데이트
+* `frontend/app/(dashboard)/health/page.tsx` — exercise/sleep 두 버튼 독립 추적
+* `frontend/app/(dashboard)/growth/page.tsx` — books/english 두 버튼 독립 추적
+* `frontend/app/(dashboard)/career/page.tsx` — career 버튼
+* `frontend/app/(dashboard)/travel/page.tsx` — travel 버튼
+* `frontend/e2e/finance.spec.ts` — CSV export 중복 클릭 방지 + 버튼 idle 복귀 E2E 테스트
+
+### 구현 요약
+
+* 각 페이지에 `exporting: Set<string>` state를 추가해 요청 중인 export 키를 추적
+* `handleExport(key, fn)`: `exporting.has(key)`이면 즉시 return(중복 클릭 무시), 아니면 Set에 key 추가 → `await fn()` → `finally`에서 key 제거
+* health/growth처럼 export 버튼이 여러 개인 페이지에서 각 버튼은 독립적으로 busy/idle 상태를 가짐
+* 버튼: `disabled={exporting.has(key)}` + `disabled:opacity-50 disabled:cursor-not-allowed` + `Loader2 animate-spin` 스피너
+
+### 추가/수정한 테스트
+
+* `frontend/e2e/finance.spec.ts`: "CSV 내보내기 버튼 중복 클릭 방지 및 로딩 상태 복귀"
+  * export 요청 400ms 지연 인터셉트 + requestCount 카운터
+  * 첫 클릭 후 버튼 `disabled` 확인
+  * force 두 번째 클릭 후 요청 완료 대기 → 버튼 `enabled` 복귀 확인
+  * `requestCount === 1` 검증
+
+### 실행한 검증 명령
+
+```
+cd frontend && npx tsc --noEmit
+cd frontend && npm run lint
+```
+
+### 테스트 결과
+
+* TypeScript: 오류 없음 (exit 0)
+* lint: 변경 파일에 새 오류 없음. 기존 파일의 pre-existing 오류 16건(useAiRefresh ref, api.ts unused export 등)은 TASK-006 범위 밖
+* e2e: live 서버 필요로 미실행. 추가 테스트는 `page.route` 지연 인터셉트 + Playwright `disabled`/`enabled` matcher 사용
+
+### 커밋
+
+`2a8a032` — develop 브랜치 직접 커밋 + push (PR 없음)
+
+### 남은 이슈
+
+없음
 
 ## 12. PR Review Checklist
 
