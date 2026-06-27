@@ -233,9 +233,27 @@ export default function DashboardPage() {
   const hasAlert = planner && (planner.urgent_items > 0 || planner.overdue_items > 0);
   const currentPhase = planner?.phases.find(p => p.is_current) ?? null;
 
+  const MODULE_LABELS: Record<string, string> = {
+    planner: '플래너', finance: '재테크', health: '건강',
+    growth: '자기계발', career: '커리어', travel: '여행',
+  };
+
   return (
     <div className="space-y-6">
       {showReport && <WeeklyReportModal onClose={() => setShowReport(false)} />}
+
+      {/* 부분 실패 안내 */}
+      {data?.meta?.partial_failure && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+          <AlertTriangle size={13} className="shrink-0" />
+          <span>
+            일부 데이터를 불러오지 못했습니다
+            {data.meta.failed_modules.length > 0 && (
+              <> ({data.meta.failed_modules.map(m => MODULE_LABELS[m] ?? m).join(', ')})</>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* 헤더 */}
       <div className="flex items-end justify-between">

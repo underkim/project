@@ -62,6 +62,11 @@ class TravelSnapshot(BaseModel):
     next_trip_plan_total: int = 0
 
 
+class OverviewMeta(BaseModel):
+    partial_failure: bool
+    failed_modules: list[str]
+
+
 class OverviewResponse(BaseModel):
     planner: PlannerSnapshot | None
     finance: FinanceSnapshot | None
@@ -69,3 +74,4 @@ class OverviewResponse(BaseModel):
     growth: GrowthSnapshot | None
     career: CareerSnapshot | None
     travel: TravelSnapshot | None
+    meta: OverviewMeta

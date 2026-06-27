@@ -1,5 +1,6 @@
 """Dashboard 모듈 통합 테스트."""
 import pytest
+from unittest.mock import patch, AsyncMock
 
 
 def test_dashboard_route_registered(app):
@@ -19,6 +20,48 @@ async def test_overview_empty_db(auth_client):
     assert "growth" in data
     assert "career" in data
     assert "travel" in data
+    assert "meta" in data
+    assert data["meta"]["partial_failure"] is False
+    assert data["meta"]["failed_modules"] == []
+
+
+@pytest.mark.asyncio
+async def test_overview_partial_failure_meta(auth_client):
+    """일부 snapshot 함수가 실패해도 200을 반환하고 meta에 실패 모듈이 기록된다."""
+    async def raise_error(session):
+        raise RuntimeError("simulated finance failure")
+
+    with patch(
+        "app.modules.dashboard.service._finance_snapshot",
+        side_effect=raise_error,
+    ):
+        resp = await auth_client.get("/api/v1/dashboard/overview")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["finance"] is None
+    assert data["meta"]["partial_failure"] is True
+    assert "finance" in data["meta"]["failed_modules"]
+    # 나머지 모듈은 영향 없음
+    assert "planner" not in data["meta"]["failed_modules"]
+
+
+@pytest.mark.asyncio
+async def test_overview_multi_module_partial_failure(auth_client):
+    """두 모듈이 동시에 실패해도 failed_modules에 모두 포함된다."""
+    async def raise_error(session):
+        raise RuntimeError("simulated failure")
+
+    with (
+        patch("app.modules.dashboard.service._finance_snapshot", side_effect=raise_error),
+        patch("app.modules.dashboard.service._growth_snapshot", side_effect=raise_error),
+    ):
+        resp = await auth_client.get("/api/v1/dashboard/overview")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["meta"]["partial_failure"] is True
+    assert set(data["meta"]["failed_modules"]) == {"finance", "growth"}
 
 
 @pytest.mark.asyncio

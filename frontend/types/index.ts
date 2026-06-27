@@ -195,6 +195,11 @@ export interface TravelSnapshot {
   next_trip_plan_total: number;
 }
 
+export interface OverviewMeta {
+  partial_failure: boolean;
+  failed_modules: string[];
+}
+
 export interface OverviewResponse {
   planner: PlannerSnapshot | null;
   finance: FinanceSnapshot | null;
@@ -202,6 +207,7 @@ export interface OverviewResponse {
   growth: GrowthSnapshot | null;
   career: CareerSnapshot | null;
   travel: TravelSnapshot | null;
+  meta: OverviewMeta;
 }
 
 // Travel
