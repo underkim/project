@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import { financeApi, exportApi } from '@/lib/api';
 import type { AssetRecordResponse } from '@/types';
-import { Trash2, Download, TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { Trash2, Download, TrendingUp, TrendingDown, Target, Loader2 } from 'lucide-react';
 
 function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -57,6 +57,15 @@ export default function FinancePage() {
   const [srGoalInput, setSrGoalInput] = useState('');
   const [yearFilter, setYearFilter] = useState<string>('all');
   const [noteSearch, setNoteSearch] = useState('');
+  const [exporting, setExporting] = useState<Set<string>>(new Set());
+
+  async function handleExport(key: string, fn: () => Promise<void>) {
+    if (exporting.has(key)) return;
+    setExporting(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setExporting(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
 
   async function load() {
     try {
@@ -235,11 +244,12 @@ export default function FinancePage() {
         <h1 className="text-lg font-semibold text-slate-900">재테크</h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => exportApi.finance()}
+            onClick={() => handleExport('finance', exportApi.finance)}
+            disabled={exporting.has('finance')}
             title="CSV 내보내기"
-            className="text-slate-400 hover:text-slate-600 transition-colors p-1.5"
+            className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download size={16} />
+            {exporting.has('finance') ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
           </button>
           <button
             onClick={() => setShowForm(!showForm)}

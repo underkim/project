@@ -31,6 +31,42 @@ test.describe('재테크 페이지', () => {
     await cleanupTestRecords(request);
   });
 
+  test('CSV 내보내기 버튼 중복 클릭 방지 및 로딩 상태 복귀', async ({ page }) => {
+    let requestCount = 0;
+
+    // export 요청을 지연시켜 in-flight 상태를 만들고 요청 수를 카운트
+    await page.route('**/api/v1/export/finance', async route => {
+      requestCount += 1;
+      await new Promise(resolve => setTimeout(resolve, 400));
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="finance.csv"' },
+        body: 'record_date,total_assets\n',
+      });
+    });
+
+    await page.goto('/finance');
+    // 페이지 로드 완료 대기
+    await expect(page.getByRole('heading', { name: '재테크' })).toBeVisible();
+
+    const exportBtn = page.getByTitle('CSV 내보내기');
+
+    // 첫 번째 클릭 → in-flight 시작
+    await exportBtn.click();
+
+    // 버튼이 disabled 상태인지 확인
+    await expect(exportBtn).toBeDisabled();
+
+    // 두 번째 클릭 (disabled이므로 무시됨)
+    await exportBtn.click({ force: true });
+
+    // 요청이 완료될 때까지 대기 (버튼이 다시 활성화될 때)
+    await expect(exportBtn).toBeEnabled({ timeout: 3000 });
+
+    // 요청이 정확히 1번만 전송되었는지 확인
+    expect(requestCount).toBe(1);
+  });
+
   test('재테크 페이지가 로드된다', async ({ page }) => {
     await page.goto('/finance');
     await expect(page.getByRole('heading', { name: '재테크' })).toBeVisible();

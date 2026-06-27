@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { growthApi, exportApi } from '@/lib/api';
 import type { BookRecordResponse, EnglishLogResponse, GrowthSummaryResponse, BookStatus } from '@/types';
-import { Trash2, Download, Star, Target } from 'lucide-react';
+import { Trash2, Download, Star, Target, Loader2 } from 'lucide-react';
 
 const statusConfig: Record<BookStatus, { label: string; color: string }> = {
   planned:   { label: '예정',   color: 'bg-slate-100 text-slate-600' },
@@ -102,6 +102,15 @@ export default function GrowthPage() {
   });
   const [editingEngGoal, setEditingEngGoal] = useState(false);
   const [engGoalInput, setEngGoalInput] = useState('');
+  const [exporting, setExporting] = useState<Set<string>>(new Set());
+
+  async function handleExport(key: string, fn: () => Promise<void>) {
+    if (exporting.has(key)) return;
+    setExporting(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setExporting(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
 
   const [bookForm, setBookForm] = useState({
     title: '', author: '', status: 'planned' as BookStatus,
@@ -648,8 +657,8 @@ export default function GrowthPage() {
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">독서 목록</p>
           <div className="flex items-center gap-2">
-            <button onClick={() => exportApi.books()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
-              <Download size={14} />
+            <button onClick={() => handleExport('books', exportApi.books)} disabled={exporting.has('books')} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
+              {exporting.has('books') ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             </button>
             <button onClick={() => setShowBookForm(!showBookForm)}
               className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">
@@ -837,8 +846,8 @@ export default function GrowthPage() {
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">영어 학습 기록</p>
           <div className="flex items-center gap-2">
-            <button onClick={() => exportApi.english()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
-              <Download size={14} />
+            <button onClick={() => handleExport('english', exportApi.english)} disabled={exporting.has('english')} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
+              {exporting.has('english') ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             </button>
             <button onClick={() => setShowEngForm(!showEngForm)}
               className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">

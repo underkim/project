@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
   Plane, MapPin, Calendar, Plus, Trash2, Pencil, Check, X,
-  ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered, Download,
+  ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered, Download, Loader2,
 } from 'lucide-react';
 import { travelApi, exportApi } from '@/lib/api';
 import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse } from '@/types';
@@ -634,6 +634,15 @@ export default function TravelPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [filter, setFilter] = useState<TripStatus | 'all'>('all');
   const [tripSearch, setTripSearch] = useState('');
+  const [exporting, setExporting] = useState<Set<string>>(new Set());
+
+  async function handleExport(key: string, fn: () => Promise<void>) {
+    if (exporting.has(key)) return;
+    setExporting(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setExporting(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
 
   const load = async () => {
     try {
@@ -777,8 +786,8 @@ export default function TravelPage() {
           <p className="text-slate-400 text-sm mt-1">나만의 여행을 계획하고 관리하세요</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => exportApi.travel()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
-            <Download size={16} />
+          <button onClick={() => handleExport('travel', exportApi.travel)} disabled={exporting.has('travel')} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
+            {exporting.has('travel') ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
           </button>
           <button
             onClick={() => setShowAddForm(v => !v)}

@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { healthApi, exportApi } from '@/lib/api';
 import type { ExerciseLogResponse, SleepLogResponse, HealthSummaryResponse } from '@/types';
-import { Trash2, Download, Target } from 'lucide-react';
+import { Trash2, Download, Target, Loader2 } from 'lucide-react';
 
 function getLast7Days(): string[] {
   return Array.from({ length: 7 }, (_, i) => {
@@ -70,6 +70,15 @@ export default function HealthPage() {
   });
   const [editingSlGoal, setEditingSlGoal] = useState(false);
   const [slGoalInput, setSlGoalInput] = useState('');
+  const [exporting, setExporting] = useState<Set<string>>(new Set());
+
+  async function handleExport(key: string, fn: () => Promise<void>) {
+    if (exporting.has(key)) return;
+    setExporting(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setExporting(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
 
   async function load() {
     try {
@@ -801,8 +810,8 @@ export default function HealthPage() {
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">운동 기록</p>
           <div className="flex items-center gap-2">
-            <button onClick={() => exportApi.exercise()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
-              <Download size={14} />
+            <button onClick={() => handleExport('exercise', exportApi.exercise)} disabled={exporting.has('exercise')} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
+              {exporting.has('exercise') ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             </button>
             <button onClick={() => setShowEx(!showEx)}
               className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">
@@ -915,8 +924,8 @@ export default function HealthPage() {
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">수면 기록</p>
           <div className="flex items-center gap-2">
-            <button onClick={() => exportApi.sleep()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
-              <Download size={14} />
+            <button onClick={() => handleExport('sleep', exportApi.sleep)} disabled={exporting.has('sleep')} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
+              {exporting.has('sleep') ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             </button>
             <button onClick={() => setShowSl(!showSl)}
               className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">

@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { careerApi, exportApi } from '@/lib/api';
 import type { CareerSettingsResponse, CFRatingLogResponse } from '@/types';
-import { Trash2, Download, ExternalLink, Target } from 'lucide-react';
+import { Trash2, Download, ExternalLink, Target, Loader2 } from 'lucide-react';
 
 const cfRanks = ['newbie','pupil','specialist','expert','candidate master','master','international master','grandmaster','legendary grandmaster'];
 
@@ -64,6 +64,15 @@ export default function CareerPage() {
   });
   const [editingCfGoal, setEditingCfGoal] = useState(false);
   const [cfGoalInput, setCfGoalInput] = useState('');
+  const [exporting, setExporting] = useState<Set<string>>(new Set());
+
+  async function handleExport(key: string, fn: () => Promise<void>) {
+    if (exporting.has(key)) return;
+    setExporting(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setExporting(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
 
   async function load() {
     try {
@@ -405,8 +414,8 @@ export default function CareerPage() {
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
           <p className="text-sm font-medium text-slate-800">CF 레이팅 기록</p>
           <div className="flex items-center gap-2">
-            <button onClick={() => exportApi.career()} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1">
-              <Download size={14} />
+            <button onClick={() => handleExport('career', exportApi.career)} disabled={exporting.has('career')} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
+              {exporting.has('career') ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
             </button>
             <button onClick={() => setShowRatingForm(!showRatingForm)}
               className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors">+ 추가</button>
