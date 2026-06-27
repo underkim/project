@@ -1,20 +1,20 @@
 # TASK-001: Dashboard Partial Failure Visibility
 
-status: working
+status: implemented
 type: feature
 priority: medium
 created_by: codex
-implemented_by:
+implemented_by: claude
 reviewed_by:
 
 created_at: 2026-06-28
-approved_at:
-implemented_at:
+approved_at: 2026-06-28
+implemented_at: 2026-06-28
 reviewed_at:
 merged_at:
 
-branch:
-pr:
+branch: feature/TASK-001-dashboard-partial-failure-visibility
+pr: (gh CLI 미설치 — GitHub 웹에서 PR 생성 필요)
 merge_commit:
 
 ---
@@ -293,3 +293,50 @@ uv run pytest
 * [ ] 프론트 타입과 백엔드 schema가 일치하는가?
 * [ ] UI 변경이 작은 안내 수준으로 제한되어 있는가?
 * [ ] DB migration이 불필요하게 추가되지 않았는가?
+
+## 구현 결과
+
+### 변경 파일
+
+* `app/modules/dashboard/schemas.py` — `OverviewMeta` schema 추가, `OverviewResponse`에 `meta` 필드 추가
+* `app/modules/dashboard/service.py` — snapshot 실패 수집 로직, `logger.error` 기록
+* `tests/test_dashboard.py` — meta 기본 구조, 단일/다중 partial failure 테스트 3개 추가
+* `frontend/types/index.ts` — `OverviewMeta` 인터페이스 추가, `OverviewResponse` 갱신
+* `frontend/app/(dashboard)/page.tsx` — `partial_failure` 시 amber 안내 배너 추가
+
+### 구현 요약
+
+* `OverviewMeta(partial_failure, failed_modules)` Pydantic schema 추가
+* dashboard service에서 각 snapshot 결과를 모듈명과 함께 순회하며 None/Exception 모두 failed_modules에 수집
+* `logger.error`로 실패 기록, exception detail은 API 응답에 미노출
+* 기존 snapshot 필드 하위 호환 유지
+* 프론트 타입 동기화 및 홈 화면 조건부 배너 렌더링
+
+### 추가/수정한 테스트
+
+* `test_overview_empty_db` — meta 기본 구조 검증 추가
+* `test_overview_partial_failure_meta` — finance 실패 시 200, meta.partial_failure=true, failed_modules 포함 확인
+* `test_overview_multi_module_partial_failure` — finance+growth 동시 실패 시 failed_modules 두 모듈 포함 확인
+
+### 실행한 검증 명령
+
+```
+uv run pytest tests/test_dashboard.py
+uv run pytest
+cd frontend && npx tsc --noEmit
+```
+
+### 테스트 결과
+
+* `tests/test_dashboard.py`: 15 passed
+* 전체: 268 passed, 3 warnings
+* TypeScript: 오류 없음
+
+### PR
+
+GitHub 웹에서 PR 생성 필요 (gh CLI 미설치)
+브랜치: `feature/TASK-001-dashboard-partial-failure-visibility`
+
+### 남은 이슈
+
+없음
