@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,11 +9,14 @@ from app.modules.dashboard.schemas import (
     FinanceSnapshot,
     GrowthSnapshot,
     HealthSnapshot,
+    OverviewMeta,
     OverviewResponse,
     PhaseProgress,
     PlannerSnapshot,
     TravelSnapshot,
 )
+
+logger = logging.getLogger(__name__)
 from app.modules.finance import service as finance_svc
 from app.modules.growth import service as growth_svc
 from app.modules.health import service as health_svc
@@ -136,6 +140,7 @@ async def _travel_snapshot(session: AsyncSession) -> TravelSnapshot | None:
 
 async def get_overview(session: AsyncSession) -> OverviewResponse:
     # ADR-0002: 한 모듈 실패해도 나머지 응답 반환
+    _MODULES = ["planner", "finance", "health", "growth", "career", "travel"]
     results = await asyncio.gather(
         _planner_snapshot(session),
         _finance_snapshot(session),
@@ -146,14 +151,28 @@ async def get_overview(session: AsyncSession) -> OverviewResponse:
         return_exceptions=True,
     )
 
-    def safe(v):
-        return None if isinstance(v, Exception) else v
+    failed_modules: list[str] = []
+    snapshots: list = []
+    for module_name, result in zip(_MODULES, results):
+        if isinstance(result, Exception):
+            logger.error("dashboard snapshot failed: module=%s error=%r", module_name, result)
+            failed_modules.append(module_name)
+            snapshots.append(None)
+        elif result is None:
+            failed_modules.append(module_name)
+            snapshots.append(None)
+        else:
+            snapshots.append(result)
 
     return OverviewResponse(
-        planner=safe(results[0]),
-        finance=safe(results[1]),
-        health=safe(results[2]),
-        growth=safe(results[3]),
-        career=safe(results[4]),
-        travel=safe(results[5]),
+        planner=snapshots[0],
+        finance=snapshots[1],
+        health=snapshots[2],
+        growth=snapshots[3],
+        career=snapshots[4],
+        travel=snapshots[5],
+        meta=OverviewMeta(
+            partial_failure=len(failed_modules) > 0,
+            failed_modules=failed_modules,
+        ),
     )
