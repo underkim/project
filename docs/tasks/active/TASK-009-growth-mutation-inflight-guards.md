@@ -1,6 +1,6 @@
 # TASK-009: Growth Mutation In-Flight Guards
 
-status: working
+status: implemented
 created_by: codex
 created_at: 2026-06-28
 updated_at: 2026-06-28
@@ -84,6 +84,29 @@ Today, `frontend/app/(dashboard)/growth/page.tsx` allows repeated clicks while c
 - Pending controls are visibly disabled so the user can tell work is in progress.
 - Failed mutations keep the user's unsaved input intact.
 - Focused frontend validation covers at least the book-create and English-create duplicate-click cases.
+
+## 구현 결과
+
+### 변경 파일
+* `frontend/app/(dashboard)/growth/page.tsx`
+  * `mutating: Set<string>` state + `withMutation(key, fn)` 헬퍼 추가
+  * `submitBook`, `submitEng`, `saveBookEdit`, `saveEngEdit`, `updateBookStatus`, `deleteBook`, `deleteEnglish` 모두 `withMutation`으로 래핑
+  * `DeleteConfirm` 컴포넌트에 `disabled` prop 추가
+  * 생성 submit 버튼: `disabled` + `Loader2` 스피너; 편집 저장 버튼: `disabled` + 스피너; 상태 select: `disabled`; DeleteConfirm: `disabled` 전달
+* `frontend/e2e/growth.spec.ts` — book/english 생성 중복 클릭 방지 Playwright 테스트 (신규)
+
+### 구현 요약
+* `withMutation(key, fn)`: `mutating.has(key)`이면 즉시 return(중복 클릭 무시), Set에 key 추가 → `await fn()` → finally에서 제거
+* 각 뮤테이션 키: `book_create`, `eng_create`, `book_edit`, `eng_edit`, `book_status_<id>`, `book_delete_<id>`, `eng_delete_<id>`
+* 실패 시 form 입력값은 보존(clearForm은 성공 시에만 실행)
+* `exporting` Set 패턴과 동일 방식으로 일관성 유지
+
+### 테스트 결과
+* TypeScript: 오류 없음 (exit 0)
+* E2E: live 서버 필요로 미실행. 400ms 지연 인터셉트 + requestCount=1 검증 2케이스 추가
+
+### 커밋
+`7342e29` — develop 직접 커밋 + push (PR 없음)
 
 ## 8. PR Review Checklist
 - [ ] Growth create forms disable repeated submission during in-flight requests.
