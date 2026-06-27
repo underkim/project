@@ -23,11 +23,11 @@ function getThisMonthPrefix(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+function DeleteConfirm({ onConfirm, onCancel, disabled = false }: { onConfirm: () => void; onCancel: () => void; disabled?: boolean }) {
   return (
     <span className="flex items-center gap-1 ml-auto">
-      <button onClick={onConfirm} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">확인</button>
-      <button onClick={onCancel} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 transition-colors">취소</button>
+      <button onClick={onConfirm} disabled={disabled} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">확인</button>
+      <button onClick={onCancel} disabled={disabled} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 transition-colors">취소</button>
     </span>
   );
 }
@@ -80,6 +80,16 @@ export default function HealthPage() {
     }
   }
 
+  const [mutating, setMutating] = useState<Set<string>>(new Set());
+
+  async function withMutation(key: string, fn: () => Promise<void>) {
+    if (mutating.has(key)) return;
+    setMutating(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setMutating(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
+
   async function load() {
     try {
       const [s, ex, sl] = await Promise.all([
@@ -126,89 +136,101 @@ export default function HealthPage() {
 
   async function submitExercise(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      await healthApi.createExercise({
-        log_date: exForm.log_date, exercise_type: exForm.exercise_type,
-        duration_minutes: Number(exForm.duration_minutes), note: exForm.note || undefined,
-      });
-      setExForm(f => ({ ...f, exercise_type: '', duration_minutes: '', note: '' }));
-      setShowEx(false);
-      showToast('운동 기록 저장됨');
-      await load();
-    } catch {
-      showToast('저장에 실패했습니다.', 'error');
-    }
+    await withMutation('ex_create', async () => {
+      try {
+        await healthApi.createExercise({
+          log_date: exForm.log_date, exercise_type: exForm.exercise_type,
+          duration_minutes: Number(exForm.duration_minutes), note: exForm.note || undefined,
+        });
+        setExForm(f => ({ ...f, exercise_type: '', duration_minutes: '', note: '' }));
+        setShowEx(false);
+        showToast('운동 기록 저장됨');
+        await load();
+      } catch {
+        showToast('저장에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function submitSleep(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      await healthApi.createSleep({
-        log_date: slForm.log_date, sleep_hours: Number(slForm.sleep_hours),
-        quality: Number(slForm.quality), note: slForm.note || undefined,
-      });
-      setSlForm(f => ({ ...f, sleep_hours: '', quality: '3', note: '' }));
-      setShowSl(false);
-      showToast('수면 기록 저장됨');
-      await load();
-    } catch (e: unknown) {
-      const status = (e as { response?: { status?: number } })?.response?.status;
-      showToast(status === 409 ? '이미 해당 날짜의 수면 기록이 있어요.' : '저장에 실패했습니다.', 'error');
-    }
+    await withMutation('sl_create', async () => {
+      try {
+        await healthApi.createSleep({
+          log_date: slForm.log_date, sleep_hours: Number(slForm.sleep_hours),
+          quality: Number(slForm.quality), note: slForm.note || undefined,
+        });
+        setSlForm(f => ({ ...f, sleep_hours: '', quality: '3', note: '' }));
+        setShowSl(false);
+        showToast('수면 기록 저장됨');
+        await load();
+      } catch (e: unknown) {
+        const status = (e as { response?: { status?: number } })?.response?.status;
+        showToast(status === 409 ? '이미 해당 날짜의 수면 기록이 있어요.' : '저장에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function updateExercise() {
     if (!editingEx) return;
-    try {
-      await healthApi.updateExercise(editingEx.id, {
-        exercise_type: editingEx.exercise_type,
-        duration_minutes: Number(editingEx.duration_minutes),
-        note: editingEx.note || null,
-      });
-      setEditingEx(null);
-      showToast('운동 기록 수정됨');
-      await load();
-    } catch {
-      showToast('수정에 실패했습니다.', 'error');
-    }
+    await withMutation('ex_edit', async () => {
+      try {
+        await healthApi.updateExercise(editingEx.id, {
+          exercise_type: editingEx.exercise_type,
+          duration_minutes: Number(editingEx.duration_minutes),
+          note: editingEx.note || null,
+        });
+        setEditingEx(null);
+        showToast('운동 기록 수정됨');
+        await load();
+      } catch {
+        showToast('수정에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function deleteExercise(id: number) {
-    try {
-      await healthApi.deleteExercise(id);
-      setDeletingEx(null);
-      showToast('운동 기록 삭제됨');
-      await load();
-    } catch {
-      showToast('삭제에 실패했습니다.', 'error');
-    }
+    await withMutation(`ex_delete_${id}`, async () => {
+      try {
+        await healthApi.deleteExercise(id);
+        setDeletingEx(null);
+        showToast('운동 기록 삭제됨');
+        await load();
+      } catch {
+        showToast('삭제에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function updateSleep() {
     if (!editingSl) return;
-    try {
-      await healthApi.updateSleep(editingSl.id, {
-        sleep_hours: Number(editingSl.sleep_hours),
-        quality: Number(editingSl.quality),
-        note: editingSl.note || null,
-      });
-      setEditingSl(null);
-      showToast('수면 기록 수정됨');
-      await load();
-    } catch {
-      showToast('수정에 실패했습니다.', 'error');
-    }
+    await withMutation('sl_edit', async () => {
+      try {
+        await healthApi.updateSleep(editingSl.id, {
+          sleep_hours: Number(editingSl.sleep_hours),
+          quality: Number(editingSl.quality),
+          note: editingSl.note || null,
+        });
+        setEditingSl(null);
+        showToast('수면 기록 수정됨');
+        await load();
+      } catch {
+        showToast('수정에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function deleteSleep(id: number) {
-    try {
-      await healthApi.deleteSleep(id);
-      setDeletingSl(null);
-      showToast('수면 기록 삭제됨');
-      await load();
-    } catch {
-      showToast('삭제에 실패했습니다.', 'error');
-    }
+    await withMutation(`sl_delete_${id}`, async () => {
+      try {
+        await healthApi.deleteSleep(id);
+        setDeletingSl(null);
+        showToast('수면 기록 삭제됨');
+        await load();
+      } catch {
+        showToast('삭제에 실패했습니다.', 'error');
+      }
+    });
   }
 
   const last7 = getLast7Days();
@@ -860,7 +882,9 @@ export default function HealthPage() {
             </div>
             <div className="flex justify-end gap-2 mt-3">
               <button type="button" onClick={() => setShowEx(false)} className="text-sm text-slate-500 hover:text-slate-700">취소</button>
-              <button type="submit" className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700">저장</button>
+              <button type="submit" disabled={mutating.has('ex_create')} className="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                {mutating.has('ex_create') && <Loader2 size={13} className="animate-spin" />}저장
+              </button>
             </div>
           </form>
         )}
@@ -885,7 +909,7 @@ export default function HealthPage() {
                     placeholder="메모" className="text-sm border border-slate-200 rounded px-2 py-1 col-span-2 sm:col-span-2 focus:outline-none focus:ring-1 focus:ring-blue-400" />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={updateExercise} className="text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">저장</button>
+                  <button onClick={updateExercise} disabled={mutating.has('ex_edit')} className="flex items-center gap-1 text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">{mutating.has('ex_edit') && <Loader2 size={11} className="animate-spin" />}저장</button>
                   <button onClick={() => setEditingEx(null)} className="text-xs px-3 py-1 text-slate-500 hover:text-slate-700">취소</button>
                 </div>
               </div>
@@ -899,7 +923,7 @@ export default function HealthPage() {
                 </div>
                 <span className="text-slate-500 text-sm shrink-0">{ex.duration_minutes}분</span>
                 {deletingEx === ex.id ? (
-                  <DeleteConfirm onConfirm={() => deleteExercise(ex.id)} onCancel={() => setDeletingEx(null)} />
+                  <DeleteConfirm onConfirm={() => deleteExercise(ex.id)} onCancel={() => setDeletingEx(null)} disabled={mutating.has(`ex_delete_${ex.id}`)} />
                 ) : (
                   <button onClick={e => { e.stopPropagation(); setDeletingEx(ex.id); }} className="text-slate-300 hover:text-red-400 transition-colors shrink-0 mt-0.5 opacity-0 group-hover:opacity-100">
                     <Trash2 size={13} />
@@ -966,7 +990,9 @@ export default function HealthPage() {
             </div>
             <div className="flex justify-end gap-2 mt-3">
               <button type="button" onClick={() => setShowSl(false)} className="text-sm text-slate-500 hover:text-slate-700">취소</button>
-              <button type="submit" className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700">저장</button>
+              <button type="submit" disabled={mutating.has('sl_create')} className="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                {mutating.has('sl_create') && <Loader2 size={13} className="animate-spin" />}저장
+              </button>
             </div>
           </form>
         )}
@@ -1003,7 +1029,7 @@ export default function HealthPage() {
                     placeholder="메모" className="text-sm border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={updateSleep} className="text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">저장</button>
+                  <button onClick={updateSleep} disabled={mutating.has('sl_edit')} className="flex items-center gap-1 text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">{mutating.has('sl_edit') && <Loader2 size={11} className="animate-spin" />}저장</button>
                   <button onClick={() => setEditingSl(null)} className="text-xs px-3 py-1 text-slate-500 hover:text-slate-700">취소</button>
                 </div>
               </div>
@@ -1021,7 +1047,7 @@ export default function HealthPage() {
                   {sl.note && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sl.note}</p>}
                 </div>
                 {deletingSl === sl.id ? (
-                  <DeleteConfirm onConfirm={() => deleteSleep(sl.id)} onCancel={() => setDeletingSl(null)} />
+                  <DeleteConfirm onConfirm={() => deleteSleep(sl.id)} onCancel={() => setDeletingSl(null)} disabled={mutating.has(`sl_delete_${sl.id}`)} />
                 ) : (
                   <button onClick={e => { e.stopPropagation(); setDeletingSl(sl.id); }} className="text-slate-300 hover:text-red-400 transition-colors shrink-0 mt-0.5 opacity-0 group-hover:opacity-100">
                     <Trash2 size={13} />
