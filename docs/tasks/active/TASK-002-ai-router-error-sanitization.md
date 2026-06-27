@@ -1,20 +1,20 @@
 # TASK-002: AI Router Error Sanitization
 
-status: working
+status: implemented
 type: improvement
 priority: high
 created_by: codex
-implemented_by:
+implemented_by: claude
 reviewed_by:
 
 created_at: 2026-06-28
-approved_at:
-implemented_at:
+approved_at: 2026-06-28
+implemented_at: 2026-06-28
 reviewed_at:
 merged_at:
 
-branch:
-pr:
+branch: feature/TASK-002-ai-router-error-sanitization
+pr: (gh CLI 미설치 — GitHub 웹에서 PR 생성 필요)
 merge_commit:
 
 ---
@@ -292,3 +292,45 @@ uv run pytest
 * [ ] Logging remains server-side only and uses `logger.exception(...)`
 * [ ] No AI service transaction rules were changed
 * [ ] No migration or unrelated refactor was introduced
+
+## 구현 결과
+
+### 변경 파일
+
+* `app/modules/ai/router.py` — traceback 제거, logger 도입, `_map_ai_exception()` helper 추가, 세 엔드포인트 str(e) 노출 제거
+* `tests/test_ai_routes.py` — sanitized 500 테스트 3개, 429/401 매핑 테스트 2개 추가
+
+### 구현 요약
+
+* `import traceback` → `import logging` + `logger = logging.getLogger(__name__)`
+* `_map_ai_exception(e, generic_detail)` 공통 helper: 알려진 provider 오류(quota→429, invalid-key→401)는 기존 동작 유지, 그 외는 `logger.exception()`으로 서버 로깅 후 generic detail로 500 반환
+* `/chat`, `/weekly-report`, `/execute` 세 엔드포인트의 `except` 블록을 `raise _map_ai_exception(...)` 한 줄로 교체
+
+### 추가/수정한 테스트
+
+* `test_chat_unexpected_exception_returns_sanitized_500` — 민감 문자열이 detail에 없음 확인
+* `test_weekly_report_unexpected_exception_returns_sanitized_500` — 민감 문자열이 detail에 없음 확인
+* `test_execute_unexpected_exception_returns_sanitized_500` — 민감 문자열이 detail에 없음 확인
+* `test_chat_quota_exhausted_returns_429` — RESOURCE_EXHAUSTED → 429
+* `test_chat_invalid_key_returns_401` — API_KEY_INVALID → 401
+
+### 실행한 검증 명령
+
+```
+uv run pytest tests/test_ai_routes.py
+uv run pytest
+```
+
+### 테스트 결과
+
+* `tests/test_ai_routes.py`: 31 passed
+* 전체: 271 passed, 3 warnings
+
+### PR
+
+GitHub 웹에서 PR 생성 필요 (gh CLI 미설치)
+브랜치: `feature/TASK-002-ai-router-error-sanitization`
+
+### 남은 이슈
+
+없음
