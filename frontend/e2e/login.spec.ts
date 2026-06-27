@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+const E2E_USER = process.env.E2E_USERNAME ?? 'admin';
+const E2E_PASS = process.env.E2E_PASSWORD ?? 'admin';
+
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe('로그인 페이지', () => {
@@ -25,5 +28,51 @@ test.describe('로그인 페이지', () => {
     await page.goto('/');
     await page.waitForURL(/\/login/);
     expect(page.url()).toContain('/login');
+  });
+
+  test('딥링크 접근 시 next 파라미터 포함 /login 으로 리다이렉트', async ({ page }) => {
+    await page.goto('/travel');
+    await page.waitForURL(/\/login/);
+    expect(page.url()).toContain('next=');
+    // 디코딩된 next 값이 /travel인지 확인
+    const url = new URL(page.url());
+    expect(decodeURIComponent(url.searchParams.get('next') ?? '')).toBe('/travel');
+  });
+
+  test('로그인 후 next 경로로 복귀', async ({ page }) => {
+    await page.goto('/login?next=%2Ffinance');
+    await page.fill('input[placeholder="admin"]', E2E_USER);
+    await page.fill('input[type="password"]', E2E_PASS);
+    await Promise.all([
+      page.waitForResponse(r => r.url().includes('/auth/token')),
+      page.click('button[type="submit"]'),
+    ]);
+    await page.waitForURL(/\/finance/);
+    expect(page.url()).toContain('/finance');
+  });
+
+  test('외부 URL next 값은 / 로 폴백', async ({ page }) => {
+    await page.goto('/login?next=https%3A%2F%2Fexample.com');
+    await page.fill('input[placeholder="admin"]', E2E_USER);
+    await page.fill('input[type="password"]', E2E_PASS);
+    await Promise.all([
+      page.waitForResponse(r => r.url().includes('/auth/token')),
+      page.click('button[type="submit"]'),
+    ]);
+    // / 또는 dashboard 홈으로 이동해야 함 (example.com이 아님)
+    await page.waitForURL(url => !url.toString().includes('example.com'), { timeout: 5000 });
+    expect(page.url()).not.toContain('example.com');
+  });
+
+  test('프로토콜 상대 URL next 값은 / 로 폴백', async ({ page }) => {
+    await page.goto('/login?next=%2F%2Fexample.com');
+    await page.fill('input[placeholder="admin"]', E2E_USER);
+    await page.fill('input[type="password"]', E2E_PASS);
+    await Promise.all([
+      page.waitForResponse(r => r.url().includes('/auth/token')),
+      page.click('button[type="submit"]'),
+    ]);
+    await page.waitForURL(url => !url.toString().includes('example.com'), { timeout: 5000 });
+    expect(page.url()).not.toContain('example.com');
   });
 });

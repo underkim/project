@@ -1,11 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/lib/api';
+
+function getSafeNextPath(value: string | null): string {
+  if (!value) return '/';
+  if (value.startsWith('/') && !value.startsWith('//')) return value;
+  return '/';
+}
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = getSafeNextPath(searchParams.get('next'));
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +26,7 @@ export default function LoginPage() {
     try {
       const data = await authApi.login(username, password);
       localStorage.setItem('token', data.access_token);
-      router.replace('/');
+      router.replace(nextPath);
     } catch {
       setError('아이디 또는 비밀번호가 올바르지 않습니다.');
     } finally {

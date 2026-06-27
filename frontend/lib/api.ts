@@ -29,7 +29,9 @@ client.interceptors.response.use(
       const token = localStorage.getItem('token');
       if (token) {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        const current = window.location.pathname + window.location.search;
+        const next = current !== '/login' ? `?next=${encodeURIComponent(current)}` : '';
+        window.location.href = `/login${next}`;
         return Promise.reject(err);
       }
     }
