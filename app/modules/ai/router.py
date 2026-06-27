@@ -1,4 +1,4 @@
-import traceback
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -10,6 +10,22 @@ from app.core.security import get_current_user
 from app.modules.ai.service import execute_delete, generate_weekly_report, parse_and_save
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
+logger = logging.getLogger(__name__)
+
+
+def _map_ai_exception(e: Exception, generic_detail: str) -> HTTPException:
+    """AI 라우터 공통 예외 매핑 helper.
+
+    알려진 provider 오류는 적절한 상태코드로 변환하고,
+    그 외 예외는 server-side 로깅 후 generic detail로 500을 반환한다.
+    """
+    err = str(e)
+    if "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
+        return HTTPException(status_code=429, detail="API 할당량 초과입니다. 잠시 후 다시 시도해주세요.")
+    if "API_KEY_INVALID" in err or "PERMISSION_DENIED" in err:
+        return HTTPException(status_code=401, detail="Gemini API 키가 올바르지 않습니다.")
+    logger.exception("AI router unexpected error: %s", generic_detail)
+    return HTTPException(status_code=500, detail=generic_detail)
 
 
 class HistoryMessage(BaseModel):
@@ -51,13 +67,7 @@ async def chat(
         result = await parse_and_save(session, body.message.strip(), body.history)
         return result
     except Exception as e:
-        err = str(e)
-        if "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
-            raise HTTPException(status_code=429, detail="API 할당량 초과입니다. Google AI Studio에서 키를 재발급해주세요.")
-        if "API_KEY_INVALID" in err or "PERMISSION_DENIED" in err:
-            raise HTTPException(status_code=401, detail="Gemini API 키가 올바르지 않습니다.")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"AI 처리 중 오류: {err}")
+        raise _map_ai_exception(e, "AI 처리에 실패했습니다. 잠시 후 다시 시도해주세요.")
 
 
 @router.get("/weekly-report")
@@ -72,13 +82,7 @@ async def weekly_report(
         report = await generate_weekly_report(session)
         return {"report": report}
     except Exception as e:
-        err = str(e)
-        if "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
-            raise HTTPException(status_code=429, detail="API 할당량 초과입니다. 잠시 후 다시 시도해주세요.")
-        if "API_KEY_INVALID" in err or "PERMISSION_DENIED" in err:
-            raise HTTPException(status_code=401, detail="Gemini API 키가 올바르지 않습니다.")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"리포트 생성 중 오류: {err}")
+        raise _map_ai_exception(e, "리포트 생성에 실패했습니다. 잠시 후 다시 시도해주세요.")
 
 
 @router.post("/execute", response_model=ChatResponse)
@@ -94,5 +98,4 @@ async def execute(
             return ChatResponse(reply="삭제했어요.", saved=True, module=body.module, action="delete")
         return ChatResponse(reply="삭제할 기록을 찾지 못했어요.", saved=False)
     except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"삭제 중 오류: {str(e)}")
+        raise _map_ai_exception(e, "삭제 실행에 실패했습니다. 잠시 후 다시 시도해주세요.")

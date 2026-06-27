@@ -482,6 +482,65 @@ async def test_chat_create_career_cf_rating(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_chat_unexpected_exception_returns_sanitized_500(auth_client):
+    """/chat — 예기치 못한 예외 시 raw exception text가 detail에 포함되지 않아야 한다."""
+    sensitive = "database password leaked postgresql://user:secret@host/db"
+    with patch("app.modules.ai.router.parse_and_save", side_effect=RuntimeError(sensitive)):
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "안녕"})
+    assert resp.status_code == 500
+    detail = resp.json().get("detail", "")
+    assert sensitive not in detail
+    assert "database password" not in detail
+
+
+@pytest.mark.asyncio
+async def test_weekly_report_unexpected_exception_returns_sanitized_500(auth_client):
+    """/weekly-report — 예기치 못한 예외 시 raw exception text가 detail에 포함되지 않아야 한다."""
+    sensitive = "connection string postgresql://admin:hunter2@internal-db/prod"
+    with patch("app.modules.ai.router.settings") as mock_settings, \
+         patch("app.modules.ai.router.generate_weekly_report", side_effect=RuntimeError(sensitive)):
+        mock_settings.gemini_api_key = "test-key"
+        resp = await auth_client.get("/api/v1/ai/weekly-report")
+    assert resp.status_code == 500
+    detail = resp.json().get("detail", "")
+    assert sensitive not in detail
+    assert "postgresql" not in detail
+
+
+@pytest.mark.asyncio
+async def test_execute_unexpected_exception_returns_sanitized_500(auth_client):
+    """/execute — 예기치 못한 예외 시 raw exception text가 detail에 포함되지 않아야 한다."""
+    sensitive = "internal db error: relation 'secret_table' does not exist"
+    with patch("app.modules.ai.router.execute_delete", side_effect=RuntimeError(sensitive)):
+        resp = await auth_client.post("/api/v1/ai/execute", json={
+            "module": "health_exercise",
+            "filter": {"log_date": "2026-01-01"},
+        })
+    assert resp.status_code == 500
+    detail = resp.json().get("detail", "")
+    assert sensitive not in detail
+    assert "secret_table" not in detail
+
+
+@pytest.mark.asyncio
+async def test_chat_quota_exhausted_returns_429(auth_client):
+    """/chat — quota 초과 예외는 429를 반환해야 한다."""
+    with patch("app.modules.ai.router.parse_and_save",
+               side_effect=Exception("RESOURCE_EXHAUSTED: quota exceeded")):
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "안녕"})
+    assert resp.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_chat_invalid_key_returns_401(auth_client):
+    """/chat — API 키 오류는 401을 반환해야 한다."""
+    with patch("app.modules.ai.router.parse_and_save",
+               side_effect=Exception("API_KEY_INVALID: key not valid")):
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "안녕"})
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_chat_update_record_not_found(auth_client):
     """update 액션 — 대상 기록이 없으면 saved: False."""
     import json
