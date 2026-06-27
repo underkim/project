@@ -280,6 +280,56 @@ async def test_update_cf_rating_not_found(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_career_settings_rejects_unsafe_blog_url_scheme(auth_client):
+    """javascript: 스킴 등 http/https 외 blog_url은 422여야 한다."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"blog_url": "javascript:alert(1)"})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_career_settings_rejects_ftp_blog_url(auth_client):
+    """ftp:// 스킴 blog_url은 422여야 한다."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"blog_url": "ftp://example.com"})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_career_settings_accepts_https_blog_url(auth_client):
+    """https:// blog_url은 정상 저장되어야 한다."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"blog_url": "https://myblog.example.com/posts"})
+    assert resp.status_code == 200
+    assert resp.json()["blog_url"] == "https://myblog.example.com/posts"
+
+
+@pytest.mark.asyncio
+async def test_career_settings_rejects_github_username_with_slash(auth_client):
+    """슬래시가 포함된 github_username은 422여야 한다."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"github_username": "user/name"})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_career_settings_rejects_github_username_with_space(auth_client):
+    """공백이 포함된 github_username은 422여야 한다."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"github_username": "user name"})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_career_settings_rejects_cf_handle_with_slash(auth_client):
+    """슬래시가 포함된 cf_handle은 422여야 한다."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"cf_handle": "user/path"})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_career_settings_rejects_cf_handle_with_space(auth_client):
+    """공백이 포함된 cf_handle은 422여야 한다."""
+    resp = await auth_client.put("/api/v1/career/settings", json={"cf_handle": "user name"})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_cf_rating_list_pagination(auth_client):
     """limit 파라미터로 CF 레이팅 목록 페이지네이션이 동작해야 한다."""
     for i in range(1, 6):

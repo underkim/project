@@ -105,15 +105,21 @@ export default function CareerPage() {
 
   async function saveSettings(e: React.FormEvent) {
     e.preventDefault();
+    let blogUrl = settings.blog_url;
+    if (blogUrl && !/^https?:\/\//i.test(blogUrl)) {
+      blogUrl = 'https://' + blogUrl;
+    }
     try {
-      await careerApi.updateSettings({
+      const updated = await careerApi.updateSettings({
         cf_handle: settings.cf_handle,
         github_username: settings.github_username,
-        blog_url: settings.blog_url,
+        blog_url: blogUrl,
       });
+      setSettings(updated);
       showToast('프로필 저장됨');
-    } catch {
-      showToast('저장에 실패했습니다.', 'error');
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showToast(typeof detail === 'string' ? detail : '저장에 실패했습니다.', 'error');
     }
   }
 
@@ -362,7 +368,7 @@ export default function CareerPage() {
                 onChange={e => setSettings({ ...settings, cf_handle: e.target.value || null })}
                 placeholder="예: tourist"
                 className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
-              {settings.cf_handle && (
+              {settings.cf_handle && /^[\w\-]{1,24}$/.test(settings.cf_handle) && (
                 <a href={`https://codeforces.com/profile/${settings.cf_handle}`} target="_blank" rel="noopener noreferrer"
                   className="text-slate-400 hover:text-slate-700 transition-colors shrink-0">
                   <ExternalLink size={14} />
@@ -378,7 +384,7 @@ export default function CareerPage() {
                 onChange={e => setSettings({ ...settings, github_username: e.target.value || null })}
                 placeholder="username"
                 className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
-              {settings.github_username && (
+              {settings.github_username && /^[a-zA-Z0-9](?:[a-zA-Z0-9_\-]{0,37}[a-zA-Z0-9])?$/.test(settings.github_username) && (
                 <a href={`https://github.com/${settings.github_username}`} target="_blank" rel="noopener noreferrer"
                   className="text-slate-400 hover:text-slate-700 transition-colors shrink-0">
                   <ExternalLink size={14} />
@@ -393,7 +399,7 @@ export default function CareerPage() {
                 onChange={e => setSettings({ ...settings, blog_url: e.target.value || null })}
                 placeholder="https://..."
                 className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" />
-              {settings.blog_url && (
+              {settings.blog_url && /^https?:\/\//i.test(settings.blog_url) && (
                 <a href={settings.blog_url} target="_blank" rel="noopener noreferrer"
                   className="text-slate-400 hover:text-slate-700 transition-colors shrink-0">
                   <ExternalLink size={14} />
