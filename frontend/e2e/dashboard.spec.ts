@@ -18,4 +18,36 @@ test.describe('대시보드 홈', () => {
     await page.goto('/');
     await expect(page.getByTitle('AI 어시스턴트')).toBeVisible();
   });
+
+  test('주간 리포트의 HTML 페이로드가 DOM으로 실행되지 않는다', async ({ page }) => {
+    // 주간 리포트 응답을 가로채 heading/bullet/bold + HTML 주입 페이로드를 반환
+    await page.route('**/api/v1/ai/weekly-report', route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          report: [
+            '## 이번 주 요약',
+            '- **운동**을 3회 했어요',
+            '<img src=x onerror=window.__xss=1>',
+          ].join('\n'),
+        }),
+      })
+    );
+
+    await page.goto('/');
+    await page.getByRole('button', { name: '주간 리포트' }).click();
+
+    // 안전한 형식(heading/bullet/bold)은 그대로 표시
+    await expect(page.getByText('이번 주 요약')).toBeVisible();
+    await expect(page.locator('strong', { hasText: '운동' })).toBeVisible();
+
+    // 주입된 HTML은 텍스트로 노출되고 실제 img 요소로 생성되지 않음
+    await expect(page.getByText('<img src=x onerror=window.__xss=1>')).toBeVisible();
+    await expect(page.locator('img[src="x"]')).toHaveCount(0);
+
+    // onerror 핸들러가 실행되지 않았는지 확인
+    const xss = await page.evaluate(() => (window as unknown as { __xss?: number }).__xss);
+    expect(xss).toBeUndefined();
+  });
 });

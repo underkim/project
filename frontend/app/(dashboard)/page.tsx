@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import Link from 'next/link';
 import {
@@ -96,6 +96,16 @@ function ModuleCard({ title, icon, href, accent = 'bg-slate-50', children }: Mod
   );
 }
 
+// **bold** 구문을 안전한 React 노드로 변환 (HTML 주입 없음)
+function parseBold(text: string) {
+  const parts = text.split(/\*\*(.*?)\*\*/);
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <strong key={i} className="font-semibold">{part}</strong>
+      : <Fragment key={i}>{part}</Fragment>
+  );
+}
+
 function ReportMarkdown({ text }: { text: string }) {
   const lines = text.split('\n');
   return (
@@ -115,13 +125,13 @@ function ReportMarkdown({ text }: { text: string }) {
           return (
             <div key={i} className="flex gap-2 items-start">
               <span className="text-slate-300 mt-1 shrink-0">•</span>
-              <span dangerouslySetInnerHTML={{ __html: content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+              <span>{parseBold(content)}</span>
             </div>
           );
         }
         if (line.trim() === '') return <div key={i} className="h-1" />;
         return (
-          <p key={i} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+          <p key={i}>{parseBold(line)}</p>
         );
       })}
     </div>

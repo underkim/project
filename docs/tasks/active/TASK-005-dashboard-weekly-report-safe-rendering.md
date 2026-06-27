@@ -1,20 +1,20 @@
 # TASK-005: Dashboard Weekly Report Safe Rendering
 
-status: approved
+status: implemented
 type: improvement
 priority: high
 created_by: codex
-implemented_by:
+implemented_by: claude
 reviewed_by:
 
 created_at: 2026-06-28
 approved_at: 2026-06-28
-implemented_at:
+implemented_at: 2026-06-28
 reviewed_at:
 merged_at:
 
-branch:
-pr:
+branch: develop (직접 커밋)
+pr: 없음 (develop 직접 커밋 방식)
 merge_commit:
 
 ---
@@ -275,3 +275,42 @@ This task is already `status: approved`. Claude Code may implement it immediatel
 * [ ] Loading and error states for the weekly report modal remain intact
 * [ ] No backend/API/schema changes or unrelated refactors were introduced
 * [ ] Security review confirms the dashboard no longer trusts AI report HTML
+
+## 구현 결과
+
+### 변경 파일
+
+* `frontend/app/(dashboard)/page.tsx` — `ReportMarkdown`의 `dangerouslySetInnerHTML` 2곳 제거, 안전한 `parseBold` React-node 렌더러 추가
+* `frontend/e2e/dashboard.spec.ts` — 주간 리포트 HTML 주입 회귀 테스트 추가
+
+### 구현 요약
+
+* `ReportMarkdown`에서 `**bold**`를 HTML 문자열로 만들어 `dangerouslySetInnerHTML`로 주입하던 2개 경로(bullet/일반 문단)를 제거.
+* AiModal의 `parseBold` 패턴과 동일하게, `**...**`를 `String.split` 정규식으로 분리해 `<strong>` React 노드로 렌더 — HTML 주입 없음.
+* heading(`#`/`##`/`###`)·bullet(`-`/`*`)·bold 서브셋과 시각적 위계는 그대로 유지. loading/error 플로우 변경 없음.
+* AI 리포트 텍스트의 `<img ...>` 같은 HTML류 문자열은 텍스트 노드로 표시되어 DOM 요소로 생성되지 않음.
+
+### 추가/수정한 테스트
+
+* `dashboard.spec.ts`: "주간 리포트의 HTML 페이로드가 DOM으로 실행되지 않는다" — heading/bullet/bold 표시 확인 + 주입된 `<img src=x onerror=...>`가 텍스트로 노출되고 `img[src="x"]` 요소가 0개이며 `window.__xss`가 실행되지 않음을 검증
+
+### 실행한 검증 명령
+
+```
+cd frontend && npx tsc --noEmit
+cd frontend && npm run lint
+```
+
+### 테스트 결과
+
+* TypeScript: 오류 없음 (exit 0)
+* lint: 변경 파일(dashboard `page.tsx`, `dashboard.spec.ts`)에 새 오류 없음. 보고된 lint 오류는 모두 기존 파일(travel/finance/growth/health/planner/career page, useAiRefresh, api.ts)의 pre-existing `react-hooks` 규칙 위반으로 TASK-005 범위 밖.
+* e2e(`npm run e2e -- dashboard.spec.ts`)는 live 서버 필요로 이 환경 미실행. 추가 테스트는 route 인터셉트 + 기존 spec 스타일 사용.
+
+### 커밋
+
+develop 브랜치 직접 커밋 (PR 없음)
+
+### 남은 이슈
+
+없음
