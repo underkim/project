@@ -21,11 +21,11 @@ const activityLabels: Record<string, string> = {
   reading: '읽기', listening: '듣기', speaking: '말하기', writing: '쓰기', vocab: '단어',
 };
 
-function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+function DeleteConfirm({ onConfirm, onCancel, disabled = false }: { onConfirm: () => void; onCancel: () => void; disabled?: boolean }) {
   return (
     <span className="flex items-center gap-1 ml-auto">
-      <button onClick={onConfirm} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">확인</button>
-      <button onClick={onCancel} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 transition-colors">취소</button>
+      <button onClick={onConfirm} disabled={disabled} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">확인</button>
+      <button onClick={onCancel} disabled={disabled} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 transition-colors">취소</button>
     </span>
   );
 }
@@ -112,6 +112,16 @@ export default function GrowthPage() {
     }
   }
 
+  const [mutating, setMutating] = useState<Set<string>>(new Set());
+
+  async function withMutation(key: string, fn: () => Promise<void>) {
+    if (mutating.has(key)) return;
+    setMutating(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setMutating(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
+
   const [bookForm, setBookForm] = useState({
     title: '', author: '', status: 'planned' as BookStatus,
     rating: 0, note: '', start_date: '', end_date: '',
@@ -162,111 +172,125 @@ export default function GrowthPage() {
 
   async function submitBook(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      await growthApi.createBook({
-        title: bookForm.title,
-        author: bookForm.author || undefined,
-        status: bookForm.status,
-        rating: bookForm.rating || undefined,
-        note: bookForm.note || undefined,
-        start_date: bookForm.start_date || undefined,
-        end_date: bookForm.end_date || undefined,
-      });
-      setBookForm({ title: '', author: '', status: 'planned', rating: 0, note: '', start_date: '', end_date: '' });
-      setShowBookForm(false);
-      showToast('책 추가됨');
-      await load();
-    } catch {
-      showToast('저장에 실패했습니다.', 'error');
-    }
+    await withMutation('book_create', async () => {
+      try {
+        await growthApi.createBook({
+          title: bookForm.title,
+          author: bookForm.author || undefined,
+          status: bookForm.status,
+          rating: bookForm.rating || undefined,
+          note: bookForm.note || undefined,
+          start_date: bookForm.start_date || undefined,
+          end_date: bookForm.end_date || undefined,
+        });
+        setBookForm({ title: '', author: '', status: 'planned', rating: 0, note: '', start_date: '', end_date: '' });
+        setShowBookForm(false);
+        showToast('책 추가됨');
+        await load();
+      } catch {
+        showToast('저장에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function updateBookStatus(id: number, status: BookStatus) {
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const updates: Record<string, string | undefined> = { status };
-      if (status === 'reading') updates.start_date = today;
-      if (status === 'completed') updates.end_date = today;
-      await growthApi.updateBook(id, updates);
-      showToast(status === 'completed' ? '완독 달성! 🎉' : '상태 변경됨');
-      await load();
-    } catch {
-      showToast('상태 변경에 실패했습니다.', 'error');
-    }
+    await withMutation(`book_status_${id}`, async () => {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const updates: Record<string, string | undefined> = { status };
+        if (status === 'reading') updates.start_date = today;
+        if (status === 'completed') updates.end_date = today;
+        await growthApi.updateBook(id, updates);
+        showToast(status === 'completed' ? '완독 달성! 🎉' : '상태 변경됨');
+        await load();
+      } catch {
+        showToast('상태 변경에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function saveBookEdit() {
     if (!editingBook) return;
-    try {
-      const rating = parseInt(editingBook.rating, 10);
-      await growthApi.updateBook(editingBook.id, {
-        title: editingBook.title,
-        author: editingBook.author || null,
-        note: editingBook.note || null,
-        rating: rating > 0 && rating <= 5 ? rating : null,
-        start_date: editingBook.start_date || null,
-        end_date: editingBook.end_date || null,
-      });
-      setEditingBook(null);
-      showToast('책 정보 수정됨');
-      await load();
-    } catch {
-      showToast('수정에 실패했습니다.', 'error');
-    }
+    await withMutation('book_edit', async () => {
+      try {
+        const rating = parseInt(editingBook.rating, 10);
+        await growthApi.updateBook(editingBook.id, {
+          title: editingBook.title,
+          author: editingBook.author || null,
+          note: editingBook.note || null,
+          rating: rating > 0 && rating <= 5 ? rating : null,
+          start_date: editingBook.start_date || null,
+          end_date: editingBook.end_date || null,
+        });
+        setEditingBook(null);
+        showToast('책 정보 수정됨');
+        await load();
+      } catch {
+        showToast('수정에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function deleteBook(id: number) {
-    try {
-      await growthApi.deleteBook(id);
-      setDeletingBook(null);
-      showToast('책 삭제됨');
-      await load();
-    } catch {
-      showToast('삭제에 실패했습니다.', 'error');
-    }
+    await withMutation(`book_delete_${id}`, async () => {
+      try {
+        await growthApi.deleteBook(id);
+        setDeletingBook(null);
+        showToast('책 삭제됨');
+        await load();
+      } catch {
+        showToast('삭제에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function submitEng(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      await growthApi.createEnglish({
-        log_date: engForm.log_date, activity_type: engForm.activity_type,
-        duration_minutes: Number(engForm.duration_minutes), note: engForm.note || undefined,
-      });
-      setEngForm(f => ({ ...f, duration_minutes: '', note: '' }));
-      setShowEngForm(false);
-      showToast('영어 학습 기록 저장됨');
-      await load();
-    } catch {
-      showToast('저장에 실패했습니다.', 'error');
-    }
+    await withMutation('eng_create', async () => {
+      try {
+        await growthApi.createEnglish({
+          log_date: engForm.log_date, activity_type: engForm.activity_type,
+          duration_minutes: Number(engForm.duration_minutes), note: engForm.note || undefined,
+        });
+        setEngForm(f => ({ ...f, duration_minutes: '', note: '' }));
+        setShowEngForm(false);
+        showToast('영어 학습 기록 저장됨');
+        await load();
+      } catch {
+        showToast('저장에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function saveEngEdit() {
     if (!editingEng) return;
-    try {
-      await growthApi.updateEnglish(editingEng.id, {
-        activity_type: editingEng.activity_type,
-        duration_minutes: Number(editingEng.duration_minutes),
-        note: editingEng.note || null,
-      });
-      setEditingEng(null);
-      showToast('영어 기록 수정됨');
-      await load();
-    } catch {
-      showToast('수정에 실패했습니다.', 'error');
-    }
+    await withMutation('eng_edit', async () => {
+      try {
+        await growthApi.updateEnglish(editingEng.id, {
+          activity_type: editingEng.activity_type,
+          duration_minutes: Number(editingEng.duration_minutes),
+          note: editingEng.note || null,
+        });
+        setEditingEng(null);
+        showToast('영어 기록 수정됨');
+        await load();
+      } catch {
+        showToast('수정에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function deleteEnglish(id: number) {
-    try {
-      await growthApi.deleteEnglish(id);
-      setDeletingEng(null);
-      showToast('영어 기록 삭제됨');
-      await load();
-    } catch {
-      showToast('삭제에 실패했습니다.', 'error');
-    }
+    await withMutation(`eng_delete_${id}`, async () => {
+      try {
+        await growthApi.deleteEnglish(id);
+        setDeletingEng(null);
+        showToast('영어 기록 삭제됨');
+        await load();
+      } catch {
+        showToast('삭제에 실패했습니다.', 'error');
+      }
+    });
   }
 
   function saveGoal() {
@@ -743,7 +767,9 @@ export default function GrowthPage() {
             </div>
             <div className="flex justify-end gap-2 mt-3">
               <button type="button" onClick={() => setShowBookForm(false)} className="text-sm text-slate-500 hover:text-slate-700">취소</button>
-              <button type="submit" className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700">저장</button>
+              <button type="submit" disabled={mutating.has('book_create')} className="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                {mutating.has('book_create') && <Loader2 size={13} className="animate-spin" />}저장
+              </button>
             </div>
           </form>
         )}
@@ -786,7 +812,7 @@ export default function GrowthPage() {
                     placeholder="메모" className="text-sm border border-slate-200 rounded px-2 py-1 col-span-2 focus:outline-none focus:ring-1 focus:ring-blue-400" />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={saveBookEdit} className="text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">저장</button>
+                  <button onClick={saveBookEdit} disabled={mutating.has('book_edit')} className="flex items-center gap-1 text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">{mutating.has('book_edit') && <Loader2 size={11} className="animate-spin" />}저장</button>
                   <button onClick={() => setEditingBook(null)} className="text-xs px-3 py-1 text-slate-500 hover:text-slate-700">취소</button>
                 </div>
               </div>
@@ -813,7 +839,8 @@ export default function GrowthPage() {
                   value={book.status}
                   onClick={e => e.stopPropagation()}
                   onChange={e => updateBookStatus(book.id, e.target.value as BookStatus)}
-                  className={`text-xs px-2 py-1 rounded-lg border-0 font-medium cursor-pointer shrink-0 ${statusConfig[book.status].color}`}
+                  disabled={mutating.has(`book_status_${book.id}`)}
+                  className={`text-xs px-2 py-1 rounded-lg border-0 font-medium cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${statusConfig[book.status].color}`}
                 >
                   <option value="planned">예정</option>
                   <option value="reading">읽는 중</option>
@@ -821,7 +848,7 @@ export default function GrowthPage() {
                   <option value="wishlist">읽고 싶음</option>
                 </select>
                 {deletingBook === book.id ? (
-                  <DeleteConfirm onConfirm={() => deleteBook(book.id)} onCancel={() => setDeletingBook(null)} />
+                  <DeleteConfirm onConfirm={() => deleteBook(book.id)} onCancel={() => setDeletingBook(null)} disabled={mutating.has(`book_delete_${book.id}`)} />
                 ) : (
                   <button onClick={e => { e.stopPropagation(); setDeletingBook(book.id); }} className="text-slate-300 hover:text-red-400 transition-colors shrink-0 mt-0.5 opacity-0 group-hover:opacity-100">
                     <Trash2 size={13} />
@@ -902,7 +929,9 @@ export default function GrowthPage() {
             </div>
             <div className="flex justify-end gap-2 mt-3">
               <button type="button" onClick={() => setShowEngForm(false)} className="text-sm text-slate-500 hover:text-slate-700">취소</button>
-              <button type="submit" className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700">저장</button>
+              <button type="submit" disabled={mutating.has('eng_create')} className="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                {mutating.has('eng_create') && <Loader2 size={13} className="animate-spin" />}저장
+              </button>
             </div>
           </form>
         )}
@@ -931,7 +960,7 @@ export default function GrowthPage() {
                     placeholder="메모" className="text-sm border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={saveEngEdit} className="text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">저장</button>
+                  <button onClick={saveEngEdit} disabled={mutating.has('eng_edit')} className="flex items-center gap-1 text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">{mutating.has('eng_edit') && <Loader2 size={11} className="animate-spin" />}저장</button>
                   <button onClick={() => setEditingEng(null)} className="text-xs px-3 py-1 text-slate-500 hover:text-slate-700">취소</button>
                 </div>
               </div>
@@ -945,7 +974,7 @@ export default function GrowthPage() {
                 <span className="text-sm text-slate-700 shrink-0">{log.duration_minutes}분</span>
                 {log.note && <span className="text-slate-400 text-xs hidden sm:block truncate">{log.note}</span>}
                 {deletingEng === log.id ? (
-                  <DeleteConfirm onConfirm={() => deleteEnglish(log.id)} onCancel={() => setDeletingEng(null)} />
+                  <DeleteConfirm onConfirm={() => deleteEnglish(log.id)} onCancel={() => setDeletingEng(null)} disabled={mutating.has(`eng_delete_${log.id}`)} />
                 ) : (
                   <button onClick={e => { e.stopPropagation(); setDeletingEng(log.id); }} className="ml-auto text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
                     <Trash2 size={13} />

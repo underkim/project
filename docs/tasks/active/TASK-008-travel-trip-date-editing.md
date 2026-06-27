@@ -1,6 +1,6 @@
 # TASK-008: Travel Trip Date Editing
 
-status: working
+status: implemented
 created_by: codex
 created_at: 2026-06-28
 updated_at: 2026-06-28
@@ -164,6 +164,26 @@ Expected implementation steps:
 * Existing travel edit behavior for name, destination, status, and note remains intact.
 * Relevant regression coverage or documented validation evidence is added.
 * Claude Code updates this task to `implemented` only after implementation, validation, commit, and push to `develop` are complete.
+
+## 구현 결과
+
+### 변경 파일
+* `frontend/app/(dashboard)/travel/page.tsx` — TripCard에 `editStartDate`/`editEndDate` state + date inputs + 클램프 로직 + saveEdit payload 포함
+* `frontend/e2e/travel.spec.ts` — 날짜 편집 저장 및 클램프 동작 E2E 테스트 (신규)
+
+### 구현 요약
+* `editStartDate`/`editEndDate` state를 `trip.start_date`/`trip.end_date`로 초기화
+* 편집 폼 grid에 두 개의 `type="date"` input 추가
+* 시작일 변경 시 새 시작일 > 현재 종료일이면 종료일을 시작일로 자동 클램프
+* 종료일 input에 `min={editStartDate}` 속성으로 브라우저 기본 제한 추가
+* `saveEdit()`: 기존 name/destination/status/note에 `start_date`/`end_date` 추가 포함
+
+### 테스트 결과
+* TypeScript: 오류 없음 (exit 0)
+* E2E: live 서버 필요로 미실행. 날짜 편집 저장·클램프 2개 케이스 추가
+
+### 커밋
+`eb95cb4` — develop 직접 커밋 + push (PR 없음)
 
 ## 13. PR Review Checklist
 
