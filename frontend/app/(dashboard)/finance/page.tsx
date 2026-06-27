@@ -145,19 +145,23 @@ export default function FinancePage() {
 
   function saveGoal() {
     const v = parseInt(goalInput.replace(/,/g, ''), 10);
-    if (v > 0) { localStorage.setItem(GOAL_KEY, String(v)); setAssetGoal(v); }
+    if (Number.isNaN(v) || v <= 0) { localStorage.removeItem(GOAL_KEY); setAssetGoal(0); }
+    else { localStorage.setItem(GOAL_KEY, String(v)); setAssetGoal(v); }
     setEditingGoal(false);
   }
 
   function saveBudget() {
     const v = parseInt(budgetInput.replace(/,/g, ''), 10);
-    if (v > 0) { localStorage.setItem(BUDGET_KEY, String(v)); setMonthlyBudget(v); }
+    if (Number.isNaN(v) || v <= 0) { localStorage.removeItem(BUDGET_KEY); setMonthlyBudget(0); }
+    else { localStorage.setItem(BUDGET_KEY, String(v)); setMonthlyBudget(v); }
     setEditingBudget(false);
   }
 
   function saveSrGoal() {
     const v = parseInt(srGoalInput, 10);
-    if (v > 0 && v <= 100) { localStorage.setItem(SAVINGS_RATE_GOAL_KEY, String(v)); setSavingsRateGoal(v); }
+    if (Number.isNaN(v) || v <= 0) { localStorage.removeItem(SAVINGS_RATE_GOAL_KEY); setSavingsRateGoal(0); }
+    else if (v <= 100) { localStorage.setItem(SAVINGS_RATE_GOAL_KEY, String(v)); setSavingsRateGoal(v); }
+    // v > 100: 범위 초과 → 저장하지 않음 (기존 값 유지)
     setEditingSrGoal(false);
   }
 

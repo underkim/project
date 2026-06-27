@@ -54,6 +54,28 @@ test.describe('재테크 페이지', () => {
     await expect(page.getByText(TEST_DATE)).toBeVisible();
   });
 
+  test('자산 목표를 비우고 저장하면 목표가 제거된다', async ({ page }) => {
+    // 기존 목표를 localStorage에 주입한 상태로 진입
+    await page.addInitScript(() => localStorage.setItem('asset_goal', '5000'));
+    await page.goto('/finance');
+    await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 10000 });
+
+    // 목표 버튼이 기존 값을 표시
+    const goalBtn = page.getByRole('button', { name: /목표 5,000만/ });
+    await expect(goalBtn).toBeVisible();
+    await goalBtn.click();
+
+    // 입력을 비우고 Enter → 목표 제거
+    const input = page.locator('input[placeholder="만원"]');
+    await input.fill('');
+    await input.press('Enter');
+
+    // "목표 설정" 상태로 복귀하고 localStorage 키가 제거됨
+    await expect(page.getByRole('button', { name: '목표 설정' })).toBeVisible();
+    const stored = await page.evaluate(() => localStorage.getItem('asset_goal'));
+    expect(stored).toBeNull();
+  });
+
   test('기록 삭제 → 목록에서 제거된다', async ({ page, request }) => {
     const headers = await getAuthHeaders(request);
     const createRes = await request.post(`${API}/api/v1/finance/records`, {

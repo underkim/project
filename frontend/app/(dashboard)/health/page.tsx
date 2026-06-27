@@ -343,13 +343,17 @@ export default function HealthPage() {
 
   function saveExGoal() {
     const v = parseInt(exGoalInput, 10);
-    if (v > 0 && v <= 7) { localStorage.setItem(EX_GOAL_KEY, String(v)); setExWeekGoal(v); }
+    if (Number.isNaN(v) || v <= 0) { localStorage.removeItem(EX_GOAL_KEY); setExWeekGoal(0); }
+    else if (v <= 7) { localStorage.setItem(EX_GOAL_KEY, String(v)); setExWeekGoal(v); }
+    // v > 7: 범위 초과 → 저장하지 않음 (기존 값 유지)
     setEditingExGoal(false);
   }
 
   function saveSlGoal() {
     const v = parseFloat(slGoalInput);
-    if (v >= 1 && v <= 24) { localStorage.setItem(SL_GOAL_KEY, String(v)); setSlNightlyGoal(v); }
+    if (Number.isNaN(v) || v <= 0) { localStorage.removeItem(SL_GOAL_KEY); setSlNightlyGoal(0); }
+    else if (v >= 1 && v <= 24) { localStorage.setItem(SL_GOAL_KEY, String(v)); setSlNightlyGoal(v); }
+    // 범위 밖(0<v<1 또는 v>24) → 저장하지 않음 (기존 값 유지)
     setEditingSlGoal(false);
   }
 

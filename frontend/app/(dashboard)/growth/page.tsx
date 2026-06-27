@@ -262,13 +262,15 @@ export default function GrowthPage() {
 
   function saveGoal() {
     const v = parseInt(goalInput, 10);
-    if (v > 0) { localStorage.setItem(GOAL_KEY, String(v)); setBookGoal(v); }
+    if (Number.isNaN(v) || v <= 0) { localStorage.removeItem(GOAL_KEY); setBookGoal(0); }
+    else { localStorage.setItem(GOAL_KEY, String(v)); setBookGoal(v); }
     setEditingGoal(false);
   }
 
   function saveEngGoal() {
     const v = parseInt(engGoalInput, 10);
-    if (v > 0) { localStorage.setItem(ENG_GOAL_KEY, String(v)); setEngGoal(v); }
+    if (Number.isNaN(v) || v <= 0) { localStorage.removeItem(ENG_GOAL_KEY); setEngGoal(0); }
+    else { localStorage.setItem(ENG_GOAL_KEY, String(v)); setEngGoal(v); }
     setEditingEngGoal(false);
   }
 
