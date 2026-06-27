@@ -1,20 +1,20 @@
 # TASK-003: Travel Plan Validation and Mutation Feedback
 
-status: approved
+status: implemented
 type: improvement
 priority: medium
 created_by: codex
-implemented_by:
+implemented_by: claude
 reviewed_by:
 
 created_at: 2026-06-28
-approved_at:
-implemented_at:
+approved_at: 2026-06-28
+implemented_at: 2026-06-28
 reviewed_at:
 merged_at:
 
-branch:
-pr:
+branch: feature/TASK-003-travel-plan-validation
+pr: (gh CLI 미설치 — GitHub 웹에서 PR 생성 필요)
 merge_commit:
 
 ---
@@ -308,3 +308,51 @@ cd frontend && npm run typecheck
 * [ ] Failed travel mutations preserve unsaved local input where practical
 * [ ] No migration, schema change, or unrelated refactor was introduced
 * [ ] Security review confirms API input validation remains authoritative on the server
+
+## 구현 결과
+
+### 변경 파일
+
+* `app/modules/travel/schemas.py` — `PlanItemUpdate`에 title(공백 거부)·day(양수) field validator 추가
+* `app/modules/travel/service.py` — `_trip_duration_days()`·`_validate_plan_day()` helper 추가, `add_plan_item()`·`update_plan_item()`에서 day 범위 검증
+* `app/modules/travel/router.py` — plan create/update에서 `ValueError` → `422` 변환
+* `frontend/app/(dashboard)/travel/page.tsx` — toast import, mutation 실패 시 에러 toast 표시, 추가 핸들러가 `Promise<boolean>` 반환하여 실패 시 입력 draft 유지
+* `tests/test_travel.py` — 검증 회귀 테스트 8개 추가
+
+### 구현 요약
+
+* 백엔드: 일정 day가 여행 포함 기간(start~end, 양끝 포함) 범위 밖이면 422. update 시 day가 변경될 때만 trip을 조회해 검증. PlanItemUpdate의 빈 제목/0 이하 day는 스키마 단계에서 422.
+* 검증은 서버가 authoritative — 프론트 `<select>`는 편의 수단으로 유지.
+* 프론트: 기존 silent 실패였던 `handleAddChecklist`/`handleAddPlanItem`를 `Promise<boolean>` 반환으로 변경, 실패 시 입력값을 지우지 않고 에러 toast 표시. toggle/delete/update 복구 경로에도 에러 toast 추가.
+
+### 추가/수정한 테스트
+
+* `test_plan_item_update_blank_title_rejected`, `test_plan_item_update_non_positive_day_rejected` (스키마 단위)
+* `test_add_plan_item_day_out_of_range_returns_422`
+* `test_update_plan_item_day_out_of_range_returns_422`
+* `test_update_plan_item_day_zero_returns_422`
+* `test_update_plan_item_blank_title_returns_422`
+* `test_update_plan_item_valid_change_succeeds`
+
+### 실행한 검증 명령
+
+```
+uv run pytest tests/test_travel.py
+uv run pytest
+cd frontend && npx tsc --noEmit
+```
+
+### 테스트 결과
+
+* `tests/test_travel.py`: 43 passed
+* 전체: 280 passed, 3 warnings
+* TypeScript: 오류 없음 (exit 0)
+
+### PR
+
+GitHub 웹에서 PR 생성 필요 (gh CLI 미설치)
+브랜치: `feature/TASK-003-travel-plan-validation`
+
+### 남은 이슈
+
+없음

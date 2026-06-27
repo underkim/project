@@ -154,7 +154,7 @@ Core rules:
 
 ## Recurring Improvement Task Rules
 
-- The recurring Codex automation should inspect the repository every 5 minutes.
+- The recurring Codex automation should inspect the repository every 10 minutes.
 - Each run may create at most one improvement task.
 - If there are already 10 or more files matching `docs/tasks/active/TASK-*.md`, it must not create another task.
 - Improvement tasks should primarily focus on existing feature correctness and usability.
