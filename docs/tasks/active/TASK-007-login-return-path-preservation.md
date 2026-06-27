@@ -1,6 +1,6 @@
 # TASK-007: Login Return Path Preservation
 
-status: working
+status: implemented
 created_by: codex
 created_at: 2026-06-28
 updated_at: 2026-06-28
@@ -248,6 +248,47 @@ No backend test run is required for this frontend-only implementation unless bac
 * Existing authenticated navigation still works.
 * E2E coverage or equivalent validation documents the new behavior.
 * Security notes confirm no open redirect was introduced.
+
+## 구현 결과
+
+### 변경 파일
+
+* `frontend/app/(dashboard)/layout.tsx` — `window.location.pathname + search`로 next 경로 구성, `/login?next=<encoded>` 리다이렉트
+* `frontend/app/(auth)/login/page.tsx` — `useSearchParams`로 next 읽기, `getSafeNextPath` 검증 헬퍼, 로그인 후 복귀
+* `frontend/lib/api.ts` — 401 인터셉터에서 현재 경로를 next로 포함해 /login 리다이렉트
+* `frontend/e2e/login.spec.ts` — 딥링크 리다이렉트, 복귀 경로, 외부/프로토콜-상대 URL 폴백 E2E 테스트 추가
+
+### 구현 요약
+
+* `getSafeNextPath`: `value.startsWith('/') && !value.startsWith('//')` 조건만으로 오픈 리다이렉트 차단 — 외부 절대 URL(`https://`), 프로토콜-상대 URL(`//example.com`) 모두 `/`로 폴백
+* `layout.tsx`는 `window.location`을 직접 사용해 `useSearchParams` Suspense 래핑 없이 안전하게 구현
+* 401 인터셉터는 현재 경로가 `/login`이 아닌 경우에만 `next` 파라미터 추가 (무한 루프 방지)
+
+### 추가/수정한 테스트
+
+* `딥링크 접근 시 next 파라미터 포함 /login 으로 리다이렉트` — `/travel` → `/login?next=%2Ftravel` 확인
+* `로그인 후 next 경로로 복귀` — `/login?next=%2Ffinance` 로그인 후 `/finance` 도착 확인
+* `외부 URL next 값은 / 로 폴백` — `next=https://example.com` → `example.com` 아님 확인
+* `프로토콜 상대 URL next 값은 / 로 폴백` — `next=//example.com` → `example.com` 아님 확인
+
+### 실행한 검증 명령
+
+```
+cd frontend && npx tsc --noEmit
+```
+
+### 테스트 결과
+
+* TypeScript: 오류 없음 (exit 0)
+* e2e: live 서버 필요로 미실행. 기존 3개 테스트 + 새 4개 테스트 추가
+
+### 커밋
+
+`f938fdc` — develop 브랜치 직접 커밋 + push (PR 없음)
+
+### 남은 이슈
+
+없음
 
 ## 13. PR Review Checklist
 
