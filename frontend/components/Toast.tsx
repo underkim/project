@@ -1,22 +1,45 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, XCircle, Info, X } from 'lucide-react';
 import type { ToastType } from '@/lib/toast';
 
-type ToastItem = { id: number; message: string; type: ToastType };
+type ToastItem = { id: number; message: string; type: ToastType; createdAt: number };
 
 let _id = 0;
 
+const DEDUPE_MS = 2000;   // 같은 메시지+타입이 이 시간 내 반복되면 무시
+const MAX_VISIBLE = 4;    // 동시에 표시할 최대 토스트 수
+const AUTO_DISMISS_MS = 3500;
+
 export default function Toast() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  // 동기적으로 dedupe/cap 판단을 하기 위한 source-of-truth 미러
+  const toastsRef = useRef<ToastItem[]>([]);
+
+  function commit(next: ToastItem[]) {
+    toastsRef.current = next;
+    setToasts(next);
+  }
+
+  function dismiss(id: number) {
+    commit(toastsRef.current.filter(t => t.id !== id));
+  }
 
   useEffect(() => {
     function handler(e: Event) {
       const { message, type } = (e as CustomEvent<{ message: string; type: ToastType }>).detail;
+      const now = Date.now();
+      // 중복 억제: 동일 message+type이 짧은 시간 내 이미 떠 있으면 무시
+      if (toastsRef.current.some(t => t.message === message && t.type === type && now - t.createdAt < DEDUPE_MS)) {
+        return;
+      }
       const id = ++_id;
-      setToasts(prev => [...prev, { id, message, type }]);
-      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+      let next = [...toastsRef.current, { id, message, type, createdAt: now }];
+      // 최대 개수 초과 시 가장 오래된 것부터 제거
+      if (next.length > MAX_VISIBLE) next = next.slice(next.length - MAX_VISIBLE);
+      commit(next);
+      setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
     }
     window.addEventListener('app-toast', handler);
     return () => window.removeEventListener('app-toast', handler);
@@ -29,6 +52,9 @@ export default function Toast() {
       {toasts.map(t => (
         <div
           key={t.id}
+          role={t.type === 'error' ? 'alert' : 'status'}
+          aria-live={t.type === 'error' ? 'assertive' : 'polite'}
+          aria-atomic="true"
           className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto
             transition-all duration-300 max-w-sm
             ${t.type === 'success' ? 'bg-slate-900 text-white' :
@@ -40,7 +66,8 @@ export default function Toast() {
           {t.type === 'info' && <Info size={15} className="shrink-0" />}
           <span>{t.message}</span>
           <button
-            onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}
+            onClick={() => dismiss(t.id)}
+            aria-label="알림 닫기"
             className="ml-1 opacity-70 hover:opacity-100 transition-opacity"
           >
             <X size={13} />
