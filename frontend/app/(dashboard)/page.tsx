@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   CalendarDays, TrendingUp, Activity, BookOpen,
   Briefcase, AlertTriangle, ChevronRight, Plane,
-  Star, MapPin, Dumbbell, FileText, X,
+  Star, MapPin, Dumbbell, FileText, X, RefreshCw,
 } from 'lucide-react';
 import { dashboardApi, aiApi } from '@/lib/api';
 import type { OverviewResponse } from '@/types';
@@ -207,9 +207,11 @@ export default function DashboardPage() {
   });
 
   function load() {
+    setLoading(true);
+    setError(null);
     dashboardApi.getOverview()
       .then(setData)
-      .catch((err: Error) => setError(err.message || '데이터를 불러오지 못했습니다.'))
+      .catch(() => setError('데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
   }
 
@@ -223,7 +225,23 @@ export default function DashboardPage() {
       </div>
     );
   }
-  if (error) return <p className="text-sm text-red-500 py-4">{error}</p>;
+  if (error) return (
+    <div className="flex flex-col items-center justify-center py-24 gap-4">
+      <AlertTriangle size={24} className="text-amber-400" />
+      <div className="text-center">
+        <p className="text-sm font-medium text-slate-700">{error}</p>
+        <p className="text-xs text-slate-400 mt-1">잠시 후 다시 시도해 보세요</p>
+      </div>
+      <button
+        onClick={load}
+        disabled={loading}
+        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm rounded-xl hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+        다시 시도
+      </button>
+    </div>
+  );
 
   const { planner, finance, health, growth, career, travel } = data ?? {};
 
