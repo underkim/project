@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered, Download, Loader2,
 } from 'lucide-react';
 import { travelApi, exportApi } from '@/lib/api';
+import { showToast } from '@/lib/toast';
 import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse } from '@/types';
 
 // ── 상태 배지 ──────────────────────────────────────────────
@@ -56,14 +57,18 @@ function ChecklistRow({
   item,
   onToggle,
   onDelete,
+  toggleDisabled = false,
+  deleteDisabled = false,
 }: {
   item: ChecklistItemResponse;
   onToggle: () => void;
   onDelete: () => void;
+  toggleDisabled?: boolean;
+  deleteDisabled?: boolean;
 }) {
   return (
     <div className="flex items-center gap-2 group">
-      <button onClick={onToggle} className="text-slate-400 hover:text-slate-700 transition-colors shrink-0">
+      <button onClick={onToggle} disabled={toggleDisabled} className="text-slate-400 hover:text-slate-700 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
         {item.is_checked
           ? <CheckSquare size={16} className="text-slate-700" />
           : <Square size={16} />}
@@ -73,7 +78,8 @@ function ChecklistRow({
       </span>
       <button
         onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-all"
+        disabled={deleteDisabled}
+        className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
       >
         <Trash2 size={13} />
       </button>
@@ -214,6 +220,7 @@ interface TripCardProps {
   onAddPlanItem: (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => void;
   onUpdatePlanItem: (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => void;
   onDeletePlanItem: (tripId: number, itemId: number) => void;
+  mutatingKeys: Set<string>;
 }
 
 function TripCard({
@@ -221,6 +228,7 @@ function TripCard({
   onDelete, onUpdate,
   onToggleChecklist, onDeleteChecklist, onAddChecklist,
   onAddPlanItem, onUpdatePlanItem, onDeletePlanItem,
+  mutatingKeys,
 }: TripCardProps) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(trip.name);
@@ -336,11 +344,11 @@ function TripCard({
               />
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setEditing(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+              <button onClick={() => setEditing(false)} disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-40">
                 <X size={15} />
               </button>
-              <button onClick={saveEdit} className="p-1.5 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-100">
-                <Check size={15} />
+              <button onClick={saveEdit} disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+                {mutatingKeys.has(`trip_update_${trip.id}`) ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
               </button>
             </div>
           </div>
@@ -374,15 +382,17 @@ function TripCard({
             <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={() => setEditing(true)}
-                className="p-1.5 text-slate-300 hover:text-slate-500 rounded-lg hover:bg-slate-100 transition-colors"
+                disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
+                className="p-1.5 text-slate-300 hover:text-slate-500 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Pencil size={14} />
               </button>
               <button
                 onClick={() => onDelete(trip.id)}
-                className="p-1.5 text-slate-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors"
+                disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
+                className="p-1.5 text-slate-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Trash2 size={14} />
+                {mutatingKeys.has(`trip_delete_${trip.id}`) ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
               </button>
               <button
                 onClick={onToggleExpand}
@@ -462,6 +472,8 @@ function TripCard({
                   item={item}
                   onToggle={() => onToggleChecklist(trip.id, item.id)}
                   onDelete={() => onDeleteChecklist(trip.id, item.id)}
+                  toggleDisabled={mutatingKeys.has(`check_toggle_${item.id}`)}
+                  deleteDisabled={mutatingKeys.has(`check_delete_${item.id}`)}
                 />
               ))}
               <div className="flex items-center gap-2 pt-1">
@@ -469,8 +481,9 @@ function TripCard({
                   value={checkText}
                   onChange={e => setCheckText(e.target.value)}
                   onKeyDown={handleAddChecklist}
-                  placeholder="항목 추가 후 Enter"
-                  className="flex-1 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
+                  disabled={mutatingKeys.has(`check_add_${trip.id}`)}
+                  placeholder={mutatingKeys.has(`check_add_${trip.id}`) ? '저장 중...' : '항목 추가 후 Enter'}
+                  className="flex-1 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white disabled:opacity-50"
                 />
               </div>
             </div>
@@ -533,11 +546,13 @@ function TripCard({
                             <div className="flex gap-1.5 justify-end">
                               <button
                                 onClick={() => setEditingPlan(null)}
-                                className="p-1 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100"
+                                disabled={mutatingKeys.has(`plan_update_${editingPlan.id}`)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100 disabled:opacity-40"
                               >
                                 <X size={13} />
                               </button>
                               <button
+                                disabled={mutatingKeys.has(`plan_update_${editingPlan.id}`)}
                                 onClick={() => {
                                   if (!editingPlan.title.trim()) return;
                                   onUpdatePlanItem(trip.id, editingPlan.id, {
@@ -548,9 +563,9 @@ function TripCard({
                                   });
                                   setEditingPlan(null);
                                 }}
-                                className="p-1 text-slate-700 hover:text-slate-900 rounded hover:bg-slate-100"
+                                className="p-1 text-slate-700 hover:text-slate-900 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
                               >
-                                <Check size={13} />
+                                {mutatingKeys.has(`plan_update_${editingPlan.id}`) ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                               </button>
                             </div>
                           </div>
@@ -574,9 +589,10 @@ function TripCard({
                             </div>
                             <button
                               onClick={e => { e.stopPropagation(); onDeletePlanItem(trip.id, item.id); }}
-                              className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-all shrink-0 mt-0.5"
+                              disabled={mutatingKeys.has(`plan_delete_${item.id}`)}
+                              className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-all shrink-0 mt-0.5 disabled:opacity-20 disabled:cursor-not-allowed"
                             >
-                              <Trash2 size={12} />
+                              {mutatingKeys.has(`plan_delete_${item.id}`) ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
                             </button>
                           </div>
                         )
@@ -632,10 +648,10 @@ function TripCard({
                 </div>
                 <button
                   onClick={handleAddPlan}
-                  disabled={!planTitle.trim()}
-                  className="w-full py-1.5 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-40 transition-colors font-medium"
+                  disabled={!planTitle.trim() || mutatingKeys.has(`plan_add_${trip.id}`)}
+                  className="w-full py-1.5 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-40 transition-colors font-medium flex items-center justify-center gap-1"
                 >
-                  일정 추가
+                  {mutatingKeys.has(`plan_add_${trip.id}`) ? <><Loader2 size={12} className="animate-spin" />저장 중...</> : '일정 추가'}
                 </button>
               </div>
             </div>
@@ -656,6 +672,15 @@ export default function TravelPage() {
   const [filter, setFilter] = useState<TripStatus | 'all'>('all');
   const [tripSearch, setTripSearch] = useState('');
   const [exporting, setExporting] = useState<Set<string>>(new Set());
+  const [mutating, setMutating] = useState<Set<string>>(new Set());
+
+  async function withMutation(key: string, fn: () => Promise<void>) {
+    if (mutating.has(key)) return;
+    setMutating(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setMutating(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
 
   async function handleExport(key: string, fn: () => Promise<void>) {
     if (exporting.has(key)) return;
@@ -704,87 +729,106 @@ export default function TravelPage() {
   });
 
   const handleCreate = async (data: Parameters<typeof travelApi.createTrip>[0]) => {
-    const created = await travelApi.createTrip(data);
-    setTrips(prev => [created, ...prev]);
-    setShowAddForm(false);
-    setExpandedId(created.id);
+    try {
+      const created = await travelApi.createTrip(data);
+      setTrips(prev => [created, ...prev]);
+      setShowAddForm(false);
+      setExpandedId(created.id);
+    } catch {
+      showToast('여행 추가에 실패했습니다.', 'error');
+    }
   };
 
   const handleDelete = async (id: number) => {
-    setTrips(prev => prev.filter(t => t.id !== id));
-    try { await travelApi.deleteTrip(id); }
-    catch { await load(); }
+    await withMutation(`trip_delete_${id}`, async () => {
+      setTrips(prev => prev.filter(t => t.id !== id));
+      try { await travelApi.deleteTrip(id); }
+      catch { showToast('여행 삭제에 실패했습니다.', 'error'); await load(); }
+    });
   };
 
   const handleUpdate = async (id: number, data: Partial<TripResponse>) => {
-    try {
-      const updated = await travelApi.updateTrip(id, data as Parameters<typeof travelApi.updateTrip>[1]);
-      setTrips(prev => prev.map(t => t.id === id ? updated : t));
-    } catch { await load(); }
+    await withMutation(`trip_update_${id}`, async () => {
+      try {
+        const updated = await travelApi.updateTrip(id, data as Parameters<typeof travelApi.updateTrip>[1]);
+        setTrips(prev => prev.map(t => t.id === id ? updated : t));
+      } catch { showToast('여행 수정에 실패했습니다.', 'error'); await load(); }
+    });
   };
 
   const handleToggleChecklist = async (tripId: number, itemId: number) => {
-    // 낙관적 업데이트
-    setTrips(prev => prev.map(t =>
-      t.id === tripId
-        ? { ...t, checklist_items: t.checklist_items.map(i => i.id === itemId ? { ...i, is_checked: !i.is_checked } : i) }
-        : t
-    ));
-    try { await travelApi.toggleChecklistItem(itemId); }
-    catch { await load(); }
+    await withMutation(`check_toggle_${itemId}`, async () => {
+      setTrips(prev => prev.map(t =>
+        t.id === tripId
+          ? { ...t, checklist_items: t.checklist_items.map(i => i.id === itemId ? { ...i, is_checked: !i.is_checked } : i) }
+          : t
+      ));
+      try { await travelApi.toggleChecklistItem(itemId); }
+      catch { showToast('체크 상태 변경에 실패했습니다.', 'error'); await load(); }
+    });
   };
 
   const handleDeleteChecklist = async (tripId: number, itemId: number) => {
-    setTrips(prev => prev.map(t =>
-      t.id === tripId
-        ? { ...t, checklist_items: t.checklist_items.filter(i => i.id !== itemId) }
-        : t
-    ));
-    try { await travelApi.deleteChecklistItem(itemId); }
-    catch { await load(); }
+    await withMutation(`check_delete_${itemId}`, async () => {
+      setTrips(prev => prev.map(t =>
+        t.id === tripId
+          ? { ...t, checklist_items: t.checklist_items.filter(i => i.id !== itemId) }
+          : t
+      ));
+      try { await travelApi.deleteChecklistItem(itemId); }
+      catch { showToast('체크리스트 삭제에 실패했습니다.', 'error'); await load(); }
+    });
   };
 
   const handleAddChecklist = async (tripId: number, text: string) => {
-    try {
-      const item = await travelApi.addChecklistItem(tripId, { text });
-      setTrips(prev => prev.map(t =>
-        t.id === tripId
-          ? { ...t, checklist_items: [...t.checklist_items, item] }
-          : t
-      ));
-    } catch { /* silent */ }
+    await withMutation(`check_add_${tripId}`, async () => {
+      try {
+        const item = await travelApi.addChecklistItem(tripId, { text });
+        setTrips(prev => prev.map(t =>
+          t.id === tripId
+            ? { ...t, checklist_items: [...t.checklist_items, item] }
+            : t
+        ));
+      } catch { showToast('항목 추가에 실패했습니다.', 'error'); }
+    });
   };
 
   const handleAddPlanItem = async (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => {
-    try {
-      const item = await travelApi.addPlanItem(tripId, data);
-      setTrips(prev => prev.map(t =>
-        t.id === tripId
-          ? { ...t, plan_items: [...(t.plan_items ?? []), item] }
-          : t
-      ));
-    } catch { /* silent */ }
+    await withMutation(`plan_add_${tripId}`, async () => {
+      try {
+        const item = await travelApi.addPlanItem(tripId, data);
+        setTrips(prev => prev.map(t =>
+          t.id === tripId
+            ? { ...t, plan_items: [...(t.plan_items ?? []), item] }
+            : t
+        ));
+      } catch { showToast('일정 추가에 실패했습니다.', 'error'); }
+    });
   };
 
   const handleUpdatePlanItem = async (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => {
-    try {
-      const updated = await travelApi.updatePlanItem(itemId, data);
-      setTrips(prev => prev.map(t =>
-        t.id === tripId
-          ? { ...t, plan_items: (t.plan_items ?? []).map(p => p.id === itemId ? updated : p) }
-          : t
-      ));
-    } catch { await load(); }
+    await withMutation(`plan_update_${itemId}`, async () => {
+      try {
+        const updated = await travelApi.updatePlanItem(itemId, data);
+        setTrips(prev => prev.map(t =>
+          t.id === tripId
+            ? { ...t, plan_items: (t.plan_items ?? []).map(p => p.id === itemId ? updated : p) }
+            : t
+        ));
+      } catch { showToast('일정 수정에 실패했습니다.', 'error'); await load(); }
+    });
   };
 
   const handleDeletePlanItem = async (tripId: number, itemId: number) => {
-    setTrips(prev => prev.map(t =>
-      t.id === tripId
-        ? { ...t, plan_items: (t.plan_items ?? []).filter(p => p.id !== itemId) }
-        : t
-    ));
-    try { await travelApi.deletePlanItem(itemId); }
-    catch { await load(); }
+    await withMutation(`plan_delete_${itemId}`, async () => {
+      setTrips(prev => prev.map(t =>
+        t.id === tripId
+          ? { ...t, plan_items: (t.plan_items ?? []).filter(p => p.id !== itemId) }
+          : t
+      ));
+      try { await travelApi.deletePlanItem(itemId); }
+      catch { showToast('일정 삭제에 실패했습니다.', 'error'); await load(); }
+    });
   };
 
   if (loading) {
@@ -904,6 +948,7 @@ export default function TravelPage() {
               onAddPlanItem={handleAddPlanItem}
               onUpdatePlanItem={handleUpdatePlanItem}
               onDeletePlanItem={handleDeletePlanItem}
+              mutatingKeys={mutating}
             />
           ))}
         </div>
