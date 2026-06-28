@@ -177,5 +177,5 @@ workflow — these are concrete file/configuration facts, not speculation:
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `beaa796` on `develop` (doc commit hash recorded in follow-up commit).
 - Pushed to `origin/develop`. No PR created (per workflow).
