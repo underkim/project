@@ -123,4 +123,4 @@ strings were ambiguous, so nothing was guessed.
 ### Commit / push
 
 - No code change required (audit only). Task document committed on `develop`.
-- Commit: `<filled after commit>`. No PR created (per workflow).
+- Commit: `b3f557c`. No PR created (per workflow).
