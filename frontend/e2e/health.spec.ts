@@ -51,8 +51,10 @@ test.describe('건강 페이지', () => {
     await page.click('button[type="submit"]:has-text("저장")');
 
     await expect(page.getByText('운동 기록 저장됨')).toBeVisible();
-    await expect(page.getByText('E2E 테스트 운동')).toBeVisible();
-    await expect(page.getByText('45분')).toBeVisible();
+    const item = page.getByText('E2E 테스트 운동', { exact: true })
+      .locator('xpath=ancestor::div[contains(@class,"group")][1]');
+    await expect(item.getByText('E2E 테스트 운동', { exact: true })).toBeVisible();
+    await expect(item.getByText('45분', { exact: true })).toBeVisible();
   });
 
   test('운동 기록 삭제 → 목록에서 제거된다', async ({ page, request }) => {
@@ -65,13 +67,15 @@ test.describe('건강 페이지', () => {
 
     await page.goto('/health');
     await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('E2E 삭제 테스트')).toBeVisible();
+    await expect(page.getByText('E2E 삭제 테스트', { exact: true })).toBeVisible();
 
-    const item = page.locator('div').filter({ hasText: /E2E 삭제 테스트/ }).last();
-    await item.getByRole('button').click();
+    const item = page.getByText('E2E 삭제 테스트', { exact: true })
+      .locator('xpath=ancestor::div[contains(@class,"group")][1]');
+    await item.hover();
+    await item.locator('button').click();
     await page.click('button:has-text("확인")');
 
     await expect(page.getByText('운동 기록 삭제됨')).toBeVisible();
-    await expect(page.getByText('E2E 삭제 테스트')).not.toBeVisible();
+    await expect(page.getByText('E2E 삭제 테스트', { exact: true })).not.toBeVisible();
   });
 });
