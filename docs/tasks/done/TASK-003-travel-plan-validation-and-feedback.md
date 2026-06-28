@@ -1,6 +1,6 @@
 # TASK-003: Travel Plan Validation and Mutation Feedback
 
-status: implemented
+status: done
 type: improvement
 priority: medium
 created_by: codex
