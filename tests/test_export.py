@@ -67,6 +67,26 @@ async def test_export_empty_includes_header(auth_client, path, expected_header):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("path,expected_headers", [
+    ("/api/v1/export/finance", ["날짜", "총자산(만원)", "월수입(만원)", "월지출(만원)", "저축액(만원)", "저축률(%)", "메모"]),
+    ("/api/v1/export/health/exercise", ["날짜", "운동종류", "시간(분)", "메모"]),
+    ("/api/v1/export/health/sleep", ["날짜", "수면시간(시간)", "품질(1-5)", "메모"]),
+    ("/api/v1/export/growth/books", ["제목", "저자", "상태", "시작일", "완료일", "평점", "메모"]),
+    ("/api/v1/export/growth/english", ["날짜", "활동종류", "시간(분)", "메모"]),
+    ("/api/v1/export/career", ["날짜", "레이팅", "랭크"]),
+    ("/api/v1/export/travel", ["여행명", "목적지", "시작일", "종료일", "상태", "체크리스트", "일정", "메모"]),
+])
+async def test_export_headers_are_readable_korean(auth_client, path, expected_headers):
+    """CSV 헤더가 utf-8-sig 디코딩 후 정상 한글로 읽혀야 한다 (mojibake 회귀 방지)."""
+    resp = await auth_client.get(path)
+    assert resp.status_code == 200
+    content = resp.content.decode("utf-8-sig")
+    header_line = content.splitlines()[0]
+    cols = header_line.split(",")
+    assert cols == expected_headers
+
+
+@pytest.mark.asyncio
 async def test_export_finance_with_data(auth_client):
     # 데이터 삽입
     await auth_client.post("/api/v1/finance/records", json={
