@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { aiApi } from '@/lib/api';
 import type { AiChatResponse } from '@/lib/api';
+import { showToast } from '@/lib/toast';
 
 type Message = {
   id: number;
@@ -23,14 +24,73 @@ type Message = {
   suggestions?: string[] | null;
 };
 
+// ── localStorage safe helpers ──────────────────────────────────
+
+const HISTORY_KEY = 'ai-chat-history';
+const HISTORY_LIMIT = 40;
+
+type StoredMessage = Omit<Message, 'confirmLoading' | 'pendingFilter'> & {
+  action?: string | null;
+};
+
+function safeLoadHistory(): Message[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as Message[];
+  } catch {
+    return [];
+  }
+}
+
+function safeSaveHistory(msgs: Message[], onQuotaWarn: () => void): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const toSave: StoredMessage[] = msgs.slice(-HISTORY_LIMIT).map(m => ({
+      id: m.id,
+      role: m.role,
+      text: m.text,
+      saved: m.saved,
+      savedCount: m.savedCount,
+      module: m.module,
+      modules: m.modules,
+      // pending delete confirmation must not be restored as active
+      action: m.action === 'delete_pending' ? null : m.action,
+      timestamp: m.timestamp,
+      dateLabel: m.dateLabel,
+      suggestions: m.suggestions,
+      // confirmLoading and pendingFilter intentionally excluded
+    }));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(toSave));
+  } catch (e) {
+    if (
+      e instanceof DOMException &&
+      (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')
+    ) {
+      onQuotaWarn();
+    }
+  }
+}
+
+function safeClearHistory(): void {
+  if (typeof window === 'undefined') return;
+  try { localStorage.removeItem(HISTORY_KEY); } catch { /* storage unavailable */ }
+}
+
 // ── 복사 버튼 ──────────────────────────────────────────────────
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
-    navigator.clipboard.writeText(text).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => { /* clipboard unavailable — do not show false success */ });
   };
   return (
     <button
@@ -142,14 +202,11 @@ export default function AiModal() {
   const [loading, setLoading] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [weeklyReportLoading, setWeeklyReportLoading] = useState(false);
+  const quotaWarnedRef = useRef(false);
   const [messages, setMessages] = useState<Message[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = localStorage.getItem('ai-chat-history');
-      const msgs = saved ? (JSON.parse(saved) as Message[]) : [];
-      if (msgs.length > 0) msgId = Math.max(msgId, ...msgs.map(m => m.id));
-      return msgs;
-    } catch { return []; }
+    const msgs = safeLoadHistory();
+    if (msgs.length > 0) msgId = Math.max(msgId, ...msgs.map(m => m.id));
+    return msgs;
   });
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -185,12 +242,12 @@ export default function AiModal() {
   }
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const toSave = messages.slice(-40).map(m => ({
-      ...m,
-      confirmLoading: false,
-    }));
-    localStorage.setItem('ai-chat-history', JSON.stringify(toSave));
+    safeSaveHistory(messages, () => {
+      if (!quotaWarnedRef.current) {
+        quotaWarnedRef.current = true;
+        showToast('저장 공간이 부족해 대화 기록을 저장하지 못했어요. 채팅은 계속 사용할 수 있어요.', 'error');
+      }
+    });
   }, [messages]);
 
   function getHistory() {
@@ -293,7 +350,7 @@ export default function AiModal() {
   function clearChat() {
     if (!clearConfirm) { setClearConfirm(true); setTimeout(() => setClearConfirm(false), 3000); return; }
     setMessages([]);
-    localStorage.removeItem('ai-chat-history');
+    safeClearHistory();
     setClearConfirm(false);
   }
 
