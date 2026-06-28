@@ -4,7 +4,7 @@ import type {
   RoadmapResponse, RoadmapItemResponse, CategoryResponse, FinanceSummaryResponse, AssetRecordResponse,
   ExerciseLogResponse, SleepLogResponse, HealthSummaryResponse,
   BookRecordResponse, EnglishLogResponse, GrowthSummaryResponse,
-  CareerSettingsResponse, CFRatingLogResponse, CareerSummaryResponse,
+  CareerSettingsResponse, CFRatingLogResponse,
   OverviewResponse,
   TripResponse, ChecklistItemResponse, TravelSummaryResponse, TripPlanItemResponse, RestaurantResponse,
 } from '@/types';

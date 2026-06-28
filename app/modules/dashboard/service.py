@@ -155,7 +155,10 @@ async def get_overview(session: AsyncSession) -> OverviewResponse:
     snapshots: list = []
     for module_name, result in zip(_MODULES, results):
         if isinstance(result, Exception):
-            logger.error("dashboard snapshot failed: module=%s error=%r", module_name, result)
+            logger.error(
+                "dashboard snapshot failed: module=%s error_type=%s",
+                module_name, type(result).__name__,
+            )
             failed_modules.append(module_name)
             snapshots.append(None)
         elif result is None:

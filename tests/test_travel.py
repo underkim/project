@@ -531,3 +531,88 @@ async def test_delete_trip_cascades_restaurants(auth_client):
     # 맛집도 함께 삭제 → 수정 시 404
     upd = await auth_client.put(f"/api/v1/travel/restaurants/{rid}", json={"is_visited": True})
     assert upd.status_code == 404
+
+
+# ─── TASK-035: 명시적 좌표 보존 + 위치 초기화 ──────────────────
+
+@pytest.mark.asyncio
+async def test_create_trip_explicit_coords_not_overwritten_by_geocode(auth_client, monkeypatch):
+    """명시적 lat/lng가 있으면 geocode가 다른 값을 돌려줘도 덮어쓰지 않아야 한다."""
+    async def fake_geocode(addr):
+        return (99.0, 99.0)  # 절대 채택되면 안 되는 값
+    monkeypatch.setattr("app.modules.travel.service.geocode", fake_geocode)
+
+    resp = await auth_client.post("/api/v1/travel/trips", json={
+        "name": "명시 좌표 여행", "destination": "제주",
+        "start_date": "2026-08-01", "end_date": "2026-08-03",
+        "address": "제주공항", "latitude": 33.5066, "longitude": 126.4928,
+    })
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["latitude"] == 33.5066
+    assert data["longitude"] == 126.4928
+
+
+@pytest.mark.asyncio
+async def test_update_trip_explicit_coords_not_overwritten_by_geocode(auth_client, monkeypatch):
+    """업데이트 시 명시적 좌표 + 주소를 함께 보내면 geocode 결과를 무시해야 한다."""
+    async def fake_geocode(addr):
+        return (99.0, 99.0)
+    monkeypatch.setattr("app.modules.travel.service.geocode", fake_geocode)
+
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "업데이트 좌표 여행", "destination": "서울",
+        "start_date": "2026-09-01", "end_date": "2026-09-03",
+    })).json()
+
+    resp = await auth_client.put(f"/api/v1/travel/trips/{trip['id']}", json={
+        "address": "서울시청", "latitude": 37.5665, "longitude": 126.9780,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["latitude"] == 37.5665
+    assert data["longitude"] == 126.9780
+
+
+@pytest.mark.asyncio
+async def test_update_trip_clears_location(auth_client):
+    """address·latitude·longitude를 null로 보내면 여행 위치가 초기화되어야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "위치 초기화 여행", "destination": "부산",
+        "start_date": "2026-10-01", "end_date": "2026-10-03",
+        "address": "부산역", "latitude": 35.1154, "longitude": 129.0422,
+    })).json()
+    assert trip["latitude"] == 35.1154
+
+    resp = await auth_client.put(f"/api/v1/travel/trips/{trip['id']}", json={
+        "address": None, "latitude": None, "longitude": None,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["address"] is None
+    assert data["latitude"] is None
+    assert data["longitude"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_restaurant_explicit_coords_not_overwritten_by_geocode(auth_client, monkeypatch):
+    """맛집 업데이트 시 명시적 좌표가 geocode를 덮어쓰지 않아야 한다."""
+    async def fake_geocode(addr):
+        return (99.0, 99.0)
+    monkeypatch.setattr("app.modules.travel.service.geocode", fake_geocode)
+
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "맛집 좌표 여행", "destination": "대구",
+        "start_date": "2026-11-01", "end_date": "2026-11-03",
+    })).json()
+    r = (await auth_client.post(f"/api/v1/travel/trips/{trip['id']}/restaurants", json={
+        "name": "막창집",
+    })).json()
+
+    resp = await auth_client.put(f"/api/v1/travel/restaurants/{r['id']}", json={
+        "address": "대구 서문시장", "latitude": 35.8714, "longitude": 128.5931,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["latitude"] == 35.8714
+    assert data["longitude"] == 128.5931

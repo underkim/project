@@ -127,7 +127,7 @@ export default function GrowthPage() {
     title: '', author: '', status: 'planned' as BookStatus,
     rating: 0, note: '', start_date: '', end_date: '',
   });
-  const [engForm, setEngForm] = useState({ log_date: '', activity_type: 'reading', duration_minutes: '', note: '' });
+  const [engForm, setEngForm] = useState({ log_date: new Date().toISOString().slice(0, 10), activity_type: 'reading', duration_minutes: '', note: '' });
 
   async function load() {
     try {
@@ -165,7 +165,7 @@ export default function GrowthPage() {
   }
 
   useEffect(() => {
-    setEngForm(f => ({ ...f, log_date: new Date().toISOString().slice(0, 10) }));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -369,7 +369,8 @@ export default function GrowthPage() {
     streaks.push(run);
     const best = Math.max(...streaks);
     const today = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const yd = new Date(today); yd.setDate(yd.getDate() - 1);
+    const yesterday = yd.toISOString().slice(0, 10);
     const last = dates[dates.length - 1];
     const current = (last === today || last === yesterday) ? streaks[streaks.length - 1] : 0;
     return { current, best };

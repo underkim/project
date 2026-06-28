@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, XCircle, Info, X } from 'lucide-react';
 import type { ToastType } from '@/lib/toast';
 
@@ -17,14 +17,14 @@ export default function Toast() {
   // 동기적으로 dedupe/cap 판단을 하기 위한 source-of-truth 미러
   const toastsRef = useRef<ToastItem[]>([]);
 
-  function commit(next: ToastItem[]) {
+  const commit = useCallback((next: ToastItem[]) => {
     toastsRef.current = next;
     setToasts(next);
-  }
+  }, []);
 
-  function dismiss(id: number) {
+  const dismiss = useCallback((id: number) => {
     commit(toastsRef.current.filter(t => t.id !== id));
-  }
+  }, [commit]);
 
   useEffect(() => {
     function handler(e: Event) {
@@ -43,7 +43,7 @@ export default function Toast() {
     }
     window.addEventListener('app-toast', handler);
     return () => window.removeEventListener('app-toast', handler);
-  }, []);
+  }, [commit, dismiss]);
 
   if (toasts.length === 0) return null;
 

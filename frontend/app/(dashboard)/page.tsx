@@ -196,6 +196,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [goals, setGoals] = useState(readLocalGoals);
   const { asset: assetGoal, book: bookGoal, eng: engGoal, cf: cfGoal } = goals;
@@ -216,11 +217,12 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     dashboardApi.getOverview()
-      .then(setData)
+      .then(d => { setData(d); setLastUpdated(new Date()); })
       .catch(() => setError('데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
   useAiRefresh([], load);
 
@@ -294,6 +296,11 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">오늘의 현황</h1>
           <p className="text-xs text-slate-400 mt-0.5">{today}</p>
+          {lastUpdated && (
+            <p className="text-[10px] text-slate-300 mt-0.5">
+              {lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 업데이트
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {hasAlert && (
@@ -304,6 +311,14 @@ export default function DashboardPage() {
               </span>
             </Link>
           )}
+          <button
+            onClick={load}
+            disabled={loading}
+            aria-label="새로고침"
+            className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-40 transition-colors"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
           <button
             onClick={() => setShowReport(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-xs rounded-xl hover:bg-slate-700 transition-colors font-medium"

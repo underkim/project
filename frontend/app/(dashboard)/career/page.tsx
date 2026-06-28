@@ -56,7 +56,7 @@ export default function CareerPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadMore, setLoadMore] = useState(false);
   const [showRatingForm, setShowRatingForm] = useState(false);
-  const [ratingForm, setRatingForm] = useState({ log_date: '', rating: '', rank_name: 'pupil' });
+  const [ratingForm, setRatingForm] = useState({ log_date: new Date().toISOString().slice(0, 10), rating: '', rank_name: 'pupil' });
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editingRating, setEditingRating] = useState<{ id: number; log_date: string; rating: string; rank_name: string } | null>(null);
   const [chartYear, setChartYear] = useState<string>('all');
@@ -109,7 +109,7 @@ export default function CareerPage() {
   }
 
   useEffect(() => {
-    setRatingForm(f => ({ ...f, log_date: new Date().toISOString().slice(0, 10) }));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 

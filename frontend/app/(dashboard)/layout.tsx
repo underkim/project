@@ -19,6 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const next = encodeURIComponent(current);
       router.replace(`/login?next=${next}`);
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setReady(true);
     }
   }, [router]);
