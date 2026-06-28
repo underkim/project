@@ -50,22 +50,29 @@ test.describe('여행 페이지', () => {
     expect(createRes.ok()).toBeTruthy();
 
     await page.goto('/travel');
-    await expect(page.getByText('[E2E] 날짜편집 테스트')).toBeVisible();
+    const tripHeading = page.getByRole('heading', { name: '[E2E] 날짜편집 테스트', exact: true });
+    await expect(tripHeading).toBeVisible();
 
     // 편집 버튼 클릭 (Pencil 아이콘 버튼 — 해당 카드 내)
-    const card = page.locator('div').filter({ hasText: '[E2E] 날짜편집 테스트' }).first();
-    await card.getByRole('button').filter({ has: page.locator('svg') }).first().click();
+    const headerRow = tripHeading.locator('xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]');
+    await headerRow.getByRole('button').first().click();
 
     // start_date input 수정
-    const dateInputs = card.locator('input[type="date"]');
+    const dateInputs = page.locator('input[type="date"]');
+    await expect(dateInputs).toHaveCount(2);
     await dateInputs.nth(0).fill('2030-03-01');
     await dateInputs.nth(1).fill('2030-03-10');
 
     // 저장 (Check 아이콘 버튼)
-    await card.getByRole('button').filter({ has: page.locator('svg') }).last().click();
+    await page.locator('div.flex.gap-2.justify-end').first().getByRole('button').last().click();
 
-    // 저장 후 새 날짜 범위가 카드에 표시됨
-    await expect(page.getByText('2030-03-01')).toBeVisible({ timeout: 5000 });
+    await expect.poll(async () => {
+      const listRes = await request.get(`${API}/api/v1/travel/trips`, { headers });
+      if (!listRes.ok()) return '';
+      const trips = await listRes.json() as Array<{ name: string; start_date: string; end_date: string }>;
+      const updated = trips.find(t => t.name === '[E2E] 날짜편집 테스트');
+      return updated ? `${updated.start_date}|${updated.end_date}` : '';
+    }, { timeout: 5000 }).toBe('2030-03-01|2030-03-10');
   });
 
   test('시작일이 종료일보다 늦어지면 종료일이 시작일로 자동 조정된다', async ({ page, request }) => {
@@ -83,12 +90,14 @@ test.describe('여행 페이지', () => {
     expect(createRes.ok()).toBeTruthy();
 
     await page.goto('/travel');
-    await expect(page.getByText('[E2E] 날짜클램프 테스트')).toBeVisible();
+    const tripHeading = page.getByRole('heading', { name: '[E2E] 날짜클램프 테스트', exact: true });
+    await expect(tripHeading).toBeVisible();
 
-    const card = page.locator('div').filter({ hasText: '[E2E] 날짜클램프 테스트' }).first();
-    await card.getByRole('button').filter({ has: page.locator('svg') }).first().click();
+    const headerRow = tripHeading.locator('xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]');
+    await headerRow.getByRole('button').first().click();
 
-    const dateInputs = card.locator('input[type="date"]');
+    const dateInputs = page.locator('input[type="date"]');
+    await expect(dateInputs).toHaveCount(2);
     // 시작일을 종료일보다 늦은 날짜로 변경
     await dateInputs.nth(0).fill('2030-06-01');
 
