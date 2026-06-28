@@ -118,5 +118,5 @@ No change to `service.py`, endpoints, filenames, or row content.
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `446027e` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
