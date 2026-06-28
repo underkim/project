@@ -338,6 +338,78 @@ async def test_chat_multi_actions_trip_and_plan(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_chat_travel_planning_question_blocks_save(auth_client):
+    """여행 계획 중 AI가 되묻는 응답이면 travel 생성 액션을 저장하지 않아야 한다."""
+    import json
+    mock_payload = {
+        "reply": "제주 여행 좋네요! 언제 출발하고 며칠 동안 다녀오실 예정인가요?",
+        "actions": [
+            {"action": "create", "module": "travel_trip",
+             "data": {"name": "질문 제주 여행", "destination": "제주도",
+                      "start_date": "2026-09-01", "end_date": "2026-09-03"}},
+            {"action": "create", "module": "travel_plan",
+             "data": {"trip_name": "질문 제주 여행", "day": 1, "title": "성산일출봉"}},
+        ],
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "제주 여행 계획 짜줘"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is False
+    assert data["saved_count"] == 0
+    # 실제로 trip이 저장되지 않았어야 함
+    trips = (await auth_client.get("/api/v1/travel/trips")).json()
+    assert not any(t["name"] == "질문 제주 여행" for t in trips)
+
+
+@pytest.mark.asyncio
+async def test_chat_travel_exploratory_action_null(auth_client):
+    """탐색 단계 여행 계획은 action: null이며 저장되지 않아야 한다."""
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock_genai.Client.return_value.models.generate_content.return_value = _mock_gemini(
+            reply="여행 계획 도와드릴게요! 어떤 분위기의 여행을 원하세요?",
+            action=None,
+        )
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "여행 가고 싶어"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is False
+    assert data["action"] is None
+
+
+@pytest.mark.asyncio
+async def test_chat_travel_single_create_question_blocks_save(auth_client):
+    """단일 travel_trip create도 되묻는 응답이면 저장하지 않아야 한다."""
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock_genai.Client.return_value.models.generate_content.return_value = _mock_gemini(
+            reply="어떤 날짜로 추가할까요?",
+            action="create",
+            module="travel_trip",
+            data={"name": "단일 질문 여행", "destination": "부산",
+                  "start_date": "2026-10-01", "end_date": "2026-10-03"},
+        )
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "부산 여행 추가해줘"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is False
+    trips = (await auth_client.get("/api/v1/travel/trips")).json()
+    assert not any(t["name"] == "단일 질문 여행" for t in trips)
+
+
+@pytest.mark.asyncio
 async def test_chat_create_finance_record(auth_client):
     """create 액션 — finance_record 모듈 저장 시 saved: True."""
     import json
