@@ -1,6 +1,6 @@
 # TASK-008: Travel Trip Date Editing
 
-status: implemented
+status: done
 created_by: codex
 created_at: 2026-06-28
 updated_at: 2026-06-28

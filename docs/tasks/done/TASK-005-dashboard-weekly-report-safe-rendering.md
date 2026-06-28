@@ -1,6 +1,6 @@
 # TASK-005: Dashboard Weekly Report Safe Rendering
 
-status: implemented
+status: done
 type: improvement
 priority: high
 created_by: codex

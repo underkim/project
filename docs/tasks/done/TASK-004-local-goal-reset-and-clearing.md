@@ -1,6 +1,6 @@
 # TASK-004: Local Goal Reset and Clearing
 
-status: implemented
+status: done
 type: improvement
 priority: medium
 created_by: codex
