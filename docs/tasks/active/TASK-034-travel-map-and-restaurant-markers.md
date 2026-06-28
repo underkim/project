@@ -204,7 +204,7 @@ restaurants.
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `21d2db9` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
 - Note: production needs `uv run alembic upgrade head` to apply the new
   migration.
