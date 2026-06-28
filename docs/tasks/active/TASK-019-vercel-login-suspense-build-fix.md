@@ -143,5 +143,5 @@ Fix the Vercel frontend deployment failure caused by the login page using `useSe
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `c7fb384` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
