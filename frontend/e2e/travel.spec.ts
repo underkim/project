@@ -25,6 +25,18 @@ async function cleanupTestTrips(request: import('@playwright/test').APIRequestCo
   }
 }
 
+function getTripCard(page: import('@playwright/test').Page, tripName: string) {
+  return page
+    .locator('div.border.border-slate-100.rounded-xl')
+    .filter({ has: page.getByRole('heading', { name: tripName, exact: true }) })
+    .first();
+}
+
+async function expandTripCardIfNeeded(tripCard: import('@playwright/test').Locator) {
+  if (await tripCard.getByRole('button', { name: '맛집' }).count()) return;
+  await tripCard.locator('button:has(svg.lucide-chevron-down), button:has(svg.lucide-chevron-up)').first().click();
+}
+
 test.describe('여행 페이지', () => {
   test.afterEach(async ({ request }) => {
     await cleanupTestTrips(request);
@@ -52,16 +64,15 @@ test.describe('여행 페이지', () => {
     await page.goto('/travel');
     const tripHeading = page.getByRole('heading', { name: '[E2E] 날짜편집 테스트', exact: true });
     await expect(tripHeading).toBeVisible();
+    const tripCard = getTripCard(page, '[E2E] 날짜편집 테스트');
 
-    // 편집 버튼 클릭 (Pencil 아이콘 버튼 — 해당 카드 내)
-    const tripCard = tripHeading.locator('xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-xl")][1]');
     await tripCard.getByRole('button', { name: '여행 편집' }).click();
 
     // start_date input 수정
-    const dateInputs = tripCard.locator('input[type="date"]');
-    await expect(dateInputs).toHaveCount(2);
-    await dateInputs.nth(0).fill('2030-03-01');
-    await dateInputs.nth(1).fill('2030-03-10');
+    const startDateInput = tripCard.getByDisplayValue('2030-01-01');
+    const endDateInput = tripCard.getByDisplayValue('2030-01-05');
+    await startDateInput.fill('2030-03-01');
+    await endDateInput.fill('2030-03-10');
 
     // 저장 (Check 아이콘 버튼)
     await tripCard.getByRole('button', { name: '여행 저장' }).click();
@@ -120,7 +131,8 @@ test.describe('여행 페이지', () => {
     await page.goto('/travel');
     const tripHeading = page.getByRole('heading', { name: '[E2E] 맛집 테스트', exact: true });
     await expect(tripHeading).toBeVisible();
-    const tripCard = tripHeading.locator('xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-xl")][1]');
+    const tripCard = getTripCard(page, '[E2E] 맛집 테스트');
+    await expandTripCardIfNeeded(tripCard);
     await tripCard.getByRole('button', { name: '맛집' }).click();
     await expect(tripCard.getByText('[E2E] 돼지국밥집').first()).toBeVisible({ timeout: 10000 });
   });
@@ -142,17 +154,16 @@ test.describe('여행 페이지', () => {
     await page.goto('/travel');
     const tripHeading = page.getByRole('heading', { name: '[E2E] 날짜클램프 테스트', exact: true });
     await expect(tripHeading).toBeVisible();
-
-    const tripCard = tripHeading.locator('xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-xl")][1]');
+    const tripCard = getTripCard(page, '[E2E] 날짜클램프 테스트');
     await tripCard.getByRole('button', { name: '여행 편집' }).click();
 
-    const dateInputs = tripCard.locator('input[type="date"]');
-    await expect(dateInputs).toHaveCount(2);
+    const startDateInput = tripCard.getByDisplayValue('2030-01-01');
+    const endDateInput = tripCard.getByDisplayValue('2030-01-05');
     // 시작일을 종료일보다 늦은 날짜로 변경
-    await dateInputs.nth(0).fill('2030-06-01');
+    await startDateInput.fill('2030-06-01');
 
     // 종료일이 시작일과 같거나 이후여야 함 (클램프)
-    const endVal = await dateInputs.nth(1).inputValue();
+    const endVal = await endDateInput.inputValue();
     expect(endVal >= '2030-06-01').toBeTruthy();
   });
 });
