@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import { careerApi, exportApi } from '@/lib/api';
 import type { CareerSettingsResponse, CFRatingLogResponse } from '@/types';
-import { Trash2, Download, ExternalLink, Target, Loader2 } from 'lucide-react';
+import { Trash2, Download, ExternalLink, Target, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 const cfRanks = ['newbie','pupil','specialist','expert','candidate master','master','international master','grandmaster','legendary grandmaster'];
 
@@ -53,6 +53,7 @@ export default function CareerPage() {
   const [settings, setSettings] = useState<CareerSettingsResponse>({ cf_handle: null, github_username: null, blog_url: null });
   const [ratings, setRatings] = useState<CFRatingLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [loadMore, setLoadMore] = useState(false);
   const [showRatingForm, setShowRatingForm] = useState(false);
@@ -87,11 +88,13 @@ export default function CareerPage() {
   }
 
   async function load() {
+    setLoadError(false);
     try {
       const [s, r] = await Promise.all([careerApi.getSettings(), careerApi.listCFRatings(PAGE)]);
       setSettings(s);
       setRatings(r); setHasMore(r.length === PAGE);
     } catch {
+      setLoadError(true);
       showToast('데이터를 불러오지 못했습니다.', 'error');
     } finally {
       setLoading(false);
@@ -226,6 +229,22 @@ export default function CareerPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-900">커리어</h1>
+
+      {loadError && (
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700 text-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            데이터를 불러오지 못했습니다.
+          </div>
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors shrink-0"
+          >
+            <RefreshCw size={12} />
+            다시 시도
+          </button>
+        </div>
+      )}
 
       {latestRating && (
         <div className="grid grid-cols-2 gap-3">

@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import { financeApi, exportApi } from '@/lib/api';
 import type { AssetRecordResponse } from '@/types';
-import { Trash2, Download, TrendingUp, TrendingDown, Target, Loader2 } from 'lucide-react';
+import { Trash2, Download, TrendingUp, TrendingDown, Target, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 function DeleteConfirm({ onConfirm, onCancel, disabled }: { onConfirm: () => void; onCancel: () => void; disabled?: boolean }) {
   return (
@@ -32,6 +32,7 @@ export default function FinancePage() {
   const [records, setRecords] = useState<AssetRecordResponse[]>([]);
   const [summary, setSummary] = useState<{ latest_total_assets: number | null; avg_savings_rate: number | null; asset_change: number | null }>({ latest_total_assets: null, avg_savings_rate: null, asset_change: null });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [loadMore, setLoadMore] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -80,12 +81,14 @@ export default function FinancePage() {
   }
 
   async function load() {
+    setLoadError(false);
     try {
       const data = await financeApi.getSummary(100);
       setRecords(data.records);
       setHasMore(data.records.length === 100);
       setSummary({ latest_total_assets: data.latest_total_assets, avg_savings_rate: data.avg_savings_rate, asset_change: data.asset_change });
     } catch {
+      setLoadError(true);
       showToast('데이터를 불러오지 못했습니다.', 'error');
     } finally {
       setLoading(false);
@@ -258,6 +261,21 @@ export default function FinancePage() {
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700 text-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            데이터를 불러오지 못했습니다.
+          </div>
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors shrink-0"
+          >
+            <RefreshCw size={12} />
+            다시 시도
+          </button>
+        </div>
+      )}
       {savingsDeclineAlert && (
         <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
           <TrendingDown size={16} className="shrink-0 mt-0.5 text-amber-500" />

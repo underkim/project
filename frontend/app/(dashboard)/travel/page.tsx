@@ -7,7 +7,7 @@ import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
   Plane, MapPin, Calendar, Plus, Trash2, Pencil, Check, X,
   ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered, Download, Loader2,
-  Utensils, Map as MapIcon,
+  Utensils, Map as MapIcon, RefreshCw,
 } from 'lucide-react';
 import { travelApi, exportApi } from '@/lib/api';
 import { showToast } from '@/lib/toast';
@@ -984,6 +984,7 @@ export default function TravelPage() {
   }
 
   const load = async () => {
+    setError(null);
     try {
       const data = await travelApi.listTrips();
       setTrips(data);
@@ -1250,9 +1251,18 @@ export default function TravelPage() {
 
       {/* 에러 배너 */}
       {error && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700 text-sm">
-          <AlertCircle size={16} className="shrink-0" />
-          {error}
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700 text-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            {error}
+          </div>
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors shrink-0"
+          >
+            <RefreshCw size={12} />
+            다시 시도
+          </button>
         </div>
       )}
 

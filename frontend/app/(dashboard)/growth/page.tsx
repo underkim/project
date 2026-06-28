@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import { growthApi, exportApi } from '@/lib/api';
 import type { BookRecordResponse, EnglishLogResponse, GrowthSummaryResponse, BookStatus } from '@/types';
-import { Trash2, Download, Star, Target, Loader2 } from 'lucide-react';
+import { Trash2, Download, Star, Target, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 const statusConfig: Record<BookStatus, { label: string; color: string }> = {
   planned:   { label: '예정',   color: 'bg-slate-100 text-slate-600' },
@@ -72,6 +72,7 @@ export default function GrowthPage() {
   const [books, setBooks] = useState<BookRecordResponse[]>([]);
   const [englishLogs, setEnglishLogs] = useState<EnglishLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [booksHasMore, setBooksHasMore] = useState(false);
   const [engHasMore, setEngHasMore] = useState(false);
   const [booksLoadMore, setBooksLoadMore] = useState(false);
@@ -130,6 +131,7 @@ export default function GrowthPage() {
   const [engForm, setEngForm] = useState({ log_date: new Date().toISOString().slice(0, 10), activity_type: 'reading', duration_minutes: '', note: '' });
 
   async function load() {
+    setLoadError(false);
     try {
       const [s, b, e] = await Promise.all([
         growthApi.getSummary(), growthApi.listBooks(PAGE), growthApi.listEnglish(PAGE),
@@ -138,6 +140,7 @@ export default function GrowthPage() {
       setBooks(b); setBooksHasMore(b.length === PAGE);
       setEnglishLogs(e); setEngHasMore(e.length === PAGE);
     } catch {
+      setLoadError(true);
       showToast('데이터를 불러오지 못했습니다.', 'error');
     } finally {
       setLoading(false);
@@ -451,6 +454,22 @@ export default function GrowthPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-900">자기계발</h1>
+
+      {loadError && (
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700 text-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            데이터를 불러오지 못했습니다.
+          </div>
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors shrink-0"
+          >
+            <RefreshCw size={12} />
+            다시 시도
+          </button>
+        </div>
+      )}
 
       {/* 요약 */}
       <div className="grid grid-cols-2 gap-3">
