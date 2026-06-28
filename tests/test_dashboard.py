@@ -218,3 +218,43 @@ async def test_overview_career_rating_delta_reflected(auth_client):
     data = resp.json()
     assert data["career"] is not None
     assert data["career"]["rating_delta"] == 200
+
+
+@pytest.mark.asyncio
+async def test_overview_travel_with_restaurants_reflected(auth_client):
+    """레스토랑이 포함된 여행도 overview travel 스냅샷이 정상 반환되어야 한다."""
+    trip_res = await auth_client.post("/api/v1/travel/trips", json={
+        "name": "레스토랑 테스트 여행", "destination": "도쿄",
+        "start_date": "2026-10-01", "end_date": "2026-10-05", "status": "planned",
+        "latitude": 35.6895, "longitude": 139.6917,
+    })
+    trip_id = trip_res.json()["id"]
+    await auth_client.post(f"/api/v1/travel/trips/{trip_id}/restaurants", json={
+        "name": "스시 가게", "cuisine": "일식", "latitude": 35.69, "longitude": 139.69,
+    })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["travel"] is not None
+    assert data["meta"]["partial_failure"] is False
+
+
+@pytest.mark.asyncio
+async def test_overview_partial_failure_no_raw_exception_in_response(auth_client):
+    """부분 실패 시 응답에 raw exception 내용이 포함되지 않아야 한다."""
+    async def raise_with_detail(session):
+        raise RuntimeError("DB 접속 실패: password=secret123")
+
+    with patch(
+        "app.modules.dashboard.service._finance_snapshot",
+        side_effect=raise_with_detail,
+    ):
+        resp = await auth_client.get("/api/v1/dashboard/overview")
+
+    assert resp.status_code == 200
+    body = resp.text
+    assert "secret123" not in body
+    assert "DB 접속 실패" not in body
+    data = resp.json()
+    assert data["finance"] is None
+    assert data["meta"]["partial_failure"] is True
