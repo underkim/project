@@ -139,5 +139,5 @@ content is logged.
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `2d279ed` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
