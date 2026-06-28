@@ -123,5 +123,5 @@ Make AI-assisted delete confirmations safer by showing users what will be delete
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `8f3ab12` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
