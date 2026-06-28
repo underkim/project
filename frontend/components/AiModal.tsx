@@ -279,6 +279,8 @@ export default function AiModal() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  // 사용자가 메시지 영역의 바닥 근처에 있는지 추적 (위로 읽는 중이면 자동 스크롤 안 함)
+  const atBottomRef = useRef(true);
 
   const autoResize = useCallback(() => {
     const el = inputRef.current;
@@ -287,23 +289,36 @@ export default function AiModal() {
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }, []);
 
+  // 모달을 열면 즉시 바닥으로 이동하고 입력창에 포커스
   useEffect(() => {
     if (!open) return;
+    atBottomRef.current = true;
     const id = requestAnimationFrame(() => {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
     });
     inputRef.current?.focus();
     return () => cancelAnimationFrame(id);
-  }, [open, messages]);
+  }, [open]);
+
+  // 새 메시지: 사용자가 바닥 근처에 있을 때만 자동 스크롤 (위로 읽는 중이면 유지)
+  useEffect(() => {
+    if (!open || !atBottomRef.current) return;
+    const id = requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [messages, open]);
 
   function handleScroll() {
     const el = scrollAreaRef.current;
     if (!el) return;
     const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    atBottomRef.current = fromBottom < 80;
     setShowScrollBtn(fromBottom > 100);
   }
 
   function scrollToBottom() {
+    atBottomRef.current = true;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -445,7 +460,7 @@ export default function AiModal() {
     <>
       {/* 모달 패널 */}
       {open && (
-        <div className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-32px)] sm:w-[420px] max-h-[70vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+        <div className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-32px)] sm:w-[420px] h-[min(70vh,560px)] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
           {/* 헤더 */}
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 shrink-0">
             <div className="flex items-center gap-2">
