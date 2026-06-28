@@ -77,7 +77,7 @@ interface ItemRowProps {
   phaseStartDate: string | null;
   onToggle: (id: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
-  onEditSave: (id: number, data: { text?: string; offset?: number }) => void;
+  onEditSave: (id: number, data: { text?: string; offset?: number }) => Promise<void>;
 }
 
 function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemRowProps) {
@@ -87,13 +87,16 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleDeadlineChange(val: string) {
-    if (!val || !phaseStartDate) return;
-    onEditSave(item.id, { offset: calcDateToOffset(phaseStartDate, val) });
+    if (!val || !phaseStartDate || savingEdit) return;
+    setSavingEdit(true);
+    Promise.resolve(onEditSave(item.id, { offset: calcDateToOffset(phaseStartDate, val) }))
+      .finally(() => setSavingEdit(false));
     setEditingDeadline(false);
   }
 
@@ -105,8 +108,17 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  function save() {
-    if (draft.trim() && draft.trim() !== item.text) onEditSave(item.id, { text: draft.trim() });
+  async function save() {
+    if (savingEdit) return;
+    const next = draft.trim();
+    if (next && next !== item.text) {
+      setSavingEdit(true);
+      try {
+        await onEditSave(item.id, { text: next });
+      } finally {
+        setSavingEdit(false);
+      }
+    }
     setEditing(false);
   }
 
@@ -214,8 +226,10 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
 
       {editing ? (
         <div className="flex gap-1 shrink-0">
-          <button onClick={save} className="p-1 rounded text-emerald-600 hover:bg-emerald-50"><Check size={14} /></button>
-          <button onClick={cancel} className="p-1 rounded text-slate-400 hover:bg-slate-100"><X size={14} /></button>
+          <button onClick={save} disabled={savingEdit} className="p-1 rounded text-emerald-600 hover:bg-emerald-50 disabled:opacity-50">
+            {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+          </button>
+          <button onClick={cancel} disabled={savingEdit} className="p-1 rounded text-slate-400 hover:bg-slate-100 disabled:opacity-50"><X size={14} /></button>
         </div>
       ) : pendingDelete ? (
         <div className="flex items-center gap-1 shrink-0 animate-in fade-in duration-150">
@@ -355,7 +369,7 @@ interface CategoryCardProps {
   phaseStartDate: string | null;
   onToggle: (id: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
-  onEditSave: (id: number, data: { text?: string; offset?: number }) => void;
+  onEditSave: (id: number, data: { text?: string; offset?: number }) => Promise<void>;
   onAddItem: (categoryId: number, text: string, offset: number) => Promise<void>;
   onCategoryUpdate: (id: number, icon: string, title: string, subtitle: string) => Promise<boolean>;
   onCategoryDelete: (id: number) => Promise<void>;
@@ -817,6 +831,7 @@ export default function PlannerPage() {
   useAiRefresh(['planner'], loadRoadmap);
 
   async function handleSaveDate() {
+    if (saving) return;
     setSaving(true);
     try {
       await plannerApi.updateSettings(startDate || null);
