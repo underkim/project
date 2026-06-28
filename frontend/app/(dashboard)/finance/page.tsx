@@ -11,11 +11,13 @@ import { financeApi, exportApi } from '@/lib/api';
 import type { AssetRecordResponse } from '@/types';
 import { Trash2, Download, TrendingUp, TrendingDown, Target, Loader2 } from 'lucide-react';
 
-function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+function DeleteConfirm({ onConfirm, onCancel, disabled }: { onConfirm: () => void; onCancel: () => void; disabled?: boolean }) {
   return (
     <span className="flex items-center gap-1">
-      <button onClick={onConfirm} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">확인</button>
-      <button onClick={onCancel} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 transition-colors">취소</button>
+      <button onClick={onConfirm} disabled={disabled} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        {disabled ? <Loader2 size={10} className="animate-spin inline" /> : '확인'}
+      </button>
+      <button onClick={onCancel} disabled={disabled} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50">취소</button>
     </span>
   );
 }
@@ -58,12 +60,21 @@ export default function FinancePage() {
   const [yearFilter, setYearFilter] = useState<string>('all');
   const [noteSearch, setNoteSearch] = useState('');
   const [exporting, setExporting] = useState<Set<string>>(new Set());
+  const [mutating, setMutating] = useState<Set<string>>(new Set());
 
   async function handleExport(key: string, fn: () => Promise<void>) {
     if (exporting.has(key)) return;
     setExporting(prev => new Set(prev).add(key));
     try { await fn(); } finally {
       setExporting(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
+
+  async function withMutation(key: string, fn: () => Promise<void>) {
+    if (mutating.has(key)) return;
+    setMutating(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setMutating(prev => { const next = new Set(prev); next.delete(key); return next; });
     }
   }
 
@@ -99,6 +110,7 @@ export default function FinancePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
     try {
       await financeApi.createRecord({
@@ -126,36 +138,41 @@ export default function FinancePage() {
 
   async function handleUpdate() {
     if (!editingId) return;
-    try {
-      await financeApi.updateRecord(editingId, {
-        record_date: editForm.record_date || undefined,
-        total_assets: Number(editForm.total_assets),
-        monthly_income: Number(editForm.monthly_income),
-        monthly_expense: Number(editForm.monthly_expense),
-        note: editForm.note || null,
-      });
-      setEditingId(null);
-      showToast('기록 수정됨');
-      await load();
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        showToast('해당 날짜에 이미 재테크 기록이 있어요.', 'error');
-      } else {
-        showToast('수정에 실패했습니다.', 'error');
+    const id = editingId;
+    await withMutation(`update_${id}`, async () => {
+      try {
+        await financeApi.updateRecord(id, {
+          record_date: editForm.record_date || undefined,
+          total_assets: Number(editForm.total_assets),
+          monthly_income: Number(editForm.monthly_income),
+          monthly_expense: Number(editForm.monthly_expense),
+          note: editForm.note || null,
+        });
+        setEditingId(null);
+        showToast('기록 수정됨');
+        await load();
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 409) {
+          showToast('해당 날짜에 이미 재테크 기록이 있어요.', 'error');
+        } else {
+          showToast('수정에 실패했습니다.', 'error');
+        }
       }
-    }
+    });
   }
 
   async function handleDelete(id: number) {
-    try {
-      await financeApi.deleteRecord(id);
-      setDeletingId(null);
-      showToast('기록 삭제됨');
-      await load();
-    } catch {
-      showToast('삭제에 실패했습니다.', 'error');
-    }
+    await withMutation(`delete_${id}`, async () => {
+      try {
+        await financeApi.deleteRecord(id);
+        setDeletingId(null);
+        showToast('기록 삭제됨');
+        await load();
+      } catch {
+        showToast('삭제에 실패했습니다.', 'error');
+      }
+    });
   }
 
   function saveGoal() {
@@ -576,8 +593,10 @@ export default function FinancePage() {
                         <td className="px-2 py-2"><input type="text" value={editForm.note} onChange={e => setEditForm({ ...editForm, note: e.target.value })} placeholder="메모" className={inCls} /></td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1 justify-end">
-                            <button onClick={handleUpdate} className="text-[10px] px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700">저장</button>
-                            <button onClick={() => setEditingId(null)} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600">취소</button>
+                            <button onClick={handleUpdate} disabled={mutating.has(`update_${r.id}`)} className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                              {mutating.has(`update_${r.id}`) && <Loader2 size={9} className="animate-spin" />}저장
+                            </button>
+                            <button onClick={() => setEditingId(null)} disabled={mutating.has(`update_${r.id}`)} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 disabled:opacity-50">취소</button>
                           </div>
                         </td>
                       </tr>
@@ -607,7 +626,7 @@ export default function FinancePage() {
                       <td className="px-4 py-3 text-slate-400 text-xs max-w-[80px] truncate">{r.note ?? '—'}</td>
                       <td className="px-4 py-3 text-right">
                         {deletingId === r.id ? (
-                          <DeleteConfirm onConfirm={() => handleDelete(r.id)} onCancel={() => setDeletingId(null)} />
+                          <DeleteConfirm onConfirm={() => handleDelete(r.id)} onCancel={() => setDeletingId(null)} disabled={mutating.has(`delete_${r.id}`)} />
                         ) : (
                           <button onClick={e => { e.stopPropagation(); setDeletingId(r.id); }} className="text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
                             <Trash2 size={13} />
