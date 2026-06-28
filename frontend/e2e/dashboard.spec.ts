@@ -19,6 +19,15 @@ test.describe('대시보드 홈', () => {
     await expect(page.getByTitle('AI 어시스턴트')).toBeVisible();
   });
 
+  test('새로고침 버튼으로 개요를 다시 불러올 수 있다', async ({ page }) => {
+    await page.goto('/');
+    // 헤더의 새로고침 버튼(aria-label) 클릭 후 개요가 계속 표시되어야 한다
+    const refresh = page.getByRole('button', { name: '새로고침' });
+    await expect(refresh).toBeVisible();
+    await refresh.click();
+    await expect(page.getByRole('heading', { name: '오늘의 현황' })).toBeVisible();
+  });
+
   test('주간 리포트의 HTML 페이로드가 DOM으로 실행되지 않는다', async ({ page }) => {
     // 주간 리포트 응답을 가로채 heading/bullet/bold + HTML 주입 페이로드를 반환
     await page.route('**/api/v1/ai/weekly-report', route =>
