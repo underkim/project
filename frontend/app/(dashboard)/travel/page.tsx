@@ -22,6 +22,15 @@ const TravelMap = dynamic(() => import('./TravelMap'), {
   ),
 });
 
+const LocationPickerMap = dynamic(() => import('./LocationPicker'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-48 w-full rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center">
+      <Loader2 size={16} className="animate-spin text-slate-300" />
+    </div>
+  ),
+});
+
 // ── 상태 배지 ──────────────────────────────────────────────
 const STATUS_META: Record<TripStatus, { label: string; cls: string }> = {
   planned:   { label: '예정',   cls: 'bg-blue-100 text-blue-700' },
@@ -104,6 +113,7 @@ interface AddTripFormProps {
   onSave: (data: {
     name: string; destination: string; start_date: string; end_date: string;
     status: TripStatus; note: string; address: string;
+    latitude?: number | null; longitude?: number | null;
   }) => Promise<void>;
   onCancel: () => void;
 }
@@ -117,6 +127,8 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
   const [status, setStatus] = useState<TripStatus>('planned');
   const [note, setNote] = useState('');
   const [address, setAddress] = useState('');
+  const [pickedLoc, setPickedLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -126,7 +138,12 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
     if (!name.trim() || !dest.trim()) return;
     setSaving(true);
     try {
-      await onSave({ name: name.trim(), destination: dest.trim(), start_date: startDate, end_date: endDate, status, note: note.trim(), address: address.trim() });
+      await onSave({
+        name: name.trim(), destination: dest.trim(),
+        start_date: startDate, end_date: endDate,
+        status, note: note.trim(), address: address.trim(),
+        ...(pickedLoc ? { latitude: pickedLoc.lat, longitude: pickedLoc.lng } : {}),
+      });
     } finally {
       setSaving(false);
     }
@@ -200,14 +217,38 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
           />
         </div>
-        <div className="col-span-2">
+        <div className="col-span-2 space-y-2">
           <label className="text-xs text-slate-500 mb-1 block">위치 (지도 표시용, 선택)</label>
-          <input
-            value={address}
-            onChange={e => setAddress(e.target.value)}
-            placeholder="주소·장소명 입력 시 지도에 표시돼요 (예: 도쿄 신주쿠)"
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-          />
+          <div className="flex gap-2">
+            <input
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="주소·장소명 입력 시 지도에 표시돼요 (예: 도쿄 신주쿠)"
+              className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPicker(v => !v)}
+              title="지도에서 직접 위치 선택"
+              className={`shrink-0 px-3 py-2 text-xs rounded-xl border transition-colors ${
+                showPicker || pickedLoc
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              <MapPin size={14} className="inline mr-1" />
+              {pickedLoc ? '선택됨' : '지도선택'}
+            </button>
+          </div>
+          {showPicker && (
+            <LocationPickerMap
+              value={pickedLoc}
+              onChange={(v) => {
+                setPickedLoc(v);
+                if (!v) setShowPicker(false);
+              }}
+            />
+          )}
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-1">
@@ -242,7 +283,7 @@ interface TripCardProps {
   onAddPlanItem: (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => void;
   onUpdatePlanItem: (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => void;
   onDeletePlanItem: (tripId: number, itemId: number) => void;
-  onAddRestaurant: (tripId: number, data: { name: string; address?: string; cuisine?: string }) => void;
+  onAddRestaurant: (tripId: number, data: { name: string; address?: string; cuisine?: string; latitude?: number | null; longitude?: number | null }) => void;
   onUpdateRestaurant: (tripId: number, restaurantId: number, data: Partial<{ is_visited: boolean; note: string | null }>) => void;
   onDeleteRestaurant: (tripId: number, restaurantId: number) => void;
   mutatingKeys: Set<string>;
@@ -264,6 +305,8 @@ function TripCard({
   const [editStartDate, setEditStartDate] = useState(trip.start_date);
   const [editEndDate, setEditEndDate] = useState(trip.end_date);
   const [editAddress, setEditAddress] = useState(trip.address ?? '');
+  const [editPickedLoc, setEditPickedLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [showEditPicker, setShowEditPicker] = useState(false);
   const [checkText, setCheckText] = useState('');
   const [activeTab, setActiveTab] = useState<'checklist' | 'plan' | 'restaurant'>('checklist');
   const [planDay, setPlanDay] = useState(1);
@@ -274,6 +317,8 @@ function TripCard({
   const [restName, setRestName] = useState('');
   const [restAddress, setRestAddress] = useState('');
   const [restCuisine, setRestCuisine] = useState('');
+  const [restPickedLoc, setRestPickedLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [showRestPicker, setShowRestPicker] = useState(false);
 
   const handleAddRestaurant = () => {
     if (!restName.trim()) return;
@@ -281,10 +326,13 @@ function TripCard({
       name: restName.trim(),
       address: restAddress.trim() || undefined,
       cuisine: restCuisine.trim() || undefined,
+      ...(restPickedLoc ? { latitude: restPickedLoc.lat, longitude: restPickedLoc.lng } : {}),
     });
     setRestName('');
     setRestAddress('');
     setRestCuisine('');
+    setRestPickedLoc(null);
+    setShowRestPicker(false);
   };
 
   const checked = trip.checklist_items.filter(i => i.is_checked).length;
@@ -313,9 +361,33 @@ function TripCard({
     setPlanDesc('');
   };
 
+  const startEditing = () => {
+    setEditPickedLoc(
+      trip.latitude != null && trip.longitude != null
+        ? { lat: trip.latitude, lng: trip.longitude }
+        : null
+    );
+    setShowEditPicker(false);
+    setEditing(true);
+  };
+
   const saveEdit = () => {
     const nextAddress = editAddress.trim();
     const addressChanged = nextAddress !== (trip.address ?? '');
+
+    let locationPayload: Partial<TripResponse> = {};
+    if (editPickedLoc !== null) {
+      // 지도에서 명시적으로 선택한 좌표 → 지오코딩보다 우선
+      locationPayload = { latitude: editPickedLoc.lat, longitude: editPickedLoc.lng } as Partial<TripResponse>;
+      if (addressChanged) (locationPayload as Record<string, unknown>).address = nextAddress || null;
+    } else if (addressChanged) {
+      // 좌표 선택 없이 주소만 변경 → 백엔드가 지오코딩으로 좌표 갱신.
+      // 주소를 비우면 좌표도 함께 비운다.
+      locationPayload = nextAddress
+        ? { address: nextAddress } as Partial<TripResponse>
+        : { address: null, latitude: null, longitude: null } as Partial<TripResponse>;
+    }
+
     onUpdate(trip.id, {
       name: editName.trim() || trip.name,
       destination: editDest.trim() || trip.destination,
@@ -323,13 +395,7 @@ function TripCard({
       note: editNote.trim() || null,
       start_date: editStartDate,
       end_date: editEndDate,
-      // 주소가 바뀌었을 때만 전송 → 백엔드가 지오코딩으로 좌표 갱신.
-      // 주소를 비우면 좌표도 함께 비운다.
-      ...(addressChanged
-        ? (nextAddress
-            ? { address: nextAddress }
-            : { address: null, latitude: null, longitude: null })
-        : {}),
+      ...locationPayload,
     } as Partial<TripResponse>);
     setEditing(false);
   };
@@ -393,12 +459,38 @@ function TripCard({
                 onChange={e => setEditEndDate(e.target.value)}
                 className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
-              <input
-                value={editAddress}
-                onChange={e => setEditAddress(e.target.value)}
-                className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 col-span-2"
-                placeholder="위치 (지도 표시용, 선택)"
-              />
+              <div className="col-span-2 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    value={editAddress}
+                    onChange={e => setEditAddress(e.target.value)}
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    placeholder="위치 (지도 표시용, 선택)"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPicker(v => !v)}
+                    title="지도에서 직접 위치 선택"
+                    className={`shrink-0 px-2.5 py-1.5 text-xs rounded-xl border transition-colors ${
+                      showEditPicker || editPickedLoc
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    <MapPin size={13} className="inline mr-0.5" />
+                    {editPickedLoc ? '선택됨' : '지도'}
+                  </button>
+                </div>
+                {showEditPicker && (
+                  <LocationPickerMap
+                    value={editPickedLoc}
+                    onChange={(v) => {
+                      setEditPickedLoc(v);
+                      if (!v) { setEditAddress(''); setShowEditPicker(false); }
+                    }}
+                  />
+                )}
+              </div>
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setEditing(false)} disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-40">
@@ -438,7 +530,7 @@ function TripCard({
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button
-                onClick={() => setEditing(true)}
+                onClick={startEditing}
                 disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
                 className="p-1.5 text-slate-300 hover:text-slate-500 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -782,13 +874,37 @@ function TripCard({
                     className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
-                <input
-                  value={restAddress}
-                  onChange={e => setRestAddress(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAddRestaurant()}
-                  placeholder="주소·장소명 (선택, 입력 시 지도에 표시)"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
+                <div className="flex gap-2">
+                  <input
+                    value={restAddress}
+                    onChange={e => setRestAddress(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddRestaurant()}
+                    placeholder="주소·장소명 (선택, 입력 시 지도에 표시)"
+                    className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRestPicker(v => !v)}
+                    title="지도에서 직접 위치 선택"
+                    className={`shrink-0 px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                      showRestPicker || restPickedLoc
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    <MapPin size={12} className="inline mr-0.5" />
+                    {restPickedLoc ? '선택됨' : '지도'}
+                  </button>
+                </div>
+                {showRestPicker && (
+                  <LocationPickerMap
+                    value={restPickedLoc}
+                    onChange={(v) => {
+                      setRestPickedLoc(v);
+                      if (!v) setShowRestPicker(false);
+                    }}
+                  />
+                )}
                 <button
                   onClick={handleAddRestaurant}
                   disabled={!restName.trim() || mutatingKeys.has(`rest_add_${trip.id}`)}
@@ -980,7 +1096,7 @@ export default function TravelPage() {
     });
   };
 
-  const handleAddRestaurant = async (tripId: number, data: { name: string; address?: string; cuisine?: string }) => {
+  const handleAddRestaurant = async (tripId: number, data: { name: string; address?: string; cuisine?: string; latitude?: number | null; longitude?: number | null }) => {
     await withMutation(`rest_add_${tripId}`, async () => {
       try {
         const r = await travelApi.addRestaurant(tripId, data);
