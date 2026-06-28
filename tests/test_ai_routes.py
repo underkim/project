@@ -724,3 +724,99 @@ async def test_chat_update_record_not_found(auth_client):
     data = resp.json()
     assert data["saved"] is False
     assert data["action"] == "update"
+
+
+# ── TASK-044: AI 액션 확인 커버리지 매트릭스 보강 ──────────────────────
+
+
+@pytest.mark.asyncio
+async def test_chat_create_health_sleep(auth_client):
+    """create 액션 — health_sleep 저장 시 saved: True."""
+    import json
+    mock_payload = {
+        "reply": "수면 기록했어요!",
+        "action": "create",
+        "module": "health_sleep",
+        "data": {"log_date": "2026-06-22", "sleep_hours": 7.5, "quality": 4},
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "어제 7시간 반 잤어"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["module"] == "health_sleep"
+    assert data["action"] == "create"
+
+
+@pytest.mark.asyncio
+async def test_execute_delete_career_cf_rating(auth_client):
+    """execute — career_cf_rating 삭제 시 saved: True."""
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-04-15", "rating": 1500, "rank_name": "specialist",
+    })
+    resp = await auth_client.post("/api/v1/ai/execute", json={
+        "module": "career_cf_rating",
+        "filter": {"log_date": "2026-04-15"},
+    })
+    assert resp.status_code == 200
+    assert resp.json()["saved"] is True
+    assert resp.json()["action"] == "delete"
+
+
+@pytest.mark.asyncio
+async def test_execute_delete_travel_trip(auth_client):
+    """execute — travel_trip 삭제 시 saved: True (name 매치)."""
+    await auth_client.post("/api/v1/travel/trips", json={
+        "name": "삭제될 여행", "destination": "부산",
+        "start_date": "2026-09-01", "end_date": "2026-09-03", "status": "planned",
+    })
+    resp = await auth_client.post("/api/v1/ai/execute", json={
+        "module": "travel_trip",
+        "filter": {"name": "삭제될 여행"},
+    })
+    assert resp.status_code == 200
+    assert resp.json()["saved"] is True
+    assert resp.json()["action"] == "delete"
+
+
+@pytest.mark.asyncio
+async def test_chat_multi_action_delete_is_excluded(auth_client):
+    """다중 액션 배열에 delete가 있어도 실행되지 않고 create만 저장된다 (삭제는 개별 확인)."""
+    import json
+    # 먼저 삭제 대상이 될 운동 기록을 만든다.
+    await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-06-19", "exercise_type": "수영", "duration_minutes": 40,
+    })
+    mock_payload = {
+        "reply": "처리했어요!",
+        "actions": [
+            {"action": "create", "module": "health_exercise",
+             "data": {"log_date": "2026-06-20", "exercise_type": "러닝", "duration_minutes": 20}},
+            {"action": "delete", "module": "health_exercise",
+             "filter": {"log_date": "2026-06-19"}},
+        ],
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "러닝 추가하고 어제 수영 지워줘"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    # create는 저장됐지만 delete는 실행되지 않아야 한다.
+    assert data["saved"] is True
+    # 삭제 대상이었던 2026-06-19 수영 기록은 그대로 남아 있어야 한다.
+    listing = await auth_client.get("/api/v1/health/exercise")
+    dates = [e["log_date"] for e in listing.json()]
+    assert "2026-06-19" in dates
