@@ -124,5 +124,5 @@ Goal validation (`v > 0`, etc.) and localStorage keys are unchanged.
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `26d90d6` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
