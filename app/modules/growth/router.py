@@ -46,8 +46,8 @@ async def update_book(
 ):
     try:
         result = await service.update_book(session, book_id, data)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="완료일은 시작일 이후여야 합니다.")
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="도서 기록을 찾을 수 없습니다.")
     return result

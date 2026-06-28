@@ -188,6 +188,10 @@ async def test_update_trip_invalid_date_range_returns_422(auth_client):
 
     resp = await auth_client.put(f"/api/v1/travel/trips/{trip_id}", json={"end_date": "2026-08-01"})
     assert resp.status_code == 422
+    # 안전한 고정 메시지여야 하고 내부 예외 표현이 노출되면 안 된다
+    detail = resp.json()["detail"]
+    assert detail == "종료일은 시작일 이후여야 합니다."
+    assert "Traceback" not in detail and "Error" not in detail
 
 
 @pytest.mark.asyncio

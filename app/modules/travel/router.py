@@ -58,8 +58,8 @@ async def update_trip(
 ):
     try:
         result = await service.update_trip(session, trip_id, data)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="종료일은 시작일 이후여야 합니다.")
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
     return result
