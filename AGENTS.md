@@ -66,6 +66,70 @@ Example:
 docs/tasks/active/TASK-001-travel-budget.md
 ```
 
+## Compact Task Document Template
+
+Task documents should be concise by default. Include the required planning information, but avoid repeating the same constraints across sections. Prefer short bullets over long prose.
+
+Recommended structure:
+
+```text
+# TASK-###: Short Title
+
+status: draft|approved|working|implemented|reviewed|done|blocked
+created_by: codex
+created_at: YYYY-MM-DD
+updated_at: YYYY-MM-DD
+branch: develop
+assignee: Claude Code
+priority: low|medium|high
+task_type: feature|improvement|bugfix
+
+## 1. Goal
+One short paragraph: user-visible problem, desired outcome, and why now.
+
+## 2. Requirements
+- In scope: 3-6 bullets.
+- Out of scope: 2-5 bullets.
+- Decision needed: omit when none; otherwise list only blocking questions.
+
+## 3. Current Structure Analysis
+- Docs reviewed: filenames only.
+- Files reviewed: relevant filenames only.
+- Current behavior: 3-6 bullets.
+
+## 4. Design
+- Backend/API: say "No change" when applicable.
+- DB: say "No change" when applicable.
+- Frontend: concrete UI/state/data-flow changes.
+- Security impact: required when touching API inputs, auth, persistence, deletion, AI execution, exports, or external services.
+
+## 5. Test Plan
+- Backend tests: exact files/cases or "No backend change".
+- Frontend/E2E tests: exact files/cases or manual validation.
+- Security checks: only cases relevant to this task.
+
+## 6. Claude Code Instructions
+- Work directly on develop.
+- Preserve unrelated changes.
+- Implement only this task.
+- Commit and push to develop, then update status to implemented.
+
+## 7. Completion Criteria
+- 4-8 checkable bullets.
+
+## 8. PR Review Checklist
+- 4-8 review bullets focused on risk, behavior, and security.
+```
+
+Compression rules:
+
+- Do not paste architecture background from `AGENTS.md`, `CLAUDE.md`, `README.md`, or ADRs into each task. List reviewed documents by filename and include only task-specific implications.
+- Do not duplicate security notes in both Requirements and Security Impact. Put security details in `Design -> Security impact` and reference them from tests/checklists only when needed.
+- Do not include API or DB tables when there is no API or DB change. Write `No change`.
+- Keep Claude Code instructions standard and short unless the task has unusual constraints.
+- Avoid broad implementation recipes. Include enough direction to preserve architecture, then let Claude Code inspect and implement.
+- Target roughly 120-220 lines for normal improvement tasks. Only exceed that when the task spans multiple modules or has unresolved decisions.
+
 Move tasks based on their state:
 
 - `docs/tasks/active/`: draft, approved, working, implemented, or reviewed tasks
@@ -154,12 +218,36 @@ Core rules:
 
 ## Recurring Improvement Task Rules
 
-- The recurring Codex automation should inspect the repository every 10 minutes.
+- The recurring Codex automation should inspect the repository every hour.
 - Each run may create at most one improvement task.
-- If there are already 10 or more files matching `docs/tasks/active/TASK-*.md`, it must not create another task.
+
+### Preflight Check (filesystem — not memory)
+
+Before any broad repository analysis, perform a filesystem inventory:
+
+1. Count files matching `docs/tasks/active/TASK-*.md` by reading the directory.
+2. If the count is 10 or more, stop immediately — do not create another task.
+3. If the count is below 10, proceed to duplicate detection and repository analysis.
+
+**Critical**: The authoritative task count comes from the filesystem only.
+`memory.md`, compacted conversation context, chat history, or any cached summary must never be used as task inventory.
+Stale memory may be read as background context but must never override what `docs/tasks/active/` actually contains.
+
+### Duplicate Detection
+
+Before creating a new task, verify the idea is not already present by inspecting:
+
+- `docs/tasks/active/TASK-*.md` — includes draft, approved, working, implemented, and reviewed tasks
+- `docs/tasks/done/TASK-*.md` — completed tasks
+- `docs/tasks/blocked/TASK-*.md` — blocked tasks
+
+Do not create a task if the same idea is found in any of those locations.
+
+### Content Rules
+
 - Improvement tasks should primarily focus on existing feature correctness and usability.
 - Concrete, low-risk improvement tasks may be created as `status: approved` so Claude Code can implement them immediately.
-- Do not create duplicate tasks already present in active, done, or blocked task folders.
+- Do not read `.env`, secret files, or credential-bearing paths during the preflight or analysis phase.
 
 ## Related Documents
 
