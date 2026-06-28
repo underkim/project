@@ -162,5 +162,5 @@ pending-create flow). All changes in `app/modules/ai/service.py` and tests.
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `89f1a28` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
