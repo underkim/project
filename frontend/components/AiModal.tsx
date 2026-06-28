@@ -277,6 +277,7 @@ export default function AiModal() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fabRef = useRef<HTMLButtonElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   // 사용자가 메시지 영역의 바닥 근처에 있는지 추적 (위로 읽는 중이면 자동 스크롤 안 함)
@@ -298,6 +299,21 @@ export default function AiModal() {
     });
     inputRef.current?.focus();
     return () => cancelAnimationFrame(id);
+  }, [open]);
+
+  // 접근성: 열려 있을 때 Escape로 닫기, 닫히면 FAB로 포커스 복원
+  useEffect(() => {
+    if (!open) return;
+    const fab = fabRef.current;  // 트리거 버튼은 항상 렌더되므로 setup 시점 참조가 안정적
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      // 모달이 닫힐 때(언마운트/open=false) 트리거 버튼으로 포커스 되돌림
+      fab?.focus();
+    };
   }, [open]);
 
   // 새 메시지: 사용자가 바닥 근처에 있을 때만 자동 스크롤 (위로 읽는 중이면 유지)
@@ -460,7 +476,12 @@ export default function AiModal() {
     <>
       {/* 모달 패널 */}
       {open && (
-        <div className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-32px)] sm:w-[420px] h-[min(70vh,560px)] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="AI 어시스턴트"
+          className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-32px)] sm:w-[420px] h-[min(70vh,560px)] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+        >
           {/* 헤더 */}
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 shrink-0">
             <div className="flex items-center gap-2">
@@ -671,6 +692,7 @@ export default function AiModal() {
 
       {/* FAB 버튼 */}
       <button
+        ref={fabRef}
         onClick={() => setOpen(prev => !prev)}
         className={`fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-2xl shadow-lg flex items-center justify-center transition-all duration-200 ${
           open
@@ -678,6 +700,8 @@ export default function AiModal() {
             : 'bg-slate-900 hover:bg-slate-700'
         }`}
         title="AI 어시스턴트"
+        aria-label={open ? 'AI 어시스턴트 닫기' : 'AI 어시스턴트 열기'}
+        aria-expanded={open}
       >
         {open ? <X size={20} className="text-white" /> : <Bot size={22} className="text-white" />}
         {!open && messages.length > 0 && (

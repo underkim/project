@@ -163,15 +163,33 @@ function WeeklyReportModal({ onClose }: { onClose: () => void }) {
       .finally(() => setLoading(false));
   }, []);
 
+  // 접근성: Escape로 닫기
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="AI 주간 리포트"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <FileText size={16} className="text-slate-500" />
             <span className="font-semibold text-slate-800 text-sm">AI 주간 리포트</span>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} aria-label="주간 리포트 닫기" className="text-slate-400 hover:text-slate-600 transition-colors">
             <X size={18} />
           </button>
         </div>

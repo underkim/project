@@ -497,10 +497,10 @@ function TripCard({
               </div>
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setEditing(false)} disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-40">
+              <button onClick={() => setEditing(false)} aria-label="편집 취소" disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-40">
                 <X size={15} />
               </button>
-              <button onClick={saveEdit} disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+              <button onClick={saveEdit} aria-label="여행 저장" disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
                 {mutatingKeys.has(`trip_update_${trip.id}`) ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
               </button>
             </div>
@@ -542,6 +542,7 @@ function TripCard({
               </button>
               <button
                 onClick={startEditing}
+                aria-label="여행 편집"
                 disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
                 className="p-1.5 text-slate-300 hover:text-slate-500 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -549,6 +550,7 @@ function TripCard({
               </button>
               <button
                 onClick={() => onDelete(trip.id)}
+                aria-label="여행 삭제"
                 disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
                 className="p-1.5 text-slate-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >

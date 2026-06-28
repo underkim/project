@@ -28,4 +28,17 @@ test.describe('AI 모달', () => {
     await fab.click();
     await expect(input).toBeHidden();
   });
+
+  test('Escape 키로 패널을 닫고 FAB로 포커스가 돌아온다', async ({ page }) => {
+    await page.goto('/');
+    const fab = page.getByRole('button', { name: 'AI 어시스턴트 열기' });
+    await fab.click();
+    const input = page.getByPlaceholder(/오늘 러닝 40분 했어/);
+    await expect(input).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(input).toBeHidden();
+    // 포커스가 트리거(FAB)로 복원되어야 한다
+    await expect(page.getByRole('button', { name: 'AI 어시스턴트 열기' })).toBeFocused();
+  });
 });
