@@ -74,7 +74,7 @@ async def test_export_empty_includes_header(auth_client, path, expected_header):
     ("/api/v1/export/growth/books", ["제목", "저자", "상태", "시작일", "완료일", "평점", "메모"]),
     ("/api/v1/export/growth/english", ["날짜", "활동종류", "시간(분)", "메모"]),
     ("/api/v1/export/career", ["날짜", "레이팅", "랭크"]),
-    ("/api/v1/export/travel", ["여행명", "목적지", "시작일", "종료일", "상태", "체크리스트", "일정", "메모"]),
+    ("/api/v1/export/travel", ["여행명", "목적지", "시작일", "종료일", "상태", "체크리스트", "일정", "맛집", "메모"]),
 ])
 async def test_export_headers_are_readable_korean(auth_client, path, expected_headers):
     """CSV 헤더가 utf-8-sig 디코딩 후 정상 한글로 읽혀야 한다 (mojibake 회귀 방지)."""
@@ -226,3 +226,27 @@ async def test_export_travel_includes_plan_and_checklist(auth_client):
     assert "방콕 여행" in content
     assert "왓 프라깨우 관광" in content
     assert "선크림 챙기기" in content
+
+
+@pytest.mark.asyncio
+async def test_export_travel_includes_restaurants_excludes_coords(auth_client):
+    """여행 export 맛집 컬럼에 이름·분류·방문여부가 포함되고 좌표는 빠져야 한다."""
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "오사카 여행", "destination": "일본",
+        "start_date": "2026-11-01", "end_date": "2026-11-04",
+    })).json()
+    trip_id = trip["id"]
+
+    await auth_client.post(f"/api/v1/travel/trips/{trip_id}/restaurants", json={
+        "name": "이치란 라멘", "cuisine": "라멘", "is_visited": True,
+        "latitude": 34.6687, "longitude": 135.5012,
+    })
+
+    resp = await auth_client.get("/api/v1/export/travel")
+    assert resp.status_code == 200
+    content = resp.content.decode("utf-8-sig")
+    assert "이치란 라멘" in content
+    assert "라멘" in content
+    # 좌표(지도 표시용 내부 필드)는 CSV에 노출되지 않아야 한다.
+    assert "34.6687" not in content
+    assert "135.5012" not in content

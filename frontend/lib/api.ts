@@ -289,12 +289,19 @@ async function _downloadCsv(url: string, filename: string): Promise<void> {
   }
 }
 
+// 다운로드 파일명에 오늘 날짜를 붙여 어느 시점의 내보내기인지 명확히 한다.
+function _stamped(base: string): string {
+  const d = new Date();
+  const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${base}_${ymd}.csv`;
+}
+
 export const exportApi = {
-  finance: () => _downloadCsv('/api/v1/export/finance', 'finance.csv'),
-  exercise: () => _downloadCsv('/api/v1/export/health/exercise', 'exercise.csv'),
-  sleep: () => _downloadCsv('/api/v1/export/health/sleep', 'sleep.csv'),
-  books: () => _downloadCsv('/api/v1/export/growth/books', 'books.csv'),
-  english: () => _downloadCsv('/api/v1/export/growth/english', 'english.csv'),
-  career: () => _downloadCsv('/api/v1/export/career', 'career.csv'),
-  travel: () => _downloadCsv('/api/v1/export/travel', 'travel.csv'),
+  finance: () => _downloadCsv('/api/v1/export/finance', _stamped('finance')),
+  exercise: () => _downloadCsv('/api/v1/export/health/exercise', _stamped('exercise')),
+  sleep: () => _downloadCsv('/api/v1/export/health/sleep', _stamped('sleep')),
+  books: () => _downloadCsv('/api/v1/export/growth/books', _stamped('books')),
+  english: () => _downloadCsv('/api/v1/export/growth/english', _stamped('english')),
+  career: () => _downloadCsv('/api/v1/export/career', _stamped('career')),
+  travel: () => _downloadCsv('/api/v1/export/travel', _stamped('travel')),
 };

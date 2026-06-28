@@ -16,7 +16,7 @@ SLEEP_FIELDS = ["날짜", "수면시간(시간)", "품질(1-5)", "메모"]
 BOOK_FIELDS = ["제목", "저자", "상태", "시작일", "완료일", "평점", "메모"]
 ENGLISH_FIELDS = ["날짜", "활동종류", "시간(분)", "메모"]
 CAREER_FIELDS = ["날짜", "레이팅", "랭크"]
-TRAVEL_FIELDS = ["여행명", "목적지", "시작일", "종료일", "상태", "체크리스트", "일정", "메모"]
+TRAVEL_FIELDS = ["여행명", "목적지", "시작일", "종료일", "상태", "체크리스트", "일정", "맛집", "메모"]
 
 
 def _to_csv(rows: list[dict], fieldnames: list[str]) -> bytes:
@@ -128,6 +128,12 @@ async def export_travel(session: AsyncSession) -> bytes:
             f"Day{item.day} {item.time or ''} {item.title}"
             for item in sorted(t.plan_items, key=lambda x: (x.day, x.sort_order))
         )
+        # 맛집: 이름(분류) + 방문 여부. 좌표는 내보내지 않는다(지도 표시용 내부 필드).
+        restaurants = "; ".join(
+            f"{'[✓]' if r.is_visited else '[ ]'} {r.name}"
+            + (f" ({r.cuisine})" if r.cuisine else "")
+            for r in sorted(t.restaurants, key=lambda x: x.order_index)
+        )
         rows.append(
             {
                 "여행명": t.name,
@@ -137,6 +143,7 @@ async def export_travel(session: AsyncSession) -> bytes:
                 "상태": t.status,
                 "체크리스트": checklist,
                 "일정": plan,
+                "맛집": restaurants,
                 "메모": t.note or "",
             }
         )
