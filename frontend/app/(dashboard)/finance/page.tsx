@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import { showToast } from '@/lib/toast';
+import { emitGoalChange } from '@/lib/goals';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine, Legend,
@@ -177,7 +178,7 @@ export default function FinancePage() {
 
   function saveGoal() {
     const v = parseInt(goalInput.replace(/,/g, ''), 10);
-    if (v > 0) { localStorage.setItem(GOAL_KEY, String(v)); setAssetGoal(v); }
+    if (v > 0) { localStorage.setItem(GOAL_KEY, String(v)); setAssetGoal(v); emitGoalChange(); }
     setEditingGoal(false);
   }
 

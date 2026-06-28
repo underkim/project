@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import { showToast } from '@/lib/toast';
+import { emitGoalChange } from '@/lib/goals';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
@@ -156,7 +157,7 @@ export default function CareerPage() {
 
   function saveRatingGoal() {
     const v = parseInt(cfGoalInput, 10);
-    if (v > 0) { localStorage.setItem(CF_GOAL_KEY, String(v)); setCfGoal(v); }
+    if (v > 0) { localStorage.setItem(CF_GOAL_KEY, String(v)); setCfGoal(v); emitGoalChange(); }
     setEditingCfGoal(false);
   }
 

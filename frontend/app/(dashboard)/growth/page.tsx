@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import { showToast } from '@/lib/toast';
+import { emitGoalChange } from '@/lib/goals';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -295,13 +296,13 @@ export default function GrowthPage() {
 
   function saveGoal() {
     const v = parseInt(goalInput, 10);
-    if (v > 0) { localStorage.setItem(GOAL_KEY, String(v)); setBookGoal(v); }
+    if (v > 0) { localStorage.setItem(GOAL_KEY, String(v)); setBookGoal(v); emitGoalChange(); }
     setEditingGoal(false);
   }
 
   function saveEngGoal() {
     const v = parseInt(engGoalInput, 10);
-    if (v > 0) { localStorage.setItem(ENG_GOAL_KEY, String(v)); setEngGoal(v); }
+    if (v > 0) { localStorage.setItem(ENG_GOAL_KEY, String(v)); setEngGoal(v); emitGoalChange(); }
     setEditingEngGoal(false);
   }
 

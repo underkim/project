@@ -9,7 +9,20 @@ import {
   Star, MapPin, Dumbbell, FileText, X, RefreshCw,
 } from 'lucide-react';
 import { dashboardApi, aiApi } from '@/lib/api';
+import { GOAL_CHANGED_EVENT } from '@/lib/goals';
 import type { OverviewResponse } from '@/types';
+
+// 로컬 목표값(localStorage)을 한 번에 읽는다. SSR 가드 포함.
+function readLocalGoals() {
+  if (typeof window === 'undefined') return { asset: 0, book: 0, eng: 0, cf: 0 };
+  const now = new Date();
+  return {
+    asset: parseInt(localStorage.getItem('asset_goal') ?? '0', 10) || 0,
+    book: parseInt(localStorage.getItem(`book_goal_${now.getFullYear()}`) ?? '0', 10) || 0,
+    eng: parseInt(localStorage.getItem(`eng_goal_${now.getFullYear()}_${now.getMonth() + 1}`) ?? '0', 10) || 0,
+    cf: parseInt(localStorage.getItem('cf_rating_goal') ?? '0', 10) || 0,
+  };
+}
 
 // SVG 원형 진행률 링
 function RingProgress({ pct, size = 96, stroke = 8, color = '#0f172a' }: {
@@ -184,27 +197,20 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
-  const [assetGoal] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    return parseInt(localStorage.getItem('asset_goal') ?? '0', 10) || 0;
-  });
+  const [goals, setGoals] = useState(readLocalGoals);
+  const { asset: assetGoal, book: bookGoal, eng: engGoal, cf: cfGoal } = goals;
 
-  const [bookGoal] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    const year = new Date().getFullYear();
-    return parseInt(localStorage.getItem(`book_goal_${year}`) ?? '0', 10) || 0;
-  });
-
-  const [engGoal] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    const d = new Date();
-    return parseInt(localStorage.getItem(`eng_goal_${d.getFullYear()}_${d.getMonth() + 1}`) ?? '0', 10) || 0;
-  });
-
-  const [cfGoal] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    return parseInt(localStorage.getItem('cf_rating_goal') ?? '0', 10) || 0;
-  });
+  // 모듈 페이지에서 목표를 바꾸면(focus 복귀 또는 커스텀 이벤트) 로컬 목표만 다시 읽는다.
+  // overview API는 재호출하지 않는다 (로컬 값만 변경되었으므로).
+  useEffect(() => {
+    const refresh = () => setGoals(readLocalGoals());
+    window.addEventListener('focus', refresh);
+    window.addEventListener(GOAL_CHANGED_EVENT, refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener(GOAL_CHANGED_EVENT, refresh);
+    };
+  }, []);
 
   function load() {
     setLoading(true);
