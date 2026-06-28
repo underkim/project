@@ -163,15 +163,33 @@ function WeeklyReportModal({ onClose }: { onClose: () => void }) {
       .finally(() => setLoading(false));
   }, []);
 
+  // 접근성: Escape로 닫기
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="AI 주간 리포트"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <FileText size={16} className="text-slate-500" />
             <span className="font-semibold text-slate-800 text-sm">AI 주간 리포트</span>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} aria-label="주간 리포트 닫기" className="text-slate-400 hover:text-slate-600 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -292,8 +310,8 @@ export default function DashboardPage() {
       )}
 
       {/* 헤더 */}
-      <div className="flex items-end justify-between">
-        <div>
+      <div className="flex items-end justify-between gap-2 flex-wrap">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-slate-900">오늘의 현황</h1>
           <p className="text-xs text-slate-400 mt-0.5">{today}</p>
           {lastUpdated && (
@@ -302,7 +320,7 @@ export default function DashboardPage() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {hasAlert && (
             <Link href="/planner">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl hover:bg-amber-100 transition-colors font-medium">
@@ -330,7 +348,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 히어로: 로드맵 링 + 핵심 지표 */}
-      <div className="bg-slate-900 text-white rounded-2xl px-6 py-6 flex items-center gap-6">
+      <div className="bg-slate-900 text-white rounded-2xl px-5 sm:px-6 py-6 flex items-center gap-4 sm:gap-6">
         {/* 링 */}
         <Link href="/planner" className="relative shrink-0">
           <RingProgress pct={completionRate} size={96} stroke={8} color={currentPhase ? currentPhase.color : '#94a3b8'} />
@@ -379,8 +397,8 @@ export default function DashboardPage() {
               sub: travel?.next_trip_name ?? '없음',
             },
           ].map(item => (
-            <Link key={item.href} href={item.href} className="block hover:opacity-80 transition-opacity">
-              <p className="text-lg font-bold leading-none">{item.value}</p>
+            <Link key={item.href} href={item.href} className="block min-w-0 hover:opacity-80 transition-opacity">
+              <p className="text-lg font-bold leading-none truncate">{item.value}</p>
               <p className="text-[10px] text-slate-400 mt-1">{item.label}</p>
               <p className="text-[10px] text-slate-500 mt-0.5 truncate">{item.sub}</p>
             </Link>

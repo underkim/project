@@ -42,6 +42,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
           {onClose && (
             <button
               onClick={onClose}
+              aria-label="메뉴 닫기"
               className="md:hidden p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
             >
               <ChevronLeft size={16} />

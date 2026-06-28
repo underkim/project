@@ -56,6 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-slate-100 bg-white sticky top-0 z-10">
           <button
             onClick={() => setSidebarOpen(true)}
+            aria-label="메뉴 열기"
             className="p-2 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
           >
             <Menu size={20} />

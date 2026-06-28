@@ -7,7 +7,7 @@ import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
   Plane, MapPin, Calendar, Plus, Trash2, Pencil, Check, X,
   ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered, Download, Loader2,
-  Utensils, Map as MapIcon,
+  Utensils, Map as MapIcon, RefreshCw,
 } from 'lucide-react';
 import { travelApi, exportApi } from '@/lib/api';
 import { showToast } from '@/lib/toast';
@@ -497,10 +497,10 @@ function TripCard({
               </div>
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setEditing(false)} disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-40">
+              <button onClick={() => setEditing(false)} aria-label="편집 취소" disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-40">
                 <X size={15} />
               </button>
-              <button onClick={saveEdit} disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+              <button onClick={saveEdit} aria-label="여행 저장" disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
                 {mutatingKeys.has(`trip_update_${trip.id}`) ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
               </button>
             </div>
@@ -542,6 +542,7 @@ function TripCard({
               </button>
               <button
                 onClick={startEditing}
+                aria-label="여행 편집"
                 disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
                 className="p-1.5 text-slate-300 hover:text-slate-500 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -549,6 +550,7 @@ function TripCard({
               </button>
               <button
                 onClick={() => onDelete(trip.id)}
+                aria-label="여행 삭제"
                 disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
                 className="p-1.5 text-slate-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -984,6 +986,7 @@ export default function TravelPage() {
   }
 
   const load = async () => {
+    setError(null);
     try {
       const data = await travelApi.listTrips();
       setTrips(data);
@@ -1082,6 +1085,10 @@ export default function TravelPage() {
       setTrips(prev => [created, ...prev]);
       setShowAddForm(false);
       setExpandedId(created.id);
+      // 주소를 입력했는데 좌표 해석에 실패한 경우(직접 좌표 미지정), 지도 선택 안내
+      if (data.address && data.latitude == null && created.latitude == null) {
+        showToast('주소의 위치를 찾지 못했어요. 수정에서 지도를 눌러 직접 선택할 수 있어요.', 'info');
+      }
     } catch {
       showToast('여행 추가에 실패했습니다.', 'error');
     }
@@ -1100,6 +1107,10 @@ export default function TravelPage() {
       try {
         const updated = await travelApi.updateTrip(id, data as Parameters<typeof travelApi.updateTrip>[1]);
         setTrips(prev => prev.map(t => t.id === id ? updated : t));
+        // 주소를 새로 입력했는데 좌표 해석에 실패한 경우, 지도 선택 안내
+        if (data.address && data.latitude == null && updated.latitude == null) {
+          showToast('주소의 위치를 찾지 못했어요. 지도를 눌러 직접 선택할 수 있어요.', 'info');
+        }
       } catch { showToast('여행 수정에 실패했습니다.', 'error'); await load(); }
     });
   };
@@ -1229,13 +1240,13 @@ export default function TravelPage() {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">여행 계획</h1>
-          <p className="text-slate-400 text-sm mt-1">나만의 여행을 계획하고 관리하세요</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">여행 계획</h1>
+          <p className="text-slate-400 text-sm mt-1 truncate">나만의 여행을 계획하고 관리하세요</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => handleExport('travel', exportApi.travel)} disabled={exporting.has('travel')} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => handleExport('travel', exportApi.travel)} disabled={exporting.has('travel')} title="CSV 내보내기 (여행·일정·체크리스트·맛집)" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
             {exporting.has('travel') ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
           </button>
           <button
@@ -1250,9 +1261,18 @@ export default function TravelPage() {
 
       {/* 에러 배너 */}
       {error && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700 text-sm">
-          <AlertCircle size={16} className="shrink-0" />
-          {error}
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700 text-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            {error}
+          </div>
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors shrink-0"
+          >
+            <RefreshCw size={12} />
+            다시 시도
+          </button>
         </div>
       )}
 

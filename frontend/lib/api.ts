@@ -24,7 +24,11 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && typeof window !== 'undefined') {
+    // 로그인 엔드포인트의 401은 "비밀번호 오류"이지 세션 만료가 아니므로
+    // 만료 리다이렉트 대상에서 제외한다 (stale 토큰이 남아 있어도 호출자가 처리).
+    const reqUrl: string = err.config?.url ?? '';
+    const isAuthRequest = reqUrl.includes('/auth/token');
+    if (err.response?.status === 401 && typeof window !== 'undefined' && !isAuthRequest) {
       // 토큰이 있을 때만 리다이렉트 (로그인 시도 실패는 호출자가 처리)
       const token = localStorage.getItem('token');
       if (token) {
@@ -289,12 +293,19 @@ async function _downloadCsv(url: string, filename: string): Promise<void> {
   }
 }
 
+// 다운로드 파일명에 오늘 날짜를 붙여 어느 시점의 내보내기인지 명확히 한다.
+function _stamped(base: string): string {
+  const d = new Date();
+  const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${base}_${ymd}.csv`;
+}
+
 export const exportApi = {
-  finance: () => _downloadCsv('/api/v1/export/finance', 'finance.csv'),
-  exercise: () => _downloadCsv('/api/v1/export/health/exercise', 'exercise.csv'),
-  sleep: () => _downloadCsv('/api/v1/export/health/sleep', 'sleep.csv'),
-  books: () => _downloadCsv('/api/v1/export/growth/books', 'books.csv'),
-  english: () => _downloadCsv('/api/v1/export/growth/english', 'english.csv'),
-  career: () => _downloadCsv('/api/v1/export/career', 'career.csv'),
-  travel: () => _downloadCsv('/api/v1/export/travel', 'travel.csv'),
+  finance: () => _downloadCsv('/api/v1/export/finance', _stamped('finance')),
+  exercise: () => _downloadCsv('/api/v1/export/health/exercise', _stamped('exercise')),
+  sleep: () => _downloadCsv('/api/v1/export/health/sleep', _stamped('sleep')),
+  books: () => _downloadCsv('/api/v1/export/growth/books', _stamped('books')),
+  english: () => _downloadCsv('/api/v1/export/growth/english', _stamped('english')),
+  career: () => _downloadCsv('/api/v1/export/career', _stamped('career')),
+  travel: () => _downloadCsv('/api/v1/export/travel', _stamped('travel')),
 };

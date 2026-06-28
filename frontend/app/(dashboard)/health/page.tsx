@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { healthApi, exportApi } from '@/lib/api';
 import type { ExerciseLogResponse, SleepLogResponse, HealthSummaryResponse } from '@/types';
-import { Trash2, Download, Target, Loader2 } from 'lucide-react';
+import { Trash2, Download, Target, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 function getLast7Days(): string[] {
   return Array.from({ length: 7 }, (_, i) => {
@@ -39,6 +39,7 @@ export default function HealthPage() {
   const [exercises, setExercises] = useState<ExerciseLogResponse[]>([]);
   const [sleeps, setSleeps] = useState<SleepLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [exHasMore, setExHasMore] = useState(false);
   const [slHasMore, setSlHasMore] = useState(false);
   const [exLoadMore, setExLoadMore] = useState(false);
@@ -91,6 +92,7 @@ export default function HealthPage() {
   }
 
   async function load() {
+    setLoadError(false);
     try {
       const [s, ex, sl] = await Promise.all([
         healthApi.getSummary(), healthApi.listExercise(60), healthApi.listSleep(30),
@@ -99,6 +101,7 @@ export default function HealthPage() {
       setExercises(ex); setExHasMore(ex.length === 60);
       setSleeps(sl); setSlHasMore(sl.length === 30);
     } catch {
+      setLoadError(true);
       showToast('데이터를 불러오지 못했습니다.', 'error');
     } finally {
       setLoading(false);
@@ -425,6 +428,22 @@ export default function HealthPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-900">건강</h1>
+
+      {loadError && (
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700 text-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0" />
+            데이터를 불러오지 못했습니다.
+          </div>
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors shrink-0"
+          >
+            <RefreshCw size={12} />
+            다시 시도
+          </button>
+        </div>
+      )}
 
       {/* 요약 — 이번 주 + 이번 달 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

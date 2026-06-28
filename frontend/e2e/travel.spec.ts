@@ -75,6 +75,56 @@ test.describe('여행 페이지', () => {
     }, { timeout: 5000 }).toBe('2030-03-01|2030-03-10');
   });
 
+  test('좌표가 있는 여행이 있으면 지도가 렌더된다', async ({ page, request }) => {
+    const headers = await getAuthHeaders(request);
+    const createRes = await request.post(`${API}/api/v1/travel/trips`, {
+      headers,
+      data: {
+        name: '[E2E] 지도렌더 테스트',
+        destination: '서울',
+        start_date: '2030-02-01',
+        end_date: '2030-02-03',
+        status: 'planned',
+        latitude: 37.5665,
+        longitude: 126.9780,
+      },
+    });
+    expect(createRes.ok()).toBeTruthy();
+
+    await page.goto('/travel');
+    await expect(page.getByRole('heading', { name: '[E2E] 지도렌더 테스트', exact: true })).toBeVisible();
+
+    // Leaflet 맵 컨테이너가 마운트되어야 한다 (타일 로딩 변동에 영향받지 않도록 컨테이너만 확인)
+    await expect(page.locator('.leaflet-container').first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test('맛집을 추가하면 카드에 표시된다', async ({ page, request }) => {
+    const headers = await getAuthHeaders(request);
+    const tripRes = await request.post(`${API}/api/v1/travel/trips`, {
+      headers,
+      data: {
+        name: '[E2E] 맛집 테스트',
+        destination: '부산',
+        start_date: '2030-04-01',
+        end_date: '2030-04-03',
+        status: 'planned',
+      },
+    });
+    expect(tripRes.ok()).toBeTruthy();
+    const trip = await tripRes.json() as { id: number };
+    await request.post(`${API}/api/v1/travel/trips/${trip.id}/restaurants`, {
+      headers,
+      data: { name: '[E2E] 돼지국밥집', cuisine: '한식' },
+    });
+
+    await page.goto('/travel');
+    const tripHeading = page.getByRole('heading', { name: '[E2E] 맛집 테스트', exact: true });
+    await expect(tripHeading).toBeVisible();
+    // 카드를 펼쳐 맛집 이름이 노출되는지 확인
+    await tripHeading.click();
+    await expect(page.getByText('[E2E] 돼지국밥집').first()).toBeVisible({ timeout: 10000 });
+  });
+
   test('시작일이 종료일보다 늦어지면 종료일이 시작일로 자동 조정된다', async ({ page, request }) => {
     const headers = await getAuthHeaders(request);
     const createRes = await request.post(`${API}/api/v1/travel/trips`, {

@@ -26,6 +26,8 @@ git push origin main
 마찬가지로 `main` 브랜치 push 시 **자동 재배포**.
 
 ### 배포 순서 (백엔드 변경 시)
+0. **배포 전 점검**: [pre-deploy-checklist.md](pre-deploy-checklist.md) 또는
+   `powershell -File scripts/pre-deploy-check.ps1` 실행 (테스트·마이그레이션·빌드 일괄 검증)
 1. `uv run pytest` — 로컬 테스트 통과 확인
 2. `git push origin main` — Render + Vercel 자동 빌드 시작
 3. Render 대시보드 → **Logs** 탭에서 빌드 로그 확인
