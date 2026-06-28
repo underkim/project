@@ -604,9 +604,9 @@ export default function FinancePage() {
                     return (
                       <tr key={r.id} className="bg-blue-50">
                         <td className="px-2 py-2"><input type="date" value={editForm.record_date} onChange={e => setEditForm({ ...editForm, record_date: e.target.value })} className={inCls} /></td>
-                        <td className="px-2 py-2"><input type="number" value={editForm.total_assets} onChange={e => setEditForm({ ...editForm, total_assets: e.target.value })} className={inCls} /></td>
-                        <td className="px-2 py-2"><input type="number" value={editForm.monthly_income} onChange={e => setEditForm({ ...editForm, monthly_income: e.target.value })} className={inCls} /></td>
-                        <td className="px-2 py-2"><input type="number" value={editForm.monthly_expense} onChange={e => setEditForm({ ...editForm, monthly_expense: e.target.value })} className={inCls} /></td>
+                        <td className="px-2 py-2"><input type="number" min="0" value={editForm.total_assets} onChange={e => setEditForm({ ...editForm, total_assets: e.target.value })} className={inCls} /></td>
+                        <td className="px-2 py-2"><input type="number" min="0" value={editForm.monthly_income} onChange={e => setEditForm({ ...editForm, monthly_income: e.target.value })} className={inCls} /></td>
+                        <td className="px-2 py-2"><input type="number" min="0" value={editForm.monthly_expense} onChange={e => setEditForm({ ...editForm, monthly_expense: e.target.value })} className={inCls} /></td>
                         <td className="px-4 py-3 text-slate-400 text-xs">자동</td>
                         <td className="px-4 py-3 text-slate-400 text-xs">자동</td>
                         <td className="px-2 py-2"><input type="text" value={editForm.note} onChange={e => setEditForm({ ...editForm, note: e.target.value })} placeholder="메모" className={inCls} /></td>

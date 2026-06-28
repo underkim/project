@@ -772,6 +772,7 @@ export default function GrowthPage() {
               <div>
                 <label className="text-xs text-slate-500 mb-1 block">완독일</label>
                 <input type="date" value={bookForm.end_date}
+                  min={bookForm.start_date || undefined}
                   onChange={e => setBookForm({ ...bookForm, end_date: e.target.value })}
                   className={inputCls} />
               </div>
@@ -826,6 +827,7 @@ export default function GrowthPage() {
                     onChange={e => setEditingBook({ ...editingBook, start_date: e.target.value })}
                     className="text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
                   <input type="date" value={editingBook.end_date}
+                    min={editingBook.start_date || undefined}
                     onChange={e => setEditingBook({ ...editingBook, end_date: e.target.value })}
                     className="text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" />
                   <input type="text" value={editingBook.note}
