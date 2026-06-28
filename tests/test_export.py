@@ -35,8 +35,35 @@ async def test_export_finance_empty(auth_client):
     assert resp.status_code == 200
     assert "text/csv" in resp.headers["content-type"]
     assert "attachment" in resp.headers["content-disposition"]
-    # 데이터 없으면 BOM만 반환
-    assert resp.content == "﻿".encode("utf-8")
+    # 데이터가 없어도 헤더 행은 반환되어야 한다 (BOM 포함)
+    assert resp.content.startswith("﻿".encode("utf-8"))
+    content = resp.content.decode("utf-8-sig")
+    header_line = content.splitlines()[0]
+    assert "날짜" in header_line
+    assert "총자산(만원)" in header_line
+    assert "메모" in header_line
+    # 데이터 행은 없어야 한다 (헤더만)
+    assert len([ln for ln in content.splitlines() if ln.strip()]) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path,expected_header", [
+    ("/api/v1/export/finance", "날짜"),
+    ("/api/v1/export/health/exercise", "운동종류"),
+    ("/api/v1/export/health/sleep", "수면시간(시간)"),
+    ("/api/v1/export/growth/books", "제목"),
+    ("/api/v1/export/growth/english", "활동종류"),
+    ("/api/v1/export/career", "레이팅"),
+    ("/api/v1/export/travel", "여행명"),
+])
+async def test_export_empty_includes_header(auth_client, path, expected_header):
+    """모든 export 엔드포인트는 데이터가 없어도 헤더 행을 반환해야 한다."""
+    resp = await auth_client.get(path)
+    assert resp.status_code == 200
+    content = resp.content.decode("utf-8-sig")
+    lines = [ln for ln in content.splitlines() if ln.strip()]
+    assert len(lines) == 1  # 헤더만
+    assert expected_header in lines[0]
 
 
 @pytest.mark.asyncio

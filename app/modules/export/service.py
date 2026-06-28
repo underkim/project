@@ -9,13 +9,23 @@ from app.modules.growth import service as growth_svc
 from app.modules.health import service as health_svc
 from app.modules.travel import service as travel_svc
 
+# 모듈별 CSV 헤더 (빈 데이터셋에도 동일한 헤더 행을 출력하기 위해 명시)
+FINANCE_FIELDS = ["날짜", "총자산(만원)", "월수입(만원)", "월지출(만원)", "저축액(만원)", "저축률(%)", "메모"]
+EXERCISE_FIELDS = ["날짜", "운동종류", "시간(분)", "메모"]
+SLEEP_FIELDS = ["날짜", "수면시간(시간)", "품질(1-5)", "메모"]
+BOOK_FIELDS = ["제목", "저자", "상태", "시작일", "완료일", "평점", "메모"]
+ENGLISH_FIELDS = ["날짜", "활동종류", "시간(분)", "메모"]
+CAREER_FIELDS = ["날짜", "레이팅", "랭크"]
+TRAVEL_FIELDS = ["여행명", "목적지", "시작일", "종료일", "상태", "체크리스트", "일정", "메모"]
 
-def _to_csv(rows: list[dict]) -> bytes:
-    """딕셔너리 리스트 → UTF-8 BOM CSV 바이트 (Excel 호환)."""
-    if not rows:
-        return "﻿".encode("utf-8")
+
+def _to_csv(rows: list[dict], fieldnames: list[str]) -> bytes:
+    """딕셔너리 리스트 → UTF-8 BOM CSV 바이트 (Excel 호환).
+
+    rows가 비어 있어도 fieldnames로 헤더 행을 출력한다.
+    """
     buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+    writer = csv.DictWriter(buf, fieldnames=fieldnames)
     writer.writeheader()
     writer.writerows(rows)
     return ("﻿" + buf.getvalue()).encode("utf-8")
@@ -35,7 +45,7 @@ async def export_finance(session: AsyncSession) -> bytes:
         }
         for r in records
     ]
-    return _to_csv(rows)
+    return _to_csv(rows, FINANCE_FIELDS)
 
 
 async def export_exercise(session: AsyncSession) -> bytes:
@@ -49,7 +59,7 @@ async def export_exercise(session: AsyncSession) -> bytes:
         }
         for r in logs
     ]
-    return _to_csv(rows)
+    return _to_csv(rows, EXERCISE_FIELDS)
 
 
 async def export_sleep(session: AsyncSession) -> bytes:
@@ -63,7 +73,7 @@ async def export_sleep(session: AsyncSession) -> bytes:
         }
         for r in logs
     ]
-    return _to_csv(rows)
+    return _to_csv(rows, SLEEP_FIELDS)
 
 
 async def export_books(session: AsyncSession) -> bytes:
@@ -80,7 +90,7 @@ async def export_books(session: AsyncSession) -> bytes:
         }
         for r in books
     ]
-    return _to_csv(rows)
+    return _to_csv(rows, BOOK_FIELDS)
 
 
 async def export_english(session: AsyncSession) -> bytes:
@@ -94,7 +104,7 @@ async def export_english(session: AsyncSession) -> bytes:
         }
         for r in logs
     ]
-    return _to_csv(rows)
+    return _to_csv(rows, ENGLISH_FIELDS)
 
 
 async def export_career(session: AsyncSession) -> bytes:
@@ -103,7 +113,7 @@ async def export_career(session: AsyncSession) -> bytes:
         {"날짜": str(r.log_date), "레이팅": r.rating, "랭크": r.rank_name}
         for r in ratings
     ]
-    return _to_csv(rows)
+    return _to_csv(rows, CAREER_FIELDS)
 
 
 async def export_travel(session: AsyncSession) -> bytes:
@@ -130,4 +140,4 @@ async def export_travel(session: AsyncSession) -> bytes:
                 "메모": t.note or "",
             }
         )
-    return _to_csv(rows)
+    return _to_csv(rows, TRAVEL_FIELDS)
