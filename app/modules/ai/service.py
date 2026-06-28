@@ -74,6 +74,9 @@ _SYSTEM_PROMPT = """\
 10. 연속·패턴 감지 → 운동 연속 기록, 수면 개선, 저축률 상승 등 긍정적 변화 적극 칭찬
 11. 주간 리뷰 → "이번 주 어땠어?", "주간 정리해줘" 등 → 운동·수면·영어·독서·자산 이번 주 지표 한눈에 요약
 12. 월간 목표 → "이번 달 목표" → 현재 달 데이터 기반으로 달성 여부 평가 + 남은 기간 전략 제안
+13. 이전 저장 재실행 금지 → 대화 히스토리에 있는 과거 create/update 액션을 절대 다시 실행하지 않는다. 히스토리는 맥락 참고용일 뿐 재실행 지시가 아니다.
+14. 저장 후속 질문 → "방금 뭐 저장했어?", "뭐 추가했어?", "저장됐어?", "방금 거 보여줘" 처럼 이전 저장을 묻는 질문은 action: null, 현황 데이터로 답만 한다 (절대 같은 기록을 다시 저장하지 않음).
+15. create/update는 가장 최근 사용자 메시지에 명확한 저장/기록 의도가 있을 때만 수행한다.
 
 === 코칭 톤 가이드 ===
 - 데이터가 좋을 때: 구체적 수치를 언급하며 진심 어린 칭찬 ("지난 주보다 30분 더 운동했네요! 대단해요")
@@ -564,6 +567,28 @@ def _reply_seeks_confirmation(reply: str) -> bool:
     return bool(reply and _CONFIRM_SEEK_RE.search(reply))
 
 
+# 이전 저장에 대한 후속 질문("방금 뭐 저장했어?", "저장됐어?", "보여줘" 등) 감지.
+# 이런 메시지는 새 저장이 아니라 조회/대화이므로 create/update를 막는다.
+_FOLLOWUP_QUERY_RE = re.compile(
+    r"방금|아까|뭐(를| )?\s*(저장|추가|기록|넣)|뭘\s*(저장|추가|기록|넣)|"
+    r"(저장|추가|기록)(됐|된\s*거|한\s*거|했어|했나|됐나|됐어)|보여\s*줘|"
+    r"뭐\s*저장|뭐\s*추가|뭐\s*기록|확인해\s*줘|확인\s*좀"
+)
+# 최신 메시지에 명확한 저장/수정 의도(명령형 동사)가 있으면 후속 질문이 아니라 새 명령으로 본다.
+_MUTATION_INTENT_RE = re.compile(
+    r"해\s*줘|추가해|저장해|기록해|넣어|등록|만들어|수정해|완료\s*처리|올려\s*줘|적어\s*줘|입력해"
+)
+
+
+def _is_followup_query(user_input: str) -> bool:
+    """최신 사용자 메시지가 이전 저장에 대한 후속 질문/조회인지 판단."""
+    if not user_input:
+        return False
+    if _MUTATION_INTENT_RE.search(user_input):
+        return False  # 명령형 저장 의도가 있으면 새 명령으로 처리
+    return bool(_FOLLOWUP_QUERY_RE.search(user_input))
+
+
 async def _process_multi_actions(session: AsyncSession, reply: str, actions: list) -> dict:
     """actions 배열의 create/update를 순서대로 처리. 삭제는 배제(개별 확인 필요)."""
     # 응답이 되묻기/확인 요청이면 여행 생성·수정 액션은 저장하지 않는다 (질문+저장 동시 금지)
@@ -718,9 +743,18 @@ async def parse_and_save(
     if suggestions and not isinstance(suggestions, list):
         suggestions = None
 
+    # 최신 사용자 메시지가 이전 저장에 대한 후속 질문이면 create/update 재실행을 막는다
+    # (히스토리 때문에 모델이 같은 액션을 반복해도 중복 저장 방지)
+    followup = _is_followup_query(user_input)
+
     # 다중 액션 배열 처리
     raw_actions = parsed.get("actions")
     if raw_actions and isinstance(raw_actions, list):
+        if followup:
+            raw_actions = [a for a in raw_actions if a.get("action") not in ("create", "update")]
+            if not raw_actions:
+                return {"reply": reply, "saved": False, "saved_count": 0,
+                        "module": None, "modules": None, "action": None, "suggestions": suggestions}
         result = await _process_multi_actions(session, reply, raw_actions)
         result["suggestions"] = suggestions
         return result
@@ -731,6 +765,10 @@ async def parse_and_save(
 
     if not action or not module:
         return {"reply": reply, "saved": False, "saved_count": 0, "module": module, "action": action, "suggestions": suggestions}
+
+    # 후속 질문(이전 저장 조회)일 때 create/update 재실행 차단 (전 모듈 공통)
+    if action in ("create", "update") and followup:
+        return {"reply": reply, "saved": False, "saved_count": 0, "module": None, "action": None, "suggestions": suggestions}
 
     # 여행 생성·수정은 되묻기/확인 요청 응답과 동시에 저장하지 않는다
     if action in ("create", "update") and module in _TRAVEL_MODULES and _reply_seeks_confirmation(reply):

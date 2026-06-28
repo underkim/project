@@ -338,6 +338,93 @@ async def test_chat_multi_actions_trip_and_plan(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_chat_followup_question_blocks_duplicate_save(auth_client):
+    """이전 저장 후 '방금 뭐 저장했어?' 같은 후속 질문은 같은 create를 다시 저장하지 않아야 한다."""
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        # 모델이 히스토리 때문에 동일 create 액션을 잘못 반복 반환
+        mock_genai.Client.return_value.models.generate_content.return_value = _mock_gemini(
+            reply="방금 러닝 30분을 저장했어요!",
+            action="create",
+            module="health_exercise",
+            data={"log_date": "2026-06-21", "exercise_type": "러닝", "duration_minutes": 30},
+        )
+        resp = await auth_client.post("/api/v1/ai/chat", json={
+            "message": "방금 뭐 저장했어?",
+            "history": [
+                {"role": "user", "text": "러닝 30분 했어"},
+                {"role": "ai", "text": "러닝 30분 기록했어요! [저장: health_exercise]"},
+            ],
+        })
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is False
+    assert data["action"] is None
+    # 실제로 운동 기록이 저장되지 않았어야 함
+    logs = (await auth_client.get("/api/v1/health/exercise")).json()
+    assert not any(e["log_date"] == "2026-06-21" and e["exercise_type"] == "러닝" for e in logs)
+
+
+@pytest.mark.asyncio
+async def test_chat_followup_question_blocks_multi_action_duplicate(auth_client):
+    """후속 질문이면 actions 배열의 create도 모두 차단되어야 한다."""
+    import json
+    mock_payload = {
+        "reply": "방금 여행이랑 일정 저장했어요!",
+        "actions": [
+            {"action": "create", "module": "travel_trip",
+             "data": {"name": "후속질문 여행", "destination": "강릉",
+                      "start_date": "2026-09-10", "end_date": "2026-09-12"}},
+            {"action": "create", "module": "travel_plan",
+             "data": {"trip_name": "후속질문 여행", "day": 1, "title": "경포대"}},
+        ],
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock()
+        mock.text = json.dumps(mock_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+
+        resp = await auth_client.post("/api/v1/ai/chat", json={
+            "message": "방금 저장한 거 보여줘",
+            "history": [
+                {"role": "user", "text": "강릉 여행 추가하고 일정 넣어줘"},
+                {"role": "ai", "text": "강릉 여행 추가했어요! [저장: travel_trip]"},
+            ],
+        })
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is False
+    assert data["saved_count"] == 0
+    trips = (await auth_client.get("/api/v1/travel/trips")).json()
+    assert not any(t["name"] == "후속질문 여행" for t in trips)
+
+
+@pytest.mark.asyncio
+async def test_chat_new_record_command_after_followup_still_saves(auth_client):
+    """후속 질문 가드가 실제 신규 기록 명령(자연어 로그)을 막지 않아야 한다."""
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock_genai.Client.return_value.models.generate_content.return_value = _mock_gemini(
+            reply="수영 40분 기록했어요!",
+            action="create",
+            module="health_exercise",
+            data={"log_date": "2026-06-22", "exercise_type": "수영", "duration_minutes": 40},
+        )
+        resp = await auth_client.post("/api/v1/ai/chat", json={"message": "오늘 수영 40분 했어"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["saved"] is True
+    assert data["module"] == "health_exercise"
+
+
+@pytest.mark.asyncio
 async def test_chat_travel_planning_question_blocks_save(auth_client):
     """여행 계획 중 AI가 되묻는 응답이면 travel 생성 액션을 저장하지 않아야 한다."""
     import json
