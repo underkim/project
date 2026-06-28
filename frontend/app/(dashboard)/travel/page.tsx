@@ -1083,6 +1083,10 @@ export default function TravelPage() {
       setTrips(prev => [created, ...prev]);
       setShowAddForm(false);
       setExpandedId(created.id);
+      // 주소를 입력했는데 좌표 해석에 실패한 경우(직접 좌표 미지정), 지도 선택 안내
+      if (data.address && data.latitude == null && created.latitude == null) {
+        showToast('주소의 위치를 찾지 못했어요. 수정에서 지도를 눌러 직접 선택할 수 있어요.', 'info');
+      }
     } catch {
       showToast('여행 추가에 실패했습니다.', 'error');
     }
@@ -1101,6 +1105,10 @@ export default function TravelPage() {
       try {
         const updated = await travelApi.updateTrip(id, data as Parameters<typeof travelApi.updateTrip>[1]);
         setTrips(prev => prev.map(t => t.id === id ? updated : t));
+        // 주소를 새로 입력했는데 좌표 해석에 실패한 경우, 지도 선택 안내
+        if (data.address && data.latitude == null && updated.latitude == null) {
+          showToast('주소의 위치를 찾지 못했어요. 지도를 눌러 직접 선택할 수 있어요.', 'info');
+        }
       } catch { showToast('여행 수정에 실패했습니다.', 'error'); await load(); }
     });
   };
