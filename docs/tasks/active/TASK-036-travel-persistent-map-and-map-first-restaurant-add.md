@@ -1,6 +1,6 @@
 # TASK-036: Travel Persistent Map and Map-First Restaurant Add
 
-status: working
+status: implemented
 created_by: codex
 created_at: 2026-06-28
 updated_at: 2026-06-28
