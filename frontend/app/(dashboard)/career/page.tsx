@@ -35,11 +35,13 @@ const ratingColor = (rating: number) => {
   return '#808080';
 };
 
-function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+function DeleteConfirm({ onConfirm, onCancel, disabled }: { onConfirm: () => void; onCancel: () => void; disabled?: boolean }) {
   return (
     <span className="flex items-center gap-1 ml-auto">
-      <button onClick={onConfirm} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">확인</button>
-      <button onClick={onCancel} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 transition-colors">취소</button>
+      <button onClick={onConfirm} disabled={disabled} className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        {disabled ? <Loader2 size={10} className="animate-spin inline" /> : '확인'}
+      </button>
+      <button onClick={onCancel} disabled={disabled} className="text-[10px] px-2 py-0.5 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50">취소</button>
     </span>
   );
 }
@@ -65,6 +67,15 @@ export default function CareerPage() {
   const [editingCfGoal, setEditingCfGoal] = useState(false);
   const [cfGoalInput, setCfGoalInput] = useState('');
   const [exporting, setExporting] = useState<Set<string>>(new Set());
+  const [mutating, setMutating] = useState<Set<string>>(new Set());
+
+  async function withMutation(key: string, fn: () => Promise<void>) {
+    if (mutating.has(key)) return;
+    setMutating(prev => new Set(prev).add(key));
+    try { await fn(); } finally {
+      setMutating(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
 
   async function handleExport(key: string, fn: () => Promise<void>) {
     if (exporting.has(key)) return;
@@ -105,38 +116,42 @@ export default function CareerPage() {
 
   async function saveSettings(e: React.FormEvent) {
     e.preventDefault();
-    let blogUrl = settings.blog_url;
-    if (blogUrl && !/^https?:\/\//i.test(blogUrl)) {
-      blogUrl = 'https://' + blogUrl;
-    }
-    try {
-      const updated = await careerApi.updateSettings({
-        cf_handle: settings.cf_handle,
-        github_username: settings.github_username,
-        blog_url: blogUrl,
-      });
-      setSettings(updated);
-      showToast('프로필 저장됨');
-    } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      showToast(typeof detail === 'string' ? detail : '저장에 실패했습니다.', 'error');
-    }
+    await withMutation('settings_save', async () => {
+      let blogUrl = settings.blog_url;
+      if (blogUrl && !/^https?:\/\//i.test(blogUrl)) {
+        blogUrl = 'https://' + blogUrl;
+      }
+      try {
+        const updated = await careerApi.updateSettings({
+          cf_handle: settings.cf_handle,
+          github_username: settings.github_username,
+          blog_url: blogUrl,
+        });
+        setSettings(updated);
+        showToast('프로필 저장됨');
+      } catch (err: unknown) {
+        const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        showToast(typeof detail === 'string' ? detail : '저장에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function updateRating() {
     if (!editingRating) return;
-    try {
-      await careerApi.updateCFRating(editingRating.id, {
-        log_date: editingRating.log_date,
-        rating: Number(editingRating.rating),
-        rank_name: editingRating.rank_name,
-      });
-      setEditingRating(null);
-      showToast('레이팅 기록 수정됨');
-      await load();
-    } catch {
-      showToast('수정에 실패했습니다.', 'error');
-    }
+    await withMutation(`rating_update_${editingRating.id}`, async () => {
+      try {
+        await careerApi.updateCFRating(editingRating.id, {
+          log_date: editingRating.log_date,
+          rating: Number(editingRating.rating),
+          rank_name: editingRating.rank_name,
+        });
+        setEditingRating(null);
+        showToast('레이팅 기록 수정됨');
+        await load();
+      } catch {
+        showToast('수정에 실패했습니다.', 'error');
+      }
+    });
   }
 
   function saveRatingGoal() {
@@ -147,30 +162,34 @@ export default function CareerPage() {
 
   async function submitRating(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      await careerApi.createCFRating({
-        log_date: ratingForm.log_date,
-        rating: Number(ratingForm.rating),
-        rank_name: ratingForm.rank_name,
-      });
-      setRatingForm(f => ({ ...f, rating: '', rank_name: 'pupil' }));
-      setShowRatingForm(false);
-      showToast('레이팅 기록 저장됨');
-      await load();
-    } catch {
-      showToast('저장에 실패했습니다.', 'error');
-    }
+    await withMutation('rating_create', async () => {
+      try {
+        await careerApi.createCFRating({
+          log_date: ratingForm.log_date,
+          rating: Number(ratingForm.rating),
+          rank_name: ratingForm.rank_name,
+        });
+        setRatingForm(f => ({ ...f, rating: '', rank_name: 'pupil' }));
+        setShowRatingForm(false);
+        showToast('레이팅 기록 저장됨');
+        await load();
+      } catch {
+        showToast('저장에 실패했습니다.', 'error');
+      }
+    });
   }
 
   async function deleteRating(id: number) {
-    try {
-      await careerApi.deleteCFRating(id);
-      setDeletingId(null);
-      showToast('레이팅 기록 삭제됨');
-      await load();
-    } catch {
-      showToast('삭제에 실패했습니다.', 'error');
-    }
+    await withMutation(`rating_delete_${id}`, async () => {
+      try {
+        await careerApi.deleteCFRating(id);
+        setDeletingId(null);
+        showToast('레이팅 기록 삭제됨');
+        await load();
+      } catch {
+        showToast('삭제에 실패했습니다.', 'error');
+      }
+    });
   }
 
   const latestRating = ratings[0];
@@ -408,7 +427,9 @@ export default function CareerPage() {
             </div>
           </div>
           <div className="pt-1">
-            <button type="submit" className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors">
+            <button type="submit" disabled={mutating.has('settings_save')}
+              className="flex items-center gap-1.5 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {mutating.has('settings_save') && <Loader2 size={13} className="animate-spin" />}
               저장
             </button>
           </div>
@@ -456,8 +477,12 @@ export default function CareerPage() {
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-3">
-              <button type="button" onClick={() => setShowRatingForm(false)} className="text-sm text-slate-500">취소</button>
-              <button type="submit" className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700">저장</button>
+              <button type="button" onClick={() => setShowRatingForm(false)} disabled={mutating.has('rating_create')} className="text-sm text-slate-500 disabled:opacity-50">취소</button>
+              <button type="submit" disabled={mutating.has('rating_create')}
+                className="flex items-center gap-1.5 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                {mutating.has('rating_create') && <Loader2 size={12} className="animate-spin" />}
+                저장
+              </button>
             </div>
           </form>
         )}
@@ -490,8 +515,12 @@ export default function CareerPage() {
                   </select>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={updateRating} className="text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">저장</button>
-                  <button onClick={() => setEditingRating(null)} className="text-xs px-3 py-1 text-slate-500 hover:text-slate-700">취소</button>
+                  <button onClick={updateRating} disabled={mutating.has(`rating_update_${editingRating.id}`)}
+                    className="flex items-center gap-1 text-xs px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {mutating.has(`rating_update_${editingRating.id}`) && <Loader2 size={10} className="animate-spin" />}
+                    저장
+                  </button>
+                  <button onClick={() => setEditingRating(null)} disabled={mutating.has(`rating_update_${editingRating.id}`)} className="text-xs px-3 py-1 text-slate-500 hover:text-slate-700 disabled:opacity-50">취소</button>
                 </div>
               </div>
             ) : (
@@ -506,7 +535,7 @@ export default function CareerPage() {
                   </span>
                 )}
                 {deletingId === r.id ? (
-                  <DeleteConfirm onConfirm={() => deleteRating(r.id)} onCancel={() => setDeletingId(null)} />
+                  <DeleteConfirm onConfirm={() => deleteRating(r.id)} onCancel={() => setDeletingId(null)} disabled={mutating.has(`rating_delete_${r.id}`)} />
                 ) : (
                   <button onClick={e => { e.stopPropagation(); setDeletingId(r.id); }} className="ml-auto text-slate-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
                     <Trash2 size={13} />
