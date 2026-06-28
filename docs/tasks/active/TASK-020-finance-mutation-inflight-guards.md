@@ -140,5 +140,5 @@ Applied the same scoped-guard pattern already used in career/health/travel
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `00be267` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
