@@ -10,10 +10,17 @@ function getSafeNextPath(value: string | null): string {
   return '/';
 }
 
+// 알려진 reason 값만 고정 메시지로 매핑한다 (쿼리 값 그대로 렌더링하지 않음)
+const REASON_MESSAGES: Record<string, string> = {
+  expired: '세션이 만료되어 다시 로그인이 필요합니다.',
+  logout: '로그아웃되었습니다.',
+};
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = getSafeNextPath(searchParams.get('next'));
+  const reasonMessage = REASON_MESSAGES[searchParams.get('reason') ?? ''] ?? null;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -44,6 +51,12 @@ function LoginForm() {
           <h1 className="text-xl font-semibold text-slate-900">Life Dashboard</h1>
           <p className="text-slate-400 text-sm mt-1">계속하려면 로그인하세요</p>
         </div>
+
+        {reasonMessage && (
+          <div className="mb-5 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500" role="status">
+            {reasonMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">

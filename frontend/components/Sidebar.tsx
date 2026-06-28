@@ -25,7 +25,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('ai-chat-history');
-    router.replace('/login');
+    router.replace('/login?reason=logout');
   }
 
   return (

@@ -30,8 +30,10 @@ client.interceptors.response.use(
       if (token) {
         localStorage.removeItem('token');
         const current = window.location.pathname + window.location.search;
-        const next = current !== '/login' ? `?next=${encodeURIComponent(current)}` : '';
-        window.location.href = `/login${next}`;
+        const params = new URLSearchParams();
+        if (current !== '/login') params.set('next', current);
+        params.set('reason', 'expired');
+        window.location.href = `/login?${params.toString()}`;
         return Promise.reject(err);
       }
     }
