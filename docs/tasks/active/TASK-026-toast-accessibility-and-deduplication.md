@@ -117,5 +117,5 @@ nothing is logged.
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `289a3e9` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
