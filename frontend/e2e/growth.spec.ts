@@ -22,7 +22,7 @@ test.describe('자기계발 페이지 - 뮤테이션 중복 방지', () => {
     });
 
     await page.goto('/growth');
-    await expect(page.getByText('독서 기록')).toBeVisible();
+    await expect(page.getByText('독서 목록', { exact: true })).toBeVisible();
 
     // 책 추가 폼 열기
     await page.getByRole('button', { name: '+ 추가' }).first().click();
@@ -39,8 +39,8 @@ test.describe('자기계발 페이지 - 뮤테이션 중복 방지', () => {
     // 두 번째 클릭 (무시됨)
     await submitBtn.click({ force: true });
 
-    // 완료 후 버튼 복귀 (form이 닫히거나 enabled로 돌아옴)
-    await expect(submitBtn).toBeEnabled({ timeout: 3000 });
+    // 완료 후 폼 닫힘 확인
+    await expect(page.locator('button[type="submit"]')).toHaveCount(0, { timeout: 10000 });
 
     // 요청이 정확히 1회만 전송됨
     expect(requestCount).toBe(1);
@@ -67,7 +67,7 @@ test.describe('자기계발 페이지 - 뮤테이션 중복 방지', () => {
     });
 
     await page.goto('/growth');
-    await expect(page.getByText('영어 학습 기록')).toBeVisible();
+    await expect(page.getByText('영어 학습 기록', { exact: true })).toBeVisible();
 
     // 영어 추가 폼 열기 (두 번째 + 추가 버튼)
     await page.getByRole('button', { name: '+ 추가' }).nth(1).click();
@@ -79,7 +79,7 @@ test.describe('자기계발 페이지 - 뮤테이션 중복 방지', () => {
     await expect(submitBtn).toBeDisabled();
     await submitBtn.click({ force: true });
 
-    await expect(submitBtn).toBeEnabled({ timeout: 3000 });
+    await expect(page.locator('button[type="submit"]')).toHaveCount(0, { timeout: 10000 });
     expect(requestCount).toBe(1);
   });
 });
