@@ -188,6 +188,72 @@ const MODULE_LABEL: Record<string, string> = {
   planner_category: '플래너 카테고리',
 };
 
+// 삭제 필터 키 → 사용자 친화 라벨
+const FILTER_KEY_LABEL: Record<string, string> = {
+  id: 'ID',
+  log_date: '날짜',
+  record_date: '날짜',
+  date: '날짜',
+  title: '제목',
+  name: '이름',
+  text: '내용',
+  exercise_type: '운동 종류',
+  activity_type: '활동 종류',
+  rank_name: '랭크',
+  destination: '목적지',
+  trip_name: '여행명',
+  category: '카테고리',
+  status: '상태',
+};
+
+// 삭제 필터 값을 안전하게 한 줄 문자열로 변환 (중첩 객체/긴 값 방지)
+function formatFilterValue(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string') {
+    const v = value.trim();
+    if (!v) return null;
+    return v.length > 40 ? v.slice(0, 40) + '…' : v;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    const prims = value.filter(x => ['string', 'number', 'boolean'].includes(typeof x));
+    if (prims.length === 0) return `${value.length}개 항목`;
+    const joined = prims.slice(0, 5).map(String).join(', ');
+    const text = prims.length > 5 ? `${joined} 외 ${prims.length - 5}개` : joined;
+    return text.length > 40 ? text.slice(0, 40) + '…' : text;
+  }
+  // 중첩 객체 등은 그대로 렌더링하지 않는다
+  return null;
+}
+
+function DeleteFilterPreview({ module, filter }: { module: string | null; filter: Record<string, unknown> }) {
+  const entries = Object.entries(filter)
+    .map(([k, v]) => [k, formatFilterValue(v)] as const)
+    .filter((e): e is readonly [string, string] => e[1] !== null);
+  const moduleLabel = module ? (MODULE_LABEL[module] ?? module) : null;
+  return (
+    <div className="mt-1.5 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-[11px] text-slate-600 max-w-[85%]">
+      <p className="font-semibold text-red-600 mb-1">삭제 대상 확인</p>
+      {moduleLabel && (
+        <div className="flex gap-1.5">
+          <span className="text-slate-400 shrink-0">항목</span>
+          <span className="font-medium text-slate-700">{moduleLabel}</span>
+        </div>
+      )}
+      {entries.length > 0 ? (
+        entries.map(([k, v]) => (
+          <div key={k} className="flex gap-1.5">
+            <span className="text-slate-400 shrink-0">{FILTER_KEY_LABEL[k] ?? k}</span>
+            <span className="text-slate-700 break-all">{v}</span>
+          </div>
+        ))
+      ) : (
+        <p className="text-slate-400 mt-0.5">조건에 맞는 전체 항목</p>
+      )}
+    </div>
+  );
+}
+
 let msgId = Date.now();
 
 export function dispatchAiSaved(module: string | null) {
@@ -495,6 +561,10 @@ export default function AiModal() {
                         : '저장됨'
                     }
                   </span>
+                )}
+
+                {m.role === 'ai' && m.action === 'delete_pending' && m.pendingFilter && (
+                  <DeleteFilterPreview module={m.module ?? null} filter={m.pendingFilter} />
                 )}
 
                 {m.role === 'ai' && m.action === 'delete_pending' && m.pendingFilter && (
