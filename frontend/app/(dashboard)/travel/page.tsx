@@ -1230,12 +1230,12 @@ export default function TravelPage() {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">여행 계획</h1>
-          <p className="text-slate-400 text-sm mt-1">나만의 여행을 계획하고 관리하세요</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">여행 계획</h1>
+          <p className="text-slate-400 text-sm mt-1 truncate">나만의 여행을 계획하고 관리하세요</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button onClick={() => handleExport('travel', exportApi.travel)} disabled={exporting.has('travel')} title="CSV 내보내기" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
             {exporting.has('travel') ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
           </button>
