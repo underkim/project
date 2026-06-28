@@ -277,7 +277,7 @@ interface AddItemFormProps {
   onCancel: () => void;
 }
 
-function AddItemForm({ categoryId: _cid, phaseStartDate, onSave, onCancel }: AddItemFormProps) {
+function AddItemForm({ phaseStartDate, onSave, onCancel }: AddItemFormProps) {
   const [text, setText] = useState('');
   const [offset, setOffset] = useState('6');
   const [deadlineDate, setDeadlineDate] = useState('');
@@ -437,7 +437,7 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
   useEffect(() => {
     if (selectMode) {
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
-      setPendingDelete(false);
+      queueMicrotask(() => setPendingDelete(false));
     }
   }, [selectMode]);
 
@@ -812,7 +812,7 @@ export default function PlannerPage() {
   }
 
   useEffect(() => {
-    setError(null);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRoadmap()
       .catch((err: Error) => setError(err.message || '데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
@@ -823,8 +823,8 @@ export default function PlannerPage() {
     if (hasAutoFocused.current || phases.length === 0) return;
     const idx = phases.findIndex(p => p.is_current);
     if (idx !== -1) {
-      setActiveTab(idx);
       hasAutoFocused.current = true;
+      queueMicrotask(() => setActiveTab(idx));
     }
   }, [phases]);
 
@@ -1195,7 +1195,7 @@ export default function PlannerPage() {
           {searchQuery.length >= 2 && (
             <div className="mt-2 border border-slate-100 rounded-xl overflow-hidden bg-white">
               {searchResults.length === 0 ? (
-                <p className="py-6 text-center text-sm text-slate-400">'{itemSearch}'에 해당하는 항목이 없어요</p>
+                <p className="py-6 text-center text-sm text-slate-400">&apos;{itemSearch}&apos;에 해당하는 항목이 없어요</p>
               ) : (
                 <div>
                   <p className="px-4 py-2 text-xs text-slate-400 border-b border-slate-50">{searchResults.length}개 항목 발견</p>

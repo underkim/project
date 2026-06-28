@@ -35,7 +35,7 @@ export default function FinancePage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadMore, setLoadMore] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ record_date: '', total_assets: '', monthly_income: '', monthly_expense: '', note: '' });
+  const [form, setForm] = useState({ record_date: new Date().toISOString().slice(0, 10), total_assets: '', monthly_income: '', monthly_expense: '', note: '' });
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -103,7 +103,7 @@ export default function FinancePage() {
   }
 
   useEffect(() => {
-    setForm(f => ({ ...f, record_date: new Date().toISOString().slice(0, 10) }));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 

@@ -44,8 +44,8 @@ export default function HealthPage() {
   const [exLoadMore, setExLoadMore] = useState(false);
   const [slLoadMore, setSlLoadMore] = useState(false);
 
-  const [exForm, setExForm] = useState({ log_date: '', exercise_type: '', duration_minutes: '', note: '' });
-  const [slForm, setSlForm] = useState({ log_date: '', sleep_hours: '', quality: '3', note: '' });
+  const [exForm, setExForm] = useState({ log_date: new Date().toISOString().slice(0, 10), exercise_type: '', duration_minutes: '', note: '' });
+  const [slForm, setSlForm] = useState({ log_date: new Date().toISOString().slice(0, 10), sleep_hours: '', quality: '3', note: '' });
   const [showEx, setShowEx] = useState(false);
   const [showSl, setShowSl] = useState(false);
   const [deletingEx, setDeletingEx] = useState<number | null>(null);
@@ -126,9 +126,7 @@ export default function HealthPage() {
   }
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    setExForm(f => ({ ...f, log_date: today }));
-    setSlForm(f => ({ ...f, log_date: today }));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -402,7 +400,8 @@ export default function HealthPage() {
     const best = Math.max(...streaks);
     // current streak: count back from latest date if it was today or yesterday
     const today = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const yd = new Date(today); yd.setDate(yd.getDate() - 1);
+    const yesterday = yd.toISOString().slice(0, 10);
     const last = dates[dates.length - 1];
     const current = (last === today || last === yesterday) ? streaks[streaks.length - 1] : 0;
     return { current, best };

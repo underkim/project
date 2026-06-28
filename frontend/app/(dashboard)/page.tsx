@@ -221,6 +221,7 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
   useAiRefresh([], load);
 

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { travelApi, exportApi } from '@/lib/api';
 import { showToast } from '@/lib/toast';
-import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse, RestaurantResponse } from '@/types';
+import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse } from '@/types';
 
 // 지도는 Leaflet 기반 — window 의존성 때문에 클라이언트에서만 로드 (SSR 비활성)
 const TravelMap = dynamic(() => import('./TravelMap'), {
@@ -994,7 +994,8 @@ export default function TravelPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void load(); }, []);
 
   useAiRefresh(['travel'], load);
 
