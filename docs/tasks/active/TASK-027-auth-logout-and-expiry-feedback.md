@@ -120,5 +120,5 @@ Make logout and session-expiry transitions clearer. Users should understand when
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `0543fdf` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
