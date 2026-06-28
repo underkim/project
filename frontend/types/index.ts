@@ -229,6 +229,18 @@ export interface TripPlanItemResponse {
   description: string | null;
 }
 
+export interface RestaurantResponse {
+  id: number;
+  name: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  cuisine: string | null;
+  note: string | null;
+  is_visited: boolean;
+  order_index: number;
+}
+
 export interface TripResponse {
   id: number;
   name: string;
@@ -237,8 +249,12 @@ export interface TripResponse {
   end_date: string;
   status: TripStatus;
   note: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   checklist_items: ChecklistItemResponse[];
   plan_items: TripPlanItemResponse[];
+  restaurants: RestaurantResponse[];
 }
 
 export interface TravelSummaryResponse {

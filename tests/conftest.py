@@ -1,5 +1,6 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base, get_db
@@ -19,6 +20,15 @@ TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 @pytest.fixture
 async def db_engine():
     engine = create_async_engine(TEST_DB_URL, echo=False)
+
+    # SQLite는 기본적으로 FK 제약을 강제하지 않음 → ON DELETE CASCADE가 동작하도록 활성화
+    # (프로덕션 Postgres와 동일한 cascade 동작을 테스트에서 재현)
+    @event.listens_for(engine.sync_engine, "connect")
+    def _enable_sqlite_fk(dbapi_conn, _):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine

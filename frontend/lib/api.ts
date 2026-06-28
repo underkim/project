@@ -6,7 +6,7 @@ import type {
   BookRecordResponse, EnglishLogResponse, GrowthSummaryResponse,
   CareerSettingsResponse, CFRatingLogResponse, CareerSummaryResponse,
   OverviewResponse,
-  TripResponse, ChecklistItemResponse, TravelSummaryResponse, TripPlanItemResponse,
+  TripResponse, ChecklistItemResponse, TravelSummaryResponse, TripPlanItemResponse, RestaurantResponse,
 } from '@/types';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -198,11 +198,13 @@ export const travelApi = {
   createTrip: async (data: {
     name: string; destination: string; start_date: string; end_date: string;
     status?: string; note?: string;
+    address?: string | null; latitude?: number | null; longitude?: number | null;
   }): Promise<TripResponse> =>
     (await client.post('/api/v1/travel/trips', data)).data,
   updateTrip: async (id: number, data: Partial<{
     name: string; destination: string; start_date: string; end_date: string;
     status: string; note: string | null;
+    address: string | null; latitude: number | null; longitude: number | null;
   }>): Promise<TripResponse> =>
     (await client.put(`/api/v1/travel/trips/${id}`, data)).data,
   deleteTrip: async (id: number): Promise<void> => {
@@ -225,6 +227,19 @@ export const travelApi = {
     (await client.put(`/api/v1/travel/plan/${itemId}`, data)).data,
   deletePlanItem: async (itemId: number): Promise<void> => {
     await client.delete(`/api/v1/travel/plan/${itemId}`);
+  },
+  addRestaurant: async (tripId: number, data: {
+    name: string; address?: string | null; latitude?: number | null; longitude?: number | null;
+    cuisine?: string | null; note?: string | null; is_visited?: boolean; order_index?: number;
+  }): Promise<RestaurantResponse> =>
+    (await client.post(`/api/v1/travel/trips/${tripId}/restaurants`, data)).data,
+  updateRestaurant: async (restaurantId: number, data: Partial<{
+    name: string; address: string | null; latitude: number | null; longitude: number | null;
+    cuisine: string | null; note: string | null; is_visited: boolean; order_index: number;
+  }>): Promise<RestaurantResponse> =>
+    (await client.put(`/api/v1/travel/restaurants/${restaurantId}`, data)).data,
+  deleteRestaurant: async (restaurantId: number): Promise<void> => {
+    await client.delete(`/api/v1/travel/restaurants/${restaurantId}`);
   },
 };
 

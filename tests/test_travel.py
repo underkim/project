@@ -398,3 +398,136 @@ async def test_update_plan_item_not_found_returns_404(auth_client):
     """존재하지 않는 일정 항목 수정 시 404여야 한다."""
     resp = await auth_client.put("/api/v1/travel/plan/99999", json={"title": "새 제목"})
     assert resp.status_code == 404
+
+
+# ─── TASK-034: 위치/좌표 + 맛집 ──────────────────────────────
+
+def test_trip_invalid_latitude_rejected():
+    with pytest.raises(ValidationError):
+        TripCreate(name="여행", destination="서울",
+                   start_date=date(2026, 8, 1), end_date=date(2026, 8, 3),
+                   latitude=120.0)
+
+
+def test_trip_invalid_longitude_rejected():
+    with pytest.raises(ValidationError):
+        TripCreate(name="여행", destination="서울",
+                   start_date=date(2026, 8, 1), end_date=date(2026, 8, 3),
+                   longitude=-200.0)
+
+
+@pytest.mark.asyncio
+async def test_create_trip_with_coordinates(auth_client):
+    resp = await auth_client.post("/api/v1/travel/trips", json={
+        "name": "좌표 여행", "destination": "제주", "start_date": "2026-08-01", "end_date": "2026-08-03",
+        "address": "제주국제공항", "latitude": 33.5066, "longitude": 126.4928,
+    })
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["latitude"] == 33.5066
+    assert data["longitude"] == 126.4928
+    assert data["address"] == "제주국제공항"
+    assert data["restaurants"] == []
+
+
+@pytest.mark.asyncio
+async def test_create_trip_invalid_coordinate_returns_422(auth_client):
+    resp = await auth_client.post("/api/v1/travel/trips", json={
+        "name": "잘못된 좌표", "destination": "서울", "start_date": "2026-08-01", "end_date": "2026-08-03",
+        "latitude": 999,
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_trip_address_geocodes(auth_client, monkeypatch):
+    """주소만 주면 지오코딩으로 좌표가 채워져야 한다 (geocode 모킹)."""
+    async def fake_geocode(addr):
+        return (37.5665, 126.9780)
+    monkeypatch.setattr("app.modules.travel.service.geocode", fake_geocode)
+
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "지오코딩 여행", "destination": "서울", "start_date": "2026-08-01", "end_date": "2026-08-03",
+    })).json()
+    resp = await auth_client.put(f"/api/v1/travel/trips/{trip['id']}", json={"address": "서울시청"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["latitude"] == 37.5665
+    assert data["longitude"] == 126.9780
+
+
+@pytest.mark.asyncio
+async def test_restaurant_crud(auth_client):
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "맛집 여행", "destination": "부산", "start_date": "2026-09-01", "end_date": "2026-09-03",
+    })).json()
+    trip_id = trip["id"]
+
+    # create (좌표 명시 → 지오코딩 안 함)
+    create = await auth_client.post(f"/api/v1/travel/trips/{trip_id}/restaurants", json={
+        "name": "돼지국밥집", "address": "부산 서면", "latitude": 35.1577, "longitude": 129.0594,
+        "cuisine": "한식", "is_visited": False,
+    })
+    assert create.status_code == 201
+    r = create.json()
+    assert r["name"] == "돼지국밥집"
+    assert r["latitude"] == 35.1577
+    rid = r["id"]
+
+    # trip 응답에 포함되는지
+    trips = (await auth_client.get("/api/v1/travel/trips")).json()
+    target = next(t for t in trips if t["id"] == trip_id)
+    assert any(x["id"] == rid for x in target["restaurants"])
+
+    # update
+    upd = await auth_client.put(f"/api/v1/travel/restaurants/{rid}", json={"is_visited": True, "note": "맛있었음"})
+    assert upd.status_code == 200
+    assert upd.json()["is_visited"] is True
+    assert upd.json()["note"] == "맛있었음"
+
+    # delete
+    dele = await auth_client.delete(f"/api/v1/travel/restaurants/{rid}")
+    assert dele.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_restaurant_create_empty_name_returns_422(auth_client):
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "빈이름 맛집", "destination": "대구", "start_date": "2026-09-01", "end_date": "2026-09-03",
+    })).json()
+    resp = await auth_client.post(f"/api/v1/travel/trips/{trip['id']}/restaurants", json={"name": "   "})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_restaurant_update_not_found_returns_404(auth_client):
+    resp = await auth_client.put("/api/v1/travel/restaurants/999999", json={"is_visited": True})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_restaurant_delete_not_found_returns_404(auth_client):
+    resp = await auth_client.delete("/api/v1/travel/restaurants/999999")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_restaurant_requires_auth(client):
+    resp = await client.post("/api/v1/travel/trips/1/restaurants", json={"name": "무인증"})
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_trip_cascades_restaurants(auth_client):
+    trip = (await auth_client.post("/api/v1/travel/trips", json={
+        "name": "카스케이드 여행", "destination": "여수", "start_date": "2026-10-01", "end_date": "2026-10-03",
+    })).json()
+    trip_id = trip["id"]
+    r = (await auth_client.post(f"/api/v1/travel/trips/{trip_id}/restaurants", json={"name": "게장집"})).json()
+    rid = r["id"]
+
+    del_resp = await auth_client.delete(f"/api/v1/travel/trips/{trip_id}")
+    assert del_resp.status_code == 204
+    # 맛집도 함께 삭제 → 수정 시 404
+    upd = await auth_client.put(f"/api/v1/travel/restaurants/{rid}", json={"is_visited": True})
+    assert upd.status_code == 404

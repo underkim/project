@@ -12,6 +12,9 @@ from app.modules.travel.schemas import (
     PlanItemCreate,
     PlanItemResponse,
     PlanItemUpdate,
+    RestaurantCreate,
+    RestaurantResponse,
+    RestaurantUpdate,
     TravelSummaryResponse,
     TripCreate,
     TripResponse,
@@ -155,3 +158,44 @@ async def delete_plan_item(
     deleted = await service.delete_plan_item(session, item_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="일정 항목을 찾을 수 없습니다.")
+
+
+@router.post(
+    "/trips/{trip_id}/restaurants",
+    response_model=RestaurantResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_restaurant(
+    trip_id: int,
+    data: RestaurantCreate,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    result = await service.add_restaurant(session, trip_id, data)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="여행 기록을 찾을 수 없습니다.")
+    return result
+
+
+@router.put("/restaurants/{restaurant_id}", response_model=RestaurantResponse)
+async def update_restaurant(
+    restaurant_id: int,
+    data: RestaurantUpdate,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    result = await service.update_restaurant(session, restaurant_id, data)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="맛집을 찾을 수 없습니다.")
+    return result
+
+
+@router.delete("/restaurants/{restaurant_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_restaurant(
+    restaurant_id: int,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    deleted = await service.delete_restaurant(session, restaurant_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="맛집을 찾을 수 없습니다.")

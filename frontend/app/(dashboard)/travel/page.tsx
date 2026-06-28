@@ -1,14 +1,26 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
   Plane, MapPin, Calendar, Plus, Trash2, Pencil, Check, X,
   ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered, Download, Loader2,
+  Utensils, Map as MapIcon,
 } from 'lucide-react';
 import { travelApi, exportApi } from '@/lib/api';
 import { showToast } from '@/lib/toast';
-import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse } from '@/types';
+import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse, RestaurantResponse } from '@/types';
+
+// 지도는 Leaflet 기반 — window 의존성 때문에 클라이언트에서만 로드 (SSR 비활성)
+const TravelMap = dynamic(() => import('./TravelMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-72 w-full rounded-2xl border border-slate-100 bg-slate-50 flex items-center justify-center">
+      <Loader2 size={20} className="animate-spin text-slate-300" />
+    </div>
+  ),
+});
 
 // ── 상태 배지 ──────────────────────────────────────────────
 const STATUS_META: Record<TripStatus, { label: string; cls: string }> = {
@@ -91,7 +103,7 @@ function ChecklistRow({
 interface AddTripFormProps {
   onSave: (data: {
     name: string; destination: string; start_date: string; end_date: string;
-    status: TripStatus; note: string;
+    status: TripStatus; note: string; address: string;
   }) => Promise<void>;
   onCancel: () => void;
 }
@@ -104,6 +116,7 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
   const [endDate, setEndDate] = useState(today);
   const [status, setStatus] = useState<TripStatus>('planned');
   const [note, setNote] = useState('');
+  const [address, setAddress] = useState('');
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -113,7 +126,7 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
     if (!name.trim() || !dest.trim()) return;
     setSaving(true);
     try {
-      await onSave({ name: name.trim(), destination: dest.trim(), start_date: startDate, end_date: endDate, status, note: note.trim() });
+      await onSave({ name: name.trim(), destination: dest.trim(), start_date: startDate, end_date: endDate, status, note: note.trim(), address: address.trim() });
     } finally {
       setSaving(false);
     }
@@ -187,6 +200,15 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
           />
         </div>
+        <div className="col-span-2">
+          <label className="text-xs text-slate-500 mb-1 block">위치 (지도 표시용, 선택)</label>
+          <input
+            value={address}
+            onChange={e => setAddress(e.target.value)}
+            placeholder="주소·장소명 입력 시 지도에 표시돼요 (예: 도쿄 신주쿠)"
+            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+          />
+        </div>
       </div>
       <div className="flex justify-end gap-2 pt-1">
         <button
@@ -220,6 +242,9 @@ interface TripCardProps {
   onAddPlanItem: (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => void;
   onUpdatePlanItem: (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => void;
   onDeletePlanItem: (tripId: number, itemId: number) => void;
+  onAddRestaurant: (tripId: number, data: { name: string; address?: string; cuisine?: string }) => void;
+  onUpdateRestaurant: (tripId: number, restaurantId: number, data: Partial<{ is_visited: boolean; note: string | null }>) => void;
+  onDeleteRestaurant: (tripId: number, restaurantId: number) => void;
   mutatingKeys: Set<string>;
 }
 
@@ -228,6 +253,7 @@ function TripCard({
   onDelete, onUpdate,
   onToggleChecklist, onDeleteChecklist, onAddChecklist,
   onAddPlanItem, onUpdatePlanItem, onDeletePlanItem,
+  onAddRestaurant, onUpdateRestaurant, onDeleteRestaurant,
   mutatingKeys,
 }: TripCardProps) {
   const [editing, setEditing] = useState(false);
@@ -237,13 +263,29 @@ function TripCard({
   const [editNote, setEditNote] = useState(trip.note ?? '');
   const [editStartDate, setEditStartDate] = useState(trip.start_date);
   const [editEndDate, setEditEndDate] = useState(trip.end_date);
+  const [editAddress, setEditAddress] = useState(trip.address ?? '');
   const [checkText, setCheckText] = useState('');
-  const [activeTab, setActiveTab] = useState<'checklist' | 'plan'>('checklist');
+  const [activeTab, setActiveTab] = useState<'checklist' | 'plan' | 'restaurant'>('checklist');
   const [planDay, setPlanDay] = useState(1);
   const [planTime, setPlanTime] = useState('');
   const [planTitle, setPlanTitle] = useState('');
   const [planDesc, setPlanDesc] = useState('');
   const [editingPlan, setEditingPlan] = useState<{ id: number; day: number; title: string; time: string; description: string } | null>(null);
+  const [restName, setRestName] = useState('');
+  const [restAddress, setRestAddress] = useState('');
+  const [restCuisine, setRestCuisine] = useState('');
+
+  const handleAddRestaurant = () => {
+    if (!restName.trim()) return;
+    onAddRestaurant(trip.id, {
+      name: restName.trim(),
+      address: restAddress.trim() || undefined,
+      cuisine: restCuisine.trim() || undefined,
+    });
+    setRestName('');
+    setRestAddress('');
+    setRestCuisine('');
+  };
 
   const checked = trip.checklist_items.filter(i => i.is_checked).length;
   const total = trip.checklist_items.length;
@@ -272,6 +314,8 @@ function TripCard({
   };
 
   const saveEdit = () => {
+    const nextAddress = editAddress.trim();
+    const addressChanged = nextAddress !== (trip.address ?? '');
     onUpdate(trip.id, {
       name: editName.trim() || trip.name,
       destination: editDest.trim() || trip.destination,
@@ -279,6 +323,13 @@ function TripCard({
       note: editNote.trim() || null,
       start_date: editStartDate,
       end_date: editEndDate,
+      // 주소가 바뀌었을 때만 전송 → 백엔드가 지오코딩으로 좌표 갱신.
+      // 주소를 비우면 좌표도 함께 비운다.
+      ...(addressChanged
+        ? (nextAddress
+            ? { address: nextAddress }
+            : { address: null, latitude: null, longitude: null })
+        : {}),
     } as Partial<TripResponse>);
     setEditing(false);
   };
@@ -341,6 +392,12 @@ function TripCard({
                 min={editStartDate}
                 onChange={e => setEditEndDate(e.target.value)}
                 className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              />
+              <input
+                value={editAddress}
+                onChange={e => setEditAddress(e.target.value)}
+                className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 col-span-2"
+                placeholder="위치 (지도 표시용, 선택)"
               />
             </div>
             <div className="flex gap-2 justify-end">
@@ -455,6 +512,22 @@ function TripCard({
               {(trip.plan_items ?? []).length > 0 && (
                 <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 rounded-full px-1.5 py-0.5">
                   {(trip.plan_items ?? []).length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('restaurant')}
+              className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-medium transition-colors ${
+                activeTab === 'restaurant'
+                  ? 'text-slate-900 border-b-2 border-slate-900'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <Utensils size={13} />
+              맛집
+              {(trip.restaurants ?? []).length > 0 && (
+                <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 rounded-full px-1.5 py-0.5">
+                  {(trip.restaurants ?? []).length}
                 </span>
               )}
             </button>
@@ -656,6 +729,76 @@ function TripCard({
               </div>
             </div>
           )}
+
+          {/* 맛집 탭 */}
+          {activeTab === 'restaurant' && (
+            <div className="bg-slate-50/50 px-5 py-4 space-y-2">
+              {(trip.restaurants ?? []).length === 0 && (
+                <p className="text-xs text-slate-400">아직 등록된 맛집이 없습니다. 주소를 입력하면 지도에 표시돼요.</p>
+              )}
+              {(trip.restaurants ?? []).map(r => (
+                <div key={r.id} className="flex items-center gap-2 bg-white border border-slate-100 rounded-lg px-3 py-2">
+                  <button
+                    onClick={() => onUpdateRestaurant(trip.id, r.id, { is_visited: !r.is_visited })}
+                    disabled={mutatingKeys.has(`rest_update_${r.id}`)}
+                    title={r.is_visited ? '방문함' : '방문 예정'}
+                    className="shrink-0 disabled:opacity-40"
+                  >
+                    {r.is_visited
+                      ? <CheckSquare size={15} className="text-emerald-500" />
+                      : <Square size={15} className="text-slate-300" />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-sm truncate ${r.is_visited ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{r.name}</span>
+                      {r.cuisine && <span className="text-[10px] text-orange-500 bg-orange-50 rounded-full px-1.5 py-0.5 shrink-0">{r.cuisine}</span>}
+                      {r.latitude != null && r.longitude != null && (
+                        <MapPin size={11} className="text-orange-400 shrink-0" />
+                      )}
+                    </div>
+                    {r.address && <p className="text-[11px] text-slate-400 truncate">{r.address}</p>}
+                  </div>
+                  <button
+                    onClick={() => onDeleteRestaurant(trip.id, r.id)}
+                    disabled={mutatingKeys.has(`rest_delete_${r.id}`)}
+                    className="shrink-0 p-1 text-slate-300 hover:text-red-400 rounded disabled:opacity-40"
+                  >
+                    {mutatingKeys.has(`rest_delete_${r.id}`) ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                  </button>
+                </div>
+              ))}
+              <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-2 mt-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={restName}
+                    onChange={e => setRestName(e.target.value)}
+                    placeholder="맛집 이름 *"
+                    className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                  <input
+                    value={restCuisine}
+                    onChange={e => setRestCuisine(e.target.value)}
+                    placeholder="종류 (예: 라멘)"
+                    className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+                <input
+                  value={restAddress}
+                  onChange={e => setRestAddress(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddRestaurant()}
+                  placeholder="주소·장소명 (선택, 입력 시 지도에 표시)"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+                <button
+                  onClick={handleAddRestaurant}
+                  disabled={!restName.trim() || mutatingKeys.has(`rest_add_${trip.id}`)}
+                  className="w-full py-1.5 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-40 transition-colors font-medium flex items-center justify-center gap-1"
+                >
+                  {mutatingKeys.has(`rest_add_${trip.id}`) ? <><Loader2 size={12} className="animate-spin" />저장 중...</> : '맛집 추가'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -727,6 +870,12 @@ export default function TravelPage() {
     const matchSearch = !q || t.name.toLowerCase().includes(q) || (t.destination ?? '').toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });
+
+  // 지도에 표시 가능한 좌표가 하나라도 있는지 (현재 필터 기준)
+  const hasMapPoints = filtered.some(t =>
+    (t.latitude != null && t.longitude != null) ||
+    (t.restaurants ?? []).some(r => r.latitude != null && r.longitude != null)
+  );
 
   const handleCreate = async (data: Parameters<typeof travelApi.createTrip>[0]) => {
     try {
@@ -831,6 +980,42 @@ export default function TravelPage() {
     });
   };
 
+  const handleAddRestaurant = async (tripId: number, data: { name: string; address?: string; cuisine?: string }) => {
+    await withMutation(`rest_add_${tripId}`, async () => {
+      try {
+        const r = await travelApi.addRestaurant(tripId, data);
+        setTrips(prev => prev.map(t =>
+          t.id === tripId ? { ...t, restaurants: [...(t.restaurants ?? []), r] } : t
+        ));
+      } catch { showToast('맛집 추가에 실패했습니다.', 'error'); }
+    });
+  };
+
+  const handleUpdateRestaurant = async (tripId: number, restaurantId: number, data: Partial<{ is_visited: boolean; note: string | null }>) => {
+    await withMutation(`rest_update_${restaurantId}`, async () => {
+      try {
+        const updated = await travelApi.updateRestaurant(restaurantId, data);
+        setTrips(prev => prev.map(t =>
+          t.id === tripId
+            ? { ...t, restaurants: (t.restaurants ?? []).map(r => r.id === restaurantId ? updated : r) }
+            : t
+        ));
+      } catch { showToast('맛집 수정에 실패했습니다.', 'error'); await load(); }
+    });
+  };
+
+  const handleDeleteRestaurant = async (tripId: number, restaurantId: number) => {
+    await withMutation(`rest_delete_${restaurantId}`, async () => {
+      setTrips(prev => prev.map(t =>
+        t.id === tripId
+          ? { ...t, restaurants: (t.restaurants ?? []).filter(r => r.id !== restaurantId) }
+          : t
+      ));
+      try { await travelApi.deleteRestaurant(restaurantId); }
+      catch { showToast('맛집 삭제에 실패했습니다.', 'error'); await load(); }
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -919,6 +1104,24 @@ export default function TravelPage() {
         </div>
       )}
 
+      {/* 지도 패널 */}
+      {filtered.length > 0 && (
+        hasMapPoints ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 px-1">
+              <MapIcon size={13} />
+              <span>지도 — <span className="inline-block w-2 h-2 rounded-full align-middle" style={{ background: '#0f172a' }} /> 여행 · <span className="inline-block w-2 h-2 rounded-full align-middle" style={{ background: '#f97316' }} /> 맛집 (마커 클릭 시 해당 여행 펼침)</span>
+            </div>
+            <TravelMap trips={filtered} onSelectTrip={(id) => setExpandedId(id)} />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-xs text-slate-400">
+            <MapIcon size={14} className="shrink-0" />
+            여행이나 맛집에 <span className="font-medium text-slate-500">위치(주소)</span>를 입력하면 지도에 표시돼요.
+          </div>
+        )
+      )}
+
       {/* 여행 목록 */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -948,6 +1151,9 @@ export default function TravelPage() {
               onAddPlanItem={handleAddPlanItem}
               onUpdatePlanItem={handleUpdatePlanItem}
               onDeletePlanItem={handleDeletePlanItem}
+              onAddRestaurant={handleAddRestaurant}
+              onUpdateRestaurant={handleUpdateRestaurant}
+              onDeleteRestaurant={handleDeleteRestaurant}
               mutatingKeys={mutating}
             />
           ))}
