@@ -24,7 +24,11 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && typeof window !== 'undefined') {
+    // 로그인 엔드포인트의 401은 "비밀번호 오류"이지 세션 만료가 아니므로
+    // 만료 리다이렉트 대상에서 제외한다 (stale 토큰이 남아 있어도 호출자가 처리).
+    const reqUrl: string = err.config?.url ?? '';
+    const isAuthRequest = reqUrl.includes('/auth/token');
+    if (err.response?.status === 401 && typeof window !== 'undefined' && !isAuthRequest) {
       // 토큰이 있을 때만 리다이렉트 (로그인 시도 실패는 호출자가 처리)
       const token = localStorage.getItem('token');
       if (token) {
