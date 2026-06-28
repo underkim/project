@@ -14,7 +14,7 @@ test.describe('AI 모달', () => {
     await expect(input).toBeVisible();
 
     // 주간 리포트 버튼도 패널 헤더에 노출
-    await expect(page.getByRole('button', { name: '주간 리포트' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'AI 어시스턴트' }).getByRole('button', { name: '주간 리포트' })).toBeVisible();
   });
 
   test('FAB를 다시 클릭하면 패널이 닫힌다', async ({ page }) => {
