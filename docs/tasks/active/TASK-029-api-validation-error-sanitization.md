@@ -120,5 +120,5 @@ string and that no internal markers (`Traceback`, `Error`) leak:
 
 ### Commit / push
 
-- Commit: `<filled after commit>` on `develop`.
+- Commit: `5213341` on `develop`.
 - Pushed to `origin/develop`. No PR created (per workflow).
