@@ -53,9 +53,9 @@ test.describe('여행 페이지', () => {
     const tripHeading = page.getByRole('heading', { name: '[E2E] 날짜편집 테스트', exact: true });
     await expect(tripHeading).toBeVisible();
 
-    // 편집 버튼 클릭 (Pencil 아이콘 버튼 — 해당 카드 내)
+    // 편집 버튼 클릭 (지도·삭제 버튼과 섞여 있어 aria-label로 정확히 지정)
     const headerRow = tripHeading.locator('xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]');
-    await headerRow.getByRole('button').first().click();
+    await headerRow.getByRole('button', { name: '여행 편집' }).click();
 
     // start_date input 수정
     const dateInputs = page.locator('input[type="date"]');
@@ -120,8 +120,10 @@ test.describe('여행 페이지', () => {
     await page.goto('/travel');
     const tripHeading = page.getByRole('heading', { name: '[E2E] 맛집 테스트', exact: true });
     await expect(tripHeading).toBeVisible();
-    // 카드를 펼쳐 맛집 이름이 노출되는지 확인
-    await tripHeading.click();
+    // 카드를 펼친 뒤(헤더 우측 Chevron 토글) 맛집 탭으로 이동해 맛집 이름 노출 확인
+    const headerRow = tripHeading.locator('xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]');
+    await headerRow.getByRole('button').last().click();
+    await page.getByRole('button', { name: '맛집' }).click();
     await expect(page.getByText('[E2E] 돼지국밥집').first()).toBeVisible({ timeout: 10000 });
   });
 
@@ -144,7 +146,7 @@ test.describe('여행 페이지', () => {
     await expect(tripHeading).toBeVisible();
 
     const headerRow = tripHeading.locator('xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]');
-    await headerRow.getByRole('button').first().click();
+    await headerRow.getByRole('button', { name: '여행 편집' }).click();
 
     const dateInputs = page.locator('input[type="date"]');
     await expect(dateInputs).toHaveCount(2);
