@@ -122,8 +122,9 @@ test.describe('여행 페이지', () => {
     await expect(tripHeading).toBeVisible();
     // 카드를 펼친 뒤(헤더 우측 Chevron 토글) 맛집 탭으로 이동해 맛집 이름 노출 확인
     const headerRow = tripHeading.locator('xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]');
+    const tripCard = tripHeading.locator('xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-xl")][1]');
     await headerRow.getByRole('button').last().click();
-    await page.getByRole('button', { name: '맛집' }).click();
+    await tripCard.getByRole('button', { name: /^맛집\s+\d+$/ }).click();
     await expect(page.getByText('[E2E] 돼지국밥집').first()).toBeVisible({ timeout: 10000 });
   });
 
