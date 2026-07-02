@@ -16,6 +16,8 @@
 
 **Unfinished = `draft` + `approved` + `working`**
 
+Active task files may exceed 10. This is allowed. Claude Code should limit each implementation batch to at most 10 eligible tasks instead of requiring Codex to stop creating tasks at 10 active files.
+
 Do NOT count by:
 - Number of files in `docs/tasks/active/`
 - Number of entries in `memory/MEMORY.md`
@@ -34,9 +36,9 @@ Run `docs/tasks/count-tasks.ps1` to get a reliable status breakdown.
 
 2. **Do not move `implemented` → `done`** without explicit user instruction in the same session.
 
-3. **Do not create new tasks** based on memory.md content alone. Check actual file status first.
+3. **Do not create new tasks** based on memory.md content alone. Check actual file status first. Do not block new task creation solely because there are 10 or more files in `docs/tasks/active/`.
 
-4. **When implementing**: update the active file to `status: working`, then to `status: implemented` when committed. Copy to `docs/tasks/done/` with `status: implemented`.
+4. **When implementing**: select at most 10 eligible tasks for the current batch, update each active file to `status: working`, then to `status: implemented` when committed. Copy to `docs/tasks/done/` with `status: implemented`.
 
 5. **Do not re-implement** tasks that are already `implemented`, `reviewed`, or `done`.
 

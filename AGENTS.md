@@ -45,6 +45,7 @@ Its goal is to keep responsibilities, task state, and implementation handoff cle
 
 - Acts as the implementer by default.
 - Works from task documents with `status: approved`, including improvement tasks that Codex approved based on discovered design or quality issues.
+- May have more than 10 active task documents available; when implementing, select and work in batches of at most 10 tasks at a time.
 - Changes task status to `working` when implementation starts.
 - Handles feature code changes, tests, commits, and pushes directly on `develop`.
 - Records implementation status, `develop` commit(s), push status, and validation results in the task document.
@@ -220,18 +221,20 @@ Core rules:
 
 - The recurring Codex automation should inspect the repository every hour.
 - Each run may create at most one improvement task.
+- Codex may create additional active task documents even when `docs/tasks/active/` already contains 10 or more task files.
+- Claude Code, not Codex task creation, is responsible for limiting implementation concurrency by taking at most 10 eligible tasks per implementation batch.
 
 ### Preflight Check (filesystem — not memory)
 
 Before any broad repository analysis, perform a filesystem inventory:
 
-1. Count files matching `docs/tasks/active/TASK-*.md` by reading the directory.
-2. If the count is 10 or more, stop immediately — do not create another task.
-3. If the count is below 10, proceed to duplicate detection and repository analysis.
+1. Read task files from `docs/tasks/active/`, `docs/tasks/done/`, and `docs/tasks/blocked/` as needed for status and duplicate detection.
+2. Do not stop task creation solely because `docs/tasks/active/` contains 10 or more files.
+3. Use task status and duplicate detection to decide whether a new task is useful and safe to create.
 
-**Critical**: The authoritative task count comes from the filesystem only.
+**Critical**: The authoritative task inventory comes from the filesystem only.
 `memory.md`, compacted conversation context, chat history, or any cached summary must never be used as task inventory.
-Stale memory may be read as background context but must never override what `docs/tasks/active/` actually contains.
+Stale memory may be read as background context but must never override what task files actually contain.
 
 ### Duplicate Detection
 
@@ -241,7 +244,7 @@ Before creating a new task, verify the idea is not already present by inspecting
 - `docs/tasks/done/TASK-*.md` — completed tasks
 - `docs/tasks/blocked/TASK-*.md` — blocked tasks
 
-Do not create a task if the same idea is found in any of those locations.
+Do not create a task if the same idea is found in any of those locations. Having 10 or more files in `docs/tasks/active/` is not a duplicate and is not a reason to block new task creation.
 
 ### Content Rules
 
