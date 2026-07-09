@@ -528,6 +528,63 @@ async def test_chat_create_finance_record(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_chat_context_includes_finance_goal(auth_client):
+    """자산 목표 설정 시 AI 시스템 프롬프트(컨텍스트)에 목표 정보가 포함되어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-06-01", "total_assets": 3000,
+        "monthly_income": 400, "monthly_expense": 250,
+    })
+    await auth_client.put("/api/v1/finance/goal", json={
+        "target_amount": 10000, "target_date": "2030-01-01", "expected_annual_return_rate": 5.0,
+    })
+
+    with patch("app.modules.ai.service.settings") as mock_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock_genai.Client.return_value.models.generate_content.return_value = \
+            _mock_gemini("목표까지 잘 가고 있어요!")
+
+        resp = await auth_client.post(
+            "/api/v1/ai/chat", json={"message": "내 자산 목표 진행 상황 알려줘", "history": []}
+        )
+
+    assert resp.status_code == 200
+    config_call = mock_genai.types.GenerateContentConfig.call_args
+    system_prompt = config_call.kwargs["system_instruction"]
+    assert "자산 목표" in system_prompt
+    assert "10,000만원" in system_prompt
+
+
+@pytest.mark.asyncio
+async def test_weekly_report_includes_finance_goal(auth_client):
+    """자산 목표 설정 시 주간 리포트 프롬프트에 목표 진행률이 포함되어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-06-01", "total_assets": 4000,
+        "monthly_income": 400, "monthly_expense": 250,
+    })
+    await auth_client.put("/api/v1/finance/goal", json={
+        "target_amount": 8000, "target_date": "2029-01-01",
+    })
+
+    with patch("app.modules.ai.router.settings") as mock_settings, \
+         patch("app.modules.ai.service.settings") as mock_svc_settings, \
+         patch("app.modules.ai.service.genai") as mock_genai, \
+         patch("asyncio.to_thread") as mock_to_thread:
+        mock_settings.gemini_api_key = "test-key"
+        mock_svc_settings.gemini_api_key = "test-key"
+        mock_response = MagicMock()
+        mock_response.text = "## 요약\n좋아요"
+        mock_to_thread.return_value = mock_response
+
+        resp = await auth_client.get("/api/v1/ai/weekly-report")
+
+    assert resp.status_code == 200
+    prompt = mock_to_thread.call_args.kwargs["contents"]
+    assert "자산 목표 진행률" in prompt
+    assert "8,000만원" in prompt
+
+
+@pytest.mark.asyncio
 async def test_chat_create_growth_book(auth_client):
     """create 액션 — growth_book 모듈 저장 시 saved: True."""
     import json

@@ -127,6 +127,7 @@ export default function HelpPage() {
                 '이번 달 저축률은?',
                 '현재 읽고 있는 책은?',
                 '이번 달 영어 공부 총 몇 분?',
+                '내 자산 목표 진행 상황 알려줘',
               ].map(t => <ExampleBubble key={t} text={t} />)}
             </div>
           </div>

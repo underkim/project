@@ -294,7 +294,8 @@ async def _load_categories_context(session: AsyncSession) -> str:
 async def _load_user_context(session: AsyncSession) -> str:
     """사용자 최근 활동 요약 — 단일 트랜잭션 안에서 읽기."""
     from app.modules.health.models import ExerciseLog, SleepLog
-    from app.modules.finance.models import AssetRecord
+    from app.modules.finance.models import AssetRecord, FinanceGoal
+    from app.modules.finance.service import compute_goal_projection
     from app.modules.growth.models import BookRecord, EnglishLog
     from app.modules.career.models import CFRatingLog
     from app.modules.travel.models import Trip
@@ -387,6 +388,21 @@ async def _load_user_context(session: AsyncSession) -> str:
             lines.append(f"  → 최근 {len(asset_rows)}개월 자산 변화: {trend}만원")
     else:
         lines.append("- 자산: 기록 없음")
+
+    # 자산 목표 (목표 금액·달성일 설정 시 진행률·필요 저축액 계산)
+    goal_row = (await session.execute(select(FinanceGoal))).scalar_one_or_none()
+    if goal_row and goal_row.target_amount and goal_row.target_date and asset:
+        progress_pct, months_remaining, required, achieved = compute_goal_projection(
+            asset.total_assets, goal_row.target_amount, goal_row.target_date,
+            goal_row.expected_annual_return_rate, today,
+        )
+        if achieved:
+            lines.append(f"- 자산 목표: {goal_row.target_amount:,}만원 달성 완료 🎉")
+        else:
+            lines.append(
+                f"- 자산 목표: {goal_row.target_amount:,}만원 ({goal_row.target_date}까지, 진행률 {progress_pct}%) "
+                f"→ 예상 수익률 {goal_row.expected_annual_return_rate}% 반영 시 매달 {required:,}만원 저축 필요"
+            )
 
     # 독서 현황 (읽는 중 전체 + 예정 최대 3권 + 올해 완독 + 평점)
     book_rows = (await session.execute(select(BookRecord))).scalars().all()
@@ -1166,6 +1182,7 @@ async def generate_weekly_report(session: AsyncSession) -> str:
 **재테크**
 - 총 자산: {f"{finance.latest_total_assets:,}만원" if finance and finance.latest_total_assets else "N/A"}
 - 최근 3개월 평균 저축률: {fmt(finance.avg_savings_rate if finance else None, "%")}
+- 자산 목표 진행률: {f"{finance.goal_progress_pct}% (목표 {finance.goal_target_amount:,}만원)" if finance and finance.goal_target_amount else "목표 미설정"}
 
 **건강**
 - 이번 주 운동: {fmt(health.exercise_days_this_week if health else None, "일")} / 총 {fmt(health.total_exercise_minutes_this_week if health else None, "분")}
