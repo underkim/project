@@ -369,6 +369,7 @@ async def test_get_goal_default_is_empty(auth_client):
     data = resp.json()
     assert data["target_amount"] is None
     assert data["achieved"] is False
+    assert data["scenarios"] == []
 
 
 @pytest.mark.asyncio
@@ -392,6 +393,25 @@ async def test_update_and_get_goal(auth_client):
     get_resp = await auth_client.get("/api/v1/finance/goal")
     assert get_resp.status_code == 200
     assert get_resp.json()["target_amount"] == 10000
+
+
+@pytest.mark.asyncio
+async def test_goal_scenarios_are_monotonically_decreasing(auth_client):
+    """수익률이 높은 시나리오일수록 필요 월 저축액이 작거나 같아야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-01-01", "total_assets": 1000,
+        "monthly_income": 300, "monthly_expense": 200,
+    })
+    resp = await auth_client.put("/api/v1/finance/goal", json={
+        "target_amount": 5000, "target_date": "2031-01-01",
+    })
+    assert resp.status_code == 200
+    scenarios = resp.json()["scenarios"]
+    assert len(scenarios) == 5
+    rates = [s["annual_return_rate"] for s in scenarios]
+    assert rates == sorted(rates)
+    requireds = [s["required_monthly_saving"] for s in scenarios]
+    assert requireds == sorted(requireds, reverse=True)
 
 
 @pytest.mark.asyncio

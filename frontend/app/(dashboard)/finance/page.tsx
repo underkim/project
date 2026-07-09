@@ -489,6 +489,33 @@ export default function FinancePage() {
         </div>
       </div>
 
+      {/* 수익률별 필요 저축액 비교 (투자로 목표를 앞당기는 방안) */}
+      {goal?.target_amount != null && !goal.achieved && goal.scenarios.length > 0 && (
+        <div className="border border-slate-100 rounded-xl p-5">
+          <p className="text-xs font-medium text-slate-500 mb-3 uppercase tracking-wide">
+            연 수익률별 필요 월 저축액
+          </p>
+          <div className="grid grid-cols-5 gap-2">
+            {goal.scenarios.map(s => (
+              <div
+                key={s.annual_return_rate}
+                className={`text-center rounded-lg px-2 py-2.5 ${
+                  s.annual_return_rate === goal.expected_annual_return_rate ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-700'
+                }`}
+              >
+                <p className={`text-[10px] ${s.annual_return_rate === goal.expected_annual_return_rate ? 'text-slate-300' : 'text-slate-400'}`}>
+                  연 {s.annual_return_rate}%
+                </p>
+                <p className="text-sm font-semibold mt-0.5">{s.required_monthly_saving.toLocaleString()}만</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-3">
+            저축만 할 때(연 0%)와 투자할 때 필요한 월 저축액을 비교합니다. 수익률이 높을수록 같은 목표에 필요한 저축액이 줄어듭니다.
+          </p>
+        </div>
+      )}
+
       {/* 자산 추이 차트 */}
       {chartData.length >= 2 && (
         <div className="border border-slate-100 rounded-xl p-5">

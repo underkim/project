@@ -72,6 +72,11 @@ class FinanceGoalUpdate(BaseModel):
         return v
 
 
+class GoalScenario(BaseModel):
+    annual_return_rate: float
+    required_monthly_saving: int  # 만원
+
+
 class FinanceGoalResponse(BaseModel):
     target_amount: int | None
     target_date: date | None
@@ -81,5 +86,7 @@ class FinanceGoalResponse(BaseModel):
     months_remaining: int | None = None
     required_monthly_saving: int | None = None  # 만원, 예상 수익률 반영
     achieved: bool = False
+    # 수익률별 필요 월 저축액 비교 (목표 미설정 시 빈 배열) — "저축만" vs "투자 시" 비교용
+    scenarios: list[GoalScenario] = []
 
     model_config = {"from_attributes": True}

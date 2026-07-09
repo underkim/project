@@ -12,7 +12,10 @@ from app.modules.finance.schemas import (
     FinanceGoalResponse,
     FinanceGoalUpdate,
     FinanceSummaryResponse,
+    GoalScenario,
 )
+
+SCENARIO_RATES = [0.0, 3.0, 5.0, 7.0, 10.0]
 
 
 def _to_response(record: AssetRecord) -> AssetRecordResponse:
@@ -169,9 +172,19 @@ async def get_goal(session: AsyncSession) -> FinanceGoalResponse:
     rate = goal.expected_annual_return_rate if goal else 0.0
 
     latest_assets = await _get_latest_assets(session)
+    today = date.today()
     progress_pct, months_remaining, required, achieved = compute_goal_projection(
-        latest_assets, target_amount, target_date, rate, date.today()
+        latest_assets, target_amount, target_date, rate, today
     )
+
+    scenarios: list[GoalScenario] = []
+    if target_amount is not None and target_date is not None and latest_assets is not None:
+        for scenario_rate in SCENARIO_RATES:
+            _, _, scenario_required, _ = compute_goal_projection(
+                latest_assets, target_amount, target_date, scenario_rate, today
+            )
+            scenarios.append(GoalScenario(annual_return_rate=scenario_rate, required_monthly_saving=scenario_required))
+
     return FinanceGoalResponse(
         target_amount=target_amount,
         target_date=target_date,
@@ -180,6 +193,7 @@ async def get_goal(session: AsyncSession) -> FinanceGoalResponse:
         months_remaining=months_remaining,
         required_monthly_saving=required,
         achieved=achieved,
+        scenarios=scenarios,
     )
 
 

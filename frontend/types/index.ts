@@ -57,6 +57,11 @@ export interface FinanceSummaryResponse {
   records: AssetRecordResponse[];
 }
 
+export interface GoalScenario {
+  annual_return_rate: number;
+  required_monthly_saving: number;
+}
+
 export interface FinanceGoalResponse {
   target_amount: number | null;
   target_date: string | null;
@@ -65,6 +70,7 @@ export interface FinanceGoalResponse {
   months_remaining: number | null;
   required_monthly_saving: number | null;
   achieved: boolean;
+  scenarios: GoalScenario[];
 }
 
 // Health
