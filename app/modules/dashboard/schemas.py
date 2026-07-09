@@ -24,6 +24,8 @@ class FinanceSnapshot(BaseModel):
     latest_total_assets: int | None
     avg_savings_rate: float | None
     asset_change: int | None = None
+    goal_target_amount: int | None = None
+    goal_progress_pct: float | None = None
 
 
 class HealthSnapshot(BaseModel):

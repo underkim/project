@@ -185,6 +185,7 @@ export default function HelpPage() {
           <FeatureItem text="자산 기록을 날짜별로 추가·수정·삭제할 수 있습니다." />
           <FeatureItem text="저축률 = (저축금액 / 소득) × 100. 입력 시 자동 계산됩니다." />
           <FeatureItem text="최근 3개월 평균 저축률과 최신 총자산을 요약에서 확인하세요." />
+          <FeatureItem text="목표 금액·달성일·예상 연 수익률을 설정하면, 복리 효과를 반영한 필요 월 저축액을 계산해줍니다." />
           <FeatureItem text="CSV 내보내기로 전체 기록을 다운로드할 수 있습니다." />
         </ul>
       </div>

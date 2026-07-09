@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { showToast } from '@/lib/toast';
 import type {
-  RoadmapResponse, RoadmapItemResponse, CategoryResponse, FinanceSummaryResponse, AssetRecordResponse,
+  RoadmapResponse, RoadmapItemResponse, CategoryResponse, FinanceSummaryResponse, AssetRecordResponse, FinanceGoalResponse,
   ExerciseLogResponse, SleepLogResponse, HealthSummaryResponse,
   BookRecordResponse, EnglishLogResponse, GrowthSummaryResponse,
   CareerSettingsResponse, CFRatingLogResponse,
@@ -109,6 +109,12 @@ export const financeApi = {
   deleteRecord: async (id: number): Promise<void> => {
     await client.delete(`/api/v1/finance/records/${id}`);
   },
+  getGoal: async (): Promise<FinanceGoalResponse> =>
+    (await client.get('/api/v1/finance/goal')).data,
+  updateGoal: async (data: Partial<{
+    target_amount: number; target_date: string; expected_annual_return_rate: number;
+  }>): Promise<FinanceGoalResponse> =>
+    (await client.put('/api/v1/finance/goal', data)).data,
 };
 
 export const healthApi = {

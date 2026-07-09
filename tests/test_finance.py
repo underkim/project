@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
-from app.modules.finance.schemas import AssetRecordCreate, AssetRecordUpdate
-from app.modules.finance.service import _to_response
+from app.modules.finance.schemas import AssetRecordCreate, AssetRecordUpdate, FinanceGoalUpdate
+from app.modules.finance.service import _to_response, compute_goal_projection
 from app.modules.finance.models import AssetRecord
 from datetime import date
 
@@ -308,3 +308,120 @@ async def test_finance_summary_single_record_asset_change_none(auth_client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["asset_change"] is None
+
+
+# --- 재테크 목표(finance goal) ---
+
+def test_compute_goal_projection_no_goal_returns_none():
+    result = compute_goal_projection(1000, None, None, 0.0, date(2026, 1, 1))
+    assert result == (None, None, None, False)
+
+
+def test_compute_goal_projection_already_achieved():
+    progress, months, required, achieved = compute_goal_projection(
+        12000, 10000, date(2027, 1, 1), 5.0, date(2026, 1, 1)
+    )
+    assert achieved is True
+    assert progress == 100.0
+    assert required == 0
+
+
+def test_compute_goal_projection_zero_rate_is_linear():
+    # 연 수익률 0%면 단순히 (목표 - 현재) / 남은 개월
+    progress, months, required, achieved = compute_goal_projection(
+        0, 1200, date(2027, 1, 1), 0.0, date(2026, 1, 1)
+    )
+    assert achieved is False
+    assert months == 12
+    assert required == 100  # 1200 / 12
+
+
+def test_compute_goal_projection_higher_return_rate_lowers_required_saving():
+    # 예상 수익률이 높을수록 월 필요 저축액이 줄어들어야 한다 (복리 효과 반영)
+    _, _, required_no_rate, _ = compute_goal_projection(
+        1000, 5000, date(2031, 1, 1), 0.0, date(2026, 1, 1)
+    )
+    _, _, required_with_rate, _ = compute_goal_projection(
+        1000, 5000, date(2031, 1, 1), 6.0, date(2026, 1, 1)
+    )
+    assert required_with_rate < required_no_rate
+
+
+def test_finance_goal_routes_registered(app):
+    routes = {route.path for route in app.routes}
+    assert "/api/v1/finance/goal" in routes
+
+
+def test_finance_goal_update_schema_rejects_non_positive_amount():
+    with pytest.raises(ValidationError):
+        FinanceGoalUpdate(target_amount=0)
+
+
+def test_finance_goal_update_schema_rejects_negative_rate():
+    with pytest.raises(ValidationError):
+        FinanceGoalUpdate(expected_annual_return_rate=-1.0)
+
+
+@pytest.mark.asyncio
+async def test_get_goal_default_is_empty(auth_client):
+    resp = await auth_client.get("/api/v1/finance/goal")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["target_amount"] is None
+    assert data["achieved"] is False
+    assert data["scenarios"] == []
+
+
+@pytest.mark.asyncio
+async def test_update_and_get_goal(auth_client):
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-10-01", "total_assets": 2000,
+        "monthly_income": 300, "monthly_expense": 200,
+    })
+    update = await auth_client.put("/api/v1/finance/goal", json={
+        "target_amount": 10000,
+        "target_date": "2030-01-01",
+        "expected_annual_return_rate": 4.0,
+    })
+    assert update.status_code == 200
+    data = update.json()
+    assert data["target_amount"] == 10000
+    assert data["progress_pct"] == 20.0  # 2000 / 10000
+    assert data["required_monthly_saving"] is not None
+    assert data["achieved"] is False
+
+    get_resp = await auth_client.get("/api/v1/finance/goal")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["target_amount"] == 10000
+
+
+@pytest.mark.asyncio
+async def test_goal_scenarios_are_monotonically_decreasing(auth_client):
+    """수익률이 높은 시나리오일수록 필요 월 저축액이 작거나 같아야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-01-01", "total_assets": 1000,
+        "monthly_income": 300, "monthly_expense": 200,
+    })
+    resp = await auth_client.put("/api/v1/finance/goal", json={
+        "target_amount": 5000, "target_date": "2031-01-01",
+    })
+    assert resp.status_code == 200
+    scenarios = resp.json()["scenarios"]
+    assert len(scenarios) == 5
+    rates = [s["annual_return_rate"] for s in scenarios]
+    assert rates == sorted(rates)
+    requireds = [s["required_monthly_saving"] for s in scenarios]
+    assert requireds == sorted(requireds, reverse=True)
+
+
+@pytest.mark.asyncio
+async def test_update_goal_partial_keeps_existing_fields(auth_client):
+    await auth_client.put("/api/v1/finance/goal", json={
+        "target_amount": 5000, "target_date": "2028-01-01", "expected_annual_return_rate": 3.0,
+    })
+    resp = await auth_client.put("/api/v1/finance/goal", json={"target_amount": 8000})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["target_amount"] == 8000
+    assert data["target_date"] == "2028-01-01"
+    assert data["expected_annual_return_rate"] == 3.0

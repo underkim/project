@@ -13,11 +13,11 @@ import { GOAL_CHANGED_EVENT } from '@/lib/goals';
 import type { OverviewResponse } from '@/types';
 
 // 로컬 목표값(localStorage)을 한 번에 읽는다. SSR 가드 포함.
+// 자산 목표는 백엔드(finance_goal, overview.finance.goal_*)로 이전되어 여기서 다루지 않는다.
 function readLocalGoals() {
-  if (typeof window === 'undefined') return { asset: 0, book: 0, eng: 0, cf: 0 };
+  if (typeof window === 'undefined') return { book: 0, eng: 0, cf: 0 };
   const now = new Date();
   return {
-    asset: parseInt(localStorage.getItem('asset_goal') ?? '0', 10) || 0,
     book: parseInt(localStorage.getItem(`book_goal_${now.getFullYear()}`) ?? '0', 10) || 0,
     eng: parseInt(localStorage.getItem(`eng_goal_${now.getFullYear()}_${now.getMonth() + 1}`) ?? '0', 10) || 0,
     cf: parseInt(localStorage.getItem('cf_rating_goal') ?? '0', 10) || 0,
@@ -217,7 +217,7 @@ export default function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [goals, setGoals] = useState(readLocalGoals);
-  const { asset: assetGoal, book: bookGoal, eng: engGoal, cf: cfGoal } = goals;
+  const { book: bookGoal, eng: engGoal, cf: cfGoal } = goals;
 
   // 모듈 페이지에서 목표를 바꾸면(focus 복귀 또는 커스텀 이벤트) 로컬 목표만 다시 읽는다.
   // overview API는 재호출하지 않는다 (로컬 값만 변경되었으므로).
@@ -537,20 +537,18 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-            {assetGoal > 0 && finance?.latest_total_assets != null && (
+            {finance?.goal_target_amount != null && finance.goal_progress_pct != null && (
               <div>
                 <div className="flex justify-between text-xs text-slate-400 mb-1.5">
                   <span>목표 달성률</span>
-                  <span className="font-medium text-slate-700">
-                    {Math.min(100, Math.round((finance.latest_total_assets / assetGoal) * 100))}%
-                  </span>
+                  <span className="font-medium text-slate-700">{finance.goal_progress_pct}%</span>
                 </div>
                 <ProgressBar
-                  value={finance.latest_total_assets}
-                  max={assetGoal}
+                  value={finance.goal_progress_pct}
+                  max={100}
                   color="bg-blue-500"
                 />
-                <p className="text-[10px] text-slate-400 mt-0.5">목표 {assetGoal.toLocaleString()}만원</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">목표 {finance.goal_target_amount.toLocaleString()}만원</p>
               </div>
             )}
             {savingsRate > 0 && (
