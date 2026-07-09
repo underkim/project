@@ -9,7 +9,7 @@ import {
   ReferenceLine, Legend,
 } from 'recharts';
 import { financeApi, exportApi } from '@/lib/api';
-import type { AssetRecordResponse } from '@/types';
+import type { AssetRecordResponse, FinanceGoalResponse } from '@/types';
 import { Trash2, Download, TrendingUp, TrendingDown, Target, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 function DeleteConfirm({ onConfirm, onCancel, disabled }: { onConfirm: () => void; onCancel: () => void; disabled?: boolean }) {
@@ -24,7 +24,6 @@ function DeleteConfirm({ onConfirm, onCancel, disabled }: { onConfirm: () => voi
 }
 
 const PAGE = 20;
-const GOAL_KEY = 'asset_goal';
 const BUDGET_KEY = 'monthly_expense_budget';
 const SAVINGS_RATE_GOAL_KEY = 'savings_rate_goal';
 
@@ -41,12 +40,10 @@ export default function FinancePage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ record_date: '', total_assets: '', monthly_income: '', monthly_expense: '', note: '' });
-  const [assetGoal, setAssetGoal] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    return parseInt(localStorage.getItem(GOAL_KEY) ?? '0', 10) || 0;
-  });
+  const [goal, setGoal] = useState<FinanceGoalResponse | null>(null);
   const [editingGoal, setEditingGoal] = useState(false);
-  const [goalInput, setGoalInput] = useState('');
+  const [goalForm, setGoalForm] = useState({ target_amount: '', target_date: '', expected_annual_return_rate: '0' });
+  const [savingGoal, setSavingGoal] = useState(false);
   const [monthlyBudget, setMonthlyBudget] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
     return parseInt(localStorage.getItem(BUDGET_KEY) ?? '0', 10) || 0;
@@ -83,10 +80,11 @@ export default function FinancePage() {
   async function load() {
     setLoadError(false);
     try {
-      const data = await financeApi.getSummary(100);
+      const [data, goalData] = await Promise.all([financeApi.getSummary(100), financeApi.getGoal()]);
       setRecords(data.records);
       setHasMore(data.records.length === 100);
       setSummary({ latest_total_assets: data.latest_total_assets, avg_savings_rate: data.avg_savings_rate, asset_change: data.asset_change });
+      setGoal(goalData);
     } catch {
       setLoadError(true);
       showToast('데이터를 불러오지 못했습니다.', 'error');
@@ -179,10 +177,25 @@ export default function FinancePage() {
     });
   }
 
-  function saveGoal() {
-    const v = parseInt(goalInput.replace(/,/g, ''), 10);
-    if (v > 0) { localStorage.setItem(GOAL_KEY, String(v)); setAssetGoal(v); emitGoalChange(); }
-    setEditingGoal(false);
+  async function saveGoal() {
+    const amount = parseInt(goalForm.target_amount.replace(/,/g, ''), 10);
+    if (!(amount > 0) || !goalForm.target_date) return;
+    setSavingGoal(true);
+    try {
+      const updated = await financeApi.updateGoal({
+        target_amount: amount,
+        target_date: goalForm.target_date,
+        expected_annual_return_rate: Number(goalForm.expected_annual_return_rate) || 0,
+      });
+      setGoal(updated);
+      emitGoalChange();
+      setEditingGoal(false);
+      showToast('목표가 저장되었습니다');
+    } catch {
+      showToast('목표 저장에 실패했습니다.', 'error');
+    } finally {
+      setSavingGoal(false);
+    }
   }
 
   function saveBudget() {
@@ -240,10 +253,10 @@ export default function FinancePage() {
     if (recent.length === 0) return null;
     return Math.round(recent.reduce((s, r) => s + r.savings_amount, 0) / recent.length);
   })();
-  const goalRemaining = assetGoal > 0 && latest ? assetGoal - latest.total_assets : null;
-  const monthsToGoal = goalRemaining != null && goalRemaining > 0 && avgMonthlySavingsAmt && avgMonthlySavingsAmt > 0
-    ? Math.ceil(goalRemaining / avgMonthlySavingsAmt) : null;
-  const goalAchieved = goalRemaining != null && goalRemaining <= 0;
+  // 목표 대비 필요 월 저축액(백엔드, 예상 수익률 반영) vs 최근 실제 평균 저축액 비교
+  const onTrack = goal?.required_monthly_saving != null && avgMonthlySavingsAmt != null
+    ? avgMonthlySavingsAmt >= goal.required_monthly_saving
+    : null;
 
   // 3개월 연속 저축률 하락 감지
   const savingsDeclineAlert = (() => {
@@ -308,20 +321,37 @@ export default function FinancePage() {
           <div className="flex items-center justify-between mb-1.5">
             <p className="text-xs text-slate-400">총 자산 (최신)</p>
             {!editingGoal ? (
-              <button onClick={() => { setGoalInput(assetGoal > 0 ? String(assetGoal) : ''); setEditingGoal(true); }}
+              <button onClick={() => {
+                setGoalForm({
+                  target_amount: goal?.target_amount ? String(goal.target_amount) : '',
+                  target_date: goal?.target_date ?? '',
+                  expected_annual_return_rate: String(goal?.expected_annual_return_rate ?? 0),
+                });
+                setEditingGoal(true);
+              }}
                 className="flex items-center gap-1 text-[10px] text-slate-300 hover:text-slate-500 transition-colors">
                 <Target size={10} />
-                {assetGoal > 0 ? `목표 ${assetGoal.toLocaleString()}만` : '목표 설정'}
+                {goal?.target_amount ? `목표 ${goal.target_amount.toLocaleString()}만` : '목표 설정'}
               </button>
             ) : (
               <div className="flex items-center gap-1">
-                <input type="number" min="1" value={goalInput}
-                  onChange={e => setGoalInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') saveGoal(); if (e.key === 'Escape') setEditingGoal(false); }}
-                  autoFocus
-                  placeholder="만원"
+                <input type="number" min="1" value={goalForm.target_amount}
+                  onChange={e => setGoalForm({ ...goalForm, target_amount: e.target.value })}
+                  onKeyDown={e => { if (e.key === 'Escape') setEditingGoal(false); }}
+                  autoFocus placeholder="목표 만원"
                   className="w-20 border border-slate-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-slate-900" />
-                <button onClick={saveGoal} className="text-[10px] px-1.5 py-0.5 bg-slate-100 rounded hover:bg-slate-200 text-slate-600">확인</button>
+                <input type="date" value={goalForm.target_date}
+                  onChange={e => setGoalForm({ ...goalForm, target_date: e.target.value })}
+                  className="border border-slate-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-slate-900" />
+                <input type="number" min="0" step="0.1" value={goalForm.expected_annual_return_rate}
+                  onChange={e => setGoalForm({ ...goalForm, expected_annual_return_rate: e.target.value })}
+                  title="예상 연 수익률 (%)"
+                  placeholder="수익률%"
+                  className="w-16 border border-slate-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-slate-900" />
+                <button onClick={saveGoal} disabled={savingGoal} className="text-[10px] px-1.5 py-0.5 bg-slate-100 rounded hover:bg-slate-200 text-slate-600 disabled:opacity-50">
+                  {savingGoal ? <Loader2 size={9} className="animate-spin" /> : '확인'}
+                </button>
+                <button onClick={() => setEditingGoal(false)} className="text-[10px] text-slate-400 hover:text-slate-600">취소</button>
               </div>
             )}
           </div>
@@ -334,27 +364,29 @@ export default function FinancePage() {
               <span>{assetDelta >= 0 ? '+' : ''}{assetDelta.toLocaleString()}만원 (전회 대비)</span>
             </div>
           )}
-          {assetGoal > 0 && summary.latest_total_assets != null && (
+          {goal?.target_amount != null && goal.progress_pct != null && (
             <div className="mt-2">
               <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                <span>목표 달성률</span>
-                <span>{Math.min(100, Math.round((summary.latest_total_assets / assetGoal) * 100))}%</span>
+                <span>목표 달성률{goal.target_date ? ` · ${goal.target_date}까지` : ''}</span>
+                <span>{goal.progress_pct}%</span>
               </div>
               <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.round((summary.latest_total_assets / assetGoal) * 100))}%` }} />
+                  style={{ width: `${Math.min(100, goal.progress_pct)}%` }} />
               </div>
-              {goalAchieved ? (
+              {goal.achieved ? (
                 <p className="text-[10px] text-emerald-600 font-medium mt-1">🎉 목표 달성!</p>
-              ) : monthsToGoal != null ? (
+              ) : goal.required_monthly_saving != null && (
                 <p className="text-[10px] text-slate-400 mt-1">
-                  현재 속도로 약{' '}
-                  {monthsToGoal >= 12
-                    ? `${Math.floor(monthsToGoal / 12)}년${monthsToGoal % 12 > 0 ? ` ${monthsToGoal % 12}개월` : ''}`
-                    : `${monthsToGoal}개월`}{' '}
-                  후 달성 예상
+                  {goal.expected_annual_return_rate > 0 ? `연 ${goal.expected_annual_return_rate}% 수익률 반영 시 ` : ''}
+                  매달 <span className="font-medium text-slate-600">{goal.required_monthly_saving.toLocaleString()}만원</span> 저축 필요
+                  {onTrack != null && (
+                    <span className={onTrack ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'}>
+                      {' '}· {onTrack ? '현재 페이스로 달성 가능' : `현재 평균 ${avgMonthlySavingsAmt?.toLocaleString()}만원으로는 부족`}
+                    </span>
+                  )}
                 </p>
-              ) : null}
+              )}
             </div>
           )}
         </div>

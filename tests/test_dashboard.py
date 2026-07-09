@@ -187,6 +187,23 @@ async def test_overview_health_exercise_streak_reflected(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_overview_finance_goal_reflected(auth_client):
+    """자산 목표 설정 후 overview.finance.goal_* 필드가 반영되어야 한다."""
+    await auth_client.post("/api/v1/finance/records", json={
+        "record_date": "2026-06-01", "total_assets": 2000,
+        "monthly_income": 300, "monthly_expense": 200,
+    })
+    await auth_client.put("/api/v1/finance/goal", json={
+        "target_amount": 10000, "target_date": "2030-01-01", "expected_annual_return_rate": 5.0,
+    })
+    resp = await auth_client.get("/api/v1/dashboard/overview")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["finance"]["goal_target_amount"] == 10000
+    assert data["finance"]["goal_progress_pct"] == 20.0
+
+
+@pytest.mark.asyncio
 async def test_overview_finance_asset_change_reflected(auth_client):
     """2개 재테크 기록 후 overview.finance.asset_change가 반영되어야 한다."""
     await auth_client.post("/api/v1/finance/records", json={

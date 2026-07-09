@@ -11,6 +11,8 @@ from app.modules.finance.schemas import (
     AssetRecordCreate,
     AssetRecordResponse,
     AssetRecordUpdate,
+    FinanceGoalResponse,
+    FinanceGoalUpdate,
     FinanceSummaryResponse,
 )
 
@@ -26,6 +28,20 @@ async def get_summary(
     records_offset: int = Query(default=0, ge=0),
 ):
     return await service.get_summary(session, records_limit=records_limit, records_offset=records_offset)
+
+
+@router.get("/goal", response_model=FinanceGoalResponse)
+async def get_goal(_: CurrentUser, session: AsyncSession = Depends(get_db)):
+    return await service.get_goal(session)
+
+
+@router.put("/goal", response_model=FinanceGoalResponse)
+async def update_goal(
+    data: FinanceGoalUpdate,
+    _: CurrentUser,
+    session: AsyncSession = Depends(get_db),
+):
+    return await service.update_goal(session, data)
 
 
 @router.get("/records", response_model=list[AssetRecordResponse])

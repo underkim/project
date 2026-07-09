@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,10 +65,13 @@ async def _planner_snapshot(session: AsyncSession) -> PlannerSnapshot | None:
 async def _finance_snapshot(session: AsyncSession) -> FinanceSnapshot | None:
     try:
         summary = await finance_svc.get_summary(session, records_limit=0)
+        goal = await finance_svc.get_goal(session)
         return FinanceSnapshot(
             latest_total_assets=summary.latest_total_assets,
             avg_savings_rate=summary.avg_savings_rate,
             asset_change=summary.asset_change,
+            goal_target_amount=goal.target_amount,
+            goal_progress_pct=goal.progress_pct,
         )
     except Exception:
         return None
@@ -139,29 +141,30 @@ async def _travel_snapshot(session: AsyncSession) -> TravelSnapshot | None:
 
 
 async def get_overview(session: AsyncSession) -> OverviewResponse:
-    # ADR-0002: 한 모듈 실패해도 나머지 응답 반환
+    # ADR-0002: 한 모듈 실패해도 나머지 응답 반환.
+    # 요청당 세션은 1개뿐이라(core/database.py get_db) 여러 모듈을 asyncio.gather로 동시에
+    # 조회하면 하나의 AsyncSession을 여러 코루틴이 동시에 사용하게 되어 위험하다
+    # (SQLAlchemy AsyncSession은 동시 사용을 지원하지 않음). 순차 실행으로 안전하게 처리한다.
     _MODULES = ["planner", "finance", "health", "growth", "career", "travel"]
-    results = await asyncio.gather(
-        _planner_snapshot(session),
-        _finance_snapshot(session),
-        _health_snapshot(session),
-        _growth_snapshot(session),
-        _career_snapshot(session),
-        _travel_snapshot(session),
-        return_exceptions=True,
-    )
+    _SNAPSHOT_FNS = [
+        _planner_snapshot, _finance_snapshot, _health_snapshot,
+        _growth_snapshot, _career_snapshot, _travel_snapshot,
+    ]
 
     failed_modules: list[str] = []
     snapshots: list = []
-    for module_name, result in zip(_MODULES, results):
-        if isinstance(result, Exception):
+    for module_name, snapshot_fn in zip(_MODULES, _SNAPSHOT_FNS):
+        try:
+            result = await snapshot_fn(session)
+        except Exception as exc:
             logger.error(
                 "dashboard snapshot failed: module=%s error_type=%s",
-                module_name, type(result).__name__,
+                module_name, type(exc).__name__,
             )
             failed_modules.append(module_name)
             snapshots.append(None)
-        elif result is None:
+            continue
+        if result is None:
             failed_modules.append(module_name)
             snapshots.append(None)
         else:

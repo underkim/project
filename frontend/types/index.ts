@@ -57,6 +57,16 @@ export interface FinanceSummaryResponse {
   records: AssetRecordResponse[];
 }
 
+export interface FinanceGoalResponse {
+  target_amount: number | null;
+  target_date: string | null;
+  expected_annual_return_rate: number;
+  progress_pct: number | null;
+  months_remaining: number | null;
+  required_monthly_saving: number | null;
+  achieved: boolean;
+}
+
 // Health
 export interface ExerciseLogResponse {
   id: number;
@@ -157,6 +167,8 @@ export interface FinanceSnapshot {
   latest_total_assets: number | null;
   avg_savings_rate: number | null;
   asset_change: number | null;
+  goal_target_amount: number | null;
+  goal_progress_pct: number | null;
 }
 
 export interface HealthSnapshot {
