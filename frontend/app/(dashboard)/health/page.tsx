@@ -1397,6 +1397,7 @@ export default function HealthPage() {
                 <input
                   type="date"
                   value={slForm.log_date}
+                  max={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setSlForm({ ...slForm, log_date: e.target.value })}
                   className={inputCls}
                 />

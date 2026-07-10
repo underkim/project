@@ -2,6 +2,12 @@ from datetime import date
 from pydantic import BaseModel, field_validator
 
 
+def _reject_future_date(v: date) -> date:
+    if v > date.today():
+        raise ValueError("미래 날짜는 기록할 수 없습니다")
+    return v
+
+
 class ExerciseLogCreate(BaseModel):
     log_date: date
     exercise_type: str
@@ -37,6 +43,11 @@ class SleepLogCreate(BaseModel):
     sleep_hours: float
     quality: int
     note: str | None = None
+
+    @field_validator("log_date")
+    @classmethod
+    def log_date_not_future(cls, v: date) -> date:
+        return _reject_future_date(v)
 
     @field_validator("quality")
     @classmethod

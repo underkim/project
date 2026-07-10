@@ -183,7 +183,7 @@ async def test_health_returns_correct_payload(client):
 async def test_sleep_list_returns_list(auth_client):
     """수면 기록 목록이 리스트로 반환되어야 한다."""
     await auth_client.post("/api/v1/health/sleep", json={
-        "log_date": "2026-08-01", "sleep_hours": 7.5, "quality": 4,
+        "log_date": "2026-06-01", "sleep_hours": 7.5, "quality": 4,
     })
     resp = await auth_client.get("/api/v1/health/sleep")
     assert resp.status_code == 200
@@ -223,10 +223,30 @@ async def test_create_sleep_invalid_sleep_hours_returns_422(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_create_sleep_future_date_returns_422(auth_client):
+    """미래 날짜로 수면 기록을 생성하면 422여야 한다."""
+    from datetime import timedelta
+    future_date = (date.today() + timedelta(days=1)).isoformat()
+    resp = await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": future_date, "sleep_hours": 7.0, "quality": 3,
+    })
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_sleep_today_date_is_allowed(auth_client):
+    """오늘 날짜로는 정상적으로 생성돼야 한다 (미래만 거부)."""
+    resp = await auth_client.post("/api/v1/health/sleep", json={
+        "log_date": date.today().isoformat(), "sleep_hours": 7.0, "quality": 3,
+    })
+    assert resp.status_code == 201
+
+
+@pytest.mark.asyncio
 async def test_update_sleep_invalid_hours_returns_422(auth_client):
     """수면 시간을 0 또는 25로 수정하면 422여야 한다."""
     create = await auth_client.post("/api/v1/health/sleep", json={
-        "log_date": "2026-09-03", "sleep_hours": 7.0, "quality": 3,
+        "log_date": "2026-06-03", "sleep_hours": 7.0, "quality": 3,
     })
     log_id = create.json()["id"]
     resp = await auth_client.put(f"/api/v1/health/sleep/{log_id}", json={"sleep_hours": 0})
