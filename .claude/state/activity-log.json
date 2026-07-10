@@ -1,13 +1,12 @@
 {
-  "task": "Windows 데스크톱 상태 모니터 프로그램 개발 (GitHub 직접 폴링)",
-  "started_at": "2026-07-10T04:00:00Z",
-  "updated_at": "2026-07-10T04:40:00Z",
+  "task": "PostToolUse ESLint 훅 추가 (프론트엔드 편집 즉시 린트)",
+  "started_at": "2026-07-10T08:20:00Z",
+  "updated_at": "2026-07-10T09:05:00Z",
   "steps": [
-    { "label": "GitHub REST API 폴링 + 파싱 로직 작성 (github_source.py)", "status": "done" },
-    { "label": "파싱 로직 단위 테스트 (샘플 데이터)", "status": "done" },
-    { "label": "tkinter GUI 작성 (devstatus_desktop.py)", "status": "done" },
-    { "label": "Xvfb로 GUI 렌더링 검증 (샘플 데이터)", "status": "done" },
-    { "label": "README (설정·실행·PyInstaller 빌드 안내) 작성", "status": "done" },
-    { "label": "최종 커밋·푸시", "status": "done" }
+    { "label": "post-edit-eslint.sh 작성 및 단독 테스트 (정상/위반 케이스)", "status": "done" },
+    { "label": "경고만 있을 때 종료코드 0인 문제 발견 및 수정 (출력 유무로 판단)", "status": "done" },
+    { "label": ".claude/settings.json에 PostToolUse hook 등록 (사용자 확인 후)", "status": "done" },
+    { "label": "실제 세션에서 Edit 호출로 라이브 발동 확인", "status": "done" },
+    { "label": "harness 문서 갱신 + 전체 검증(pytest/tsc/eslint) + 커밋·푸시", "status": "done" }
   ]
 }
