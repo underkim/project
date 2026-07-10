@@ -30,10 +30,16 @@
 ├── settings.json                       # 권한 + hooks 등록 (아래 상세)
 ├── hooks/
 │   ├── session-start.sh                # SessionStart hook
-│   └── pre-commit-check.sh             # PreToolUse(git commit) hook
-└── skills/
-    └── new-module/
-        └── SKILL.md                    # "새 모듈 추가" 스캐폴딩 skill
+│   ├── pre-commit-check.sh             # PreToolUse(git commit) hook
+│   ├── post-edit-eslint.sh             # PostToolUse(Write|Edit) hook — prettier + eslint
+│   └── pre-push-e2e.sh                 # PreToolUse(git push) hook — Playwright e2e
+├── agents/
+│   └── life-dashboard-reviewer.md      # 프로젝트 전용 subagent
+├── skills/
+│   └── new-module/
+│       └── SKILL.md                    # "새 모듈 추가" 스캐폴딩 skill
+└── state/
+    └── activity-log.json               # 실시간 작업 체크포인트 로그
 
 .claudeignore                            # 신규 (repo root)
 ```
@@ -47,12 +53,18 @@
       "Bash(uv run pytest*)",
       "Bash(uv run alembic *)",
       "Bash(uv run uvicorn *)",
-      "Bash(npx tsc --noEmit*)"          // 신규
+      "Bash(npx tsc --noEmit*)"
     ]
   },
   "hooks": {
     "SessionStart": [ /* session-start.sh 등록 */ ],
-    "PreToolUse": [ /* pre-commit-check.sh, matcher: Bash, if: "Bash(git commit*)" */ ]
+    "PreToolUse": [
+      /* pre-commit-check.sh, matcher: Bash, if: "Bash(git commit*)" */
+      /* pre-push-e2e.sh,    matcher: Bash, if: "Bash(git push*)"   — 작성·검증 완료,
+         settings.json 등록은 self-modification 정책상 사용자의 명시적 채팅 확인 대기 중
+         (스크립트 자체는 .claude/hooks/pre-push-e2e.sh에 존재하며 단독 실행 시 정상 동작함) */
+    ],
+    "PostToolUse": [ /* post-edit-eslint.sh, matcher: Write|Edit */ ]
   }
 }
 ```
@@ -109,6 +121,55 @@
   Edit 호출로 실제 세션에서 훅이 라이브로 발동해 경고가 대화에 그대로 주입되는 것까지
   확인 후 원복.
 
+### Prettier (`frontend/.prettierrc.json`, `.prettierignore`)
+
+- 기존 코드 스타일을 샘플링해(`lib/api.ts` 기준 single-quote 63 vs double-quote 1) 설정 도출:
+  `singleQuote: true`, `semi: true`, `trailingComma: "all"`, `printWidth: 100`.
+- 도입 시 전체 코드베이스에 `npx prettier --write .` 1회 실행 후 커밋 — 부작용으로 `useEffect`
+  1-라인 콜백이 여러 줄로 재포맷되면서 그 바로 다음 줄을 겨냥하던
+  `eslint-disable-next-line react-hooks/set-state-in-effect` 주석 3곳이 무효화됨(문제는
+  `npx eslint .`를 전체 재실행해서 발견 — 처음엔 `tail -20`으로 앞부분 출력이 잘려 놓칠
+  뻔함). 각 disable 주석을 "다음 줄"이 아니라 실제 위반 호출 바로 앞으로 옮겨 재포맷에
+  안전하도록 수정.
+- `package.json`에 `format`/`format:check` 스크립트 추가.
+- `post-edit-eslint.sh`에 통합: eslint 실행 전에 `npx prettier --write "$rel"`을 먼저
+  실행 — Write/Edit로 만들어진 파일이 항상 커밋 전에 이미 포맷돼 있도록.
+
+### `.claude/hooks/pre-push-e2e.sh`
+
+- 이벤트: `PreToolUse`, matcher `Bash`, `if: "Bash(git push*)"` (**settings.json 등록은
+  아직 대기 중** — 아래 참고).
+- 동작: 디스포저블 SQLite DB(`.e2e-push-check.db`) + 임시 포트(8911)의 백엔드를 띄우고
+  `/api/v1/health`가 응답할 때까지 최대 30초 대기한 뒤 `npm run e2e`(Playwright, 30개
+  테스트)를 실행. 실패하면 실패 로그 뒷부분을 담아 `permissionDecision: "deny"`로 push
+  자체를 차단. `ci.yml`의 `e2e` job과 동일한 조건을 push 시점으로 당겨온 것.
+- **이 세션 샌드박스 한정 이슈**: 이 환경에 사전 설치된 Chromium(`/opt/pw-browsers/`)의
+  빌드 버전(1194)이 설치된 `@playwright/test` 버전이 기대하는 버전(1228)과 달라 기본
+  설정으로는 `Executable doesn't exist` 오류가 남. 공식 지원 env var 오버라이드는 없어서
+  (`playwright-core` 소스에서 확인), 커밋되는 `frontend/playwright.config.ts`(실제
+  CI에서도 쓰는 공유 설정)는 건드리지 않고, 훅 실행 중에만 임시 파일
+  (`frontend/.pw-sandbox.config.ts`, 실행 후 즉시 삭제)을 만들어 원본 설정을 그대로
+  펼친 뒤 `use.launchOptions.executablePath`만 `/opt/pw-browsers/chromium`으로 덮어써서
+  실행 — 이 경로가 없는 환경(실제 CI 등)에서는 오버라이드 자체를 건너뛰고 평소대로
+  `npm run e2e`를 실행하므로 다른 환경에 영향 없음.
+- 검증: `.claude/hooks/pre-push-e2e.sh`를 settings.json에 등록하지 않은 상태로 독립
+  실행(`bash .claude/hooks/pre-push-e2e.sh`) → 30개 e2e 테스트 전부 통과 확인.
+- **settings.json 등록 대기 사유**: 이 하네스는 `.claude/settings.json`이나 hook
+  스크립트를 고치는 모든 변경에 대해, 자동 시스템 메시지(Stop hook 알림, 세션 재개
+  알림 등)가 아니라 **채팅상의 명시적인 사용자 확인**을 요구하는 자체 규칙을 이번
+  세션 내내 지켜왔다. 스크립트 작성·검증은 끝났지만 등록 자체는 이 규칙에 따라
+  보류 중이다 (`git stash`에 보관: `pending-confirmation: pre-push-e2e hook registration
+  in settings.json`).
+
+### `.claude/agents/life-dashboard-reviewer.md`
+
+프로젝트 전용 subagent. CLAUDE.md의 "자주 발생하는 실수 방지" 표에 있는 항목들
+(async lazy loading, `ai/service.py`의 트랜잭션 중첩 금지·`flush()` 규칙, 모듈 간 경계,
+마이그레이션 dialect 가드·RLS, cascade delete)을 코드 리뷰 관점에서 다시 확인하도록
+설계됨. `tools: Read, Grep, Glob, Bash`만 부여(읽기 전용 — 코드를 직접 고치지 않고
+findings만 보고). `app/modules/`, `app/core/`, `alembic/versions/` 아래 변경 후
+커밋 전에 사용 권장.
+
 ### `.claudeignore`
 
 `.env`, `*.db`, `.venv/`, `__pycache__/`, `frontend/node_modules/`,
@@ -127,16 +188,17 @@ main.py 등록) → 마이그레이션(dialect 가드, RLS 포함) → 테스트
 |---|---|---|
 | `uv run pytest` | `pre-commit-check.sh` + `ci.yml` `test` job | 커밋 시 (로컬/세션) + push/PR 시 (CI) |
 | `npx tsc --noEmit` | `pre-commit-check.sh` + `ci.yml` `typecheck` job | 동일 |
-| Playwright e2e | `ci.yml` `e2e` job만 | push/PR 시 (CI만 — 로컬 훅에는 미포함, 실행 시간이 길어 커밋마다 돌리기엔 과함) |
+| `npx prettier --write` + `npx eslint --fix` | `post-edit-eslint.sh` (파일 단위) | Write/Edit 직후 |
+| Playwright e2e | `pre-push-e2e.sh`(등록 대기) + `ci.yml` `e2e` job | push 시 (로컬 훅, settings.json 등록 완료 후) + push/PR 시 (CI) |
 
-## 커버되지 않은 것 (의도적으로 보류)
+## 커버되지 않은 것 / 대기 중인 것
 
-- **PostToolUse 자동 포맷팅(prettier/black 등)** — 이 프로젝트에 별도 formatter 설정이
-  없어서 구성하지 않음. 도입 시 아래 eslint 훅과 동일한 패턴으로 추가 가능.
-- **git push 시점 검사** — pre-commit 훅으로 이미 커버되어 중복 실행 방지 차원에서 생략.
-- **subagent 정의(.claude/agents/)** — 이 프로젝트 규모(단일 사용자 포트폴리오)에서는
-  범용 Explore/Plan 등 기본 subagent로 충분하다고 판단, 프로젝트 전용 subagent는 아직
-  만들지 않음.
+- **`pre-push-e2e.sh`의 settings.json 등록** — 스크립트 작성·독립 검증(30개 e2e 통과)까지
+  끝났지만, self-modification 확인 정책에 따라 채팅상의 명시적 사용자 확인을 기다리는 중.
+  등록되기 전까지는 이 훅이 실제 `git push` 시 동작하지 않는다(파일만 존재).
+- **backend/`ai/service.py` 등의 정적 분석 자동화** — `life-dashboard-reviewer` subagent가
+  이 역할을 하지만, 훅처럼 자동 트리거되지 않고 명시적으로 호출해야 함 (Task 도구로
+  subagent를 부르거나, "life-dashboard-reviewer로 리뷰해줘" 같은 요청 시).
 
 ## 업데이트: 라이브 개발 현황 대시보드 (`devstatus` 모듈)
 
