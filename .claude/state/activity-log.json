@@ -9,7 +9,7 @@
     { "label": "TASK-054: 여행 맛집 중복 감지 (+ SQLite FK cascade 버그 발견·수정)", "status": "done" },
     { "label": "TASK-055: 여행 체크리스트 완료 시 강조 표시", "status": "done" },
     { "label": "TASK-056: 재테크 요약 stale/empty 상태 (latest_record_date 추가)", "status": "done" },
-    { "label": "TASK-057: 건강 수면 시간 검증", "status": "pending" },
+    { "label": "TASK-057: 건강 수면 미래 날짜 거부", "status": "done" },
     { "label": "TASK-058: 자기계발 독서 진행률 검증", "status": "pending" },
     { "label": "TASK-059: 커리어 평점 추이 empty/error 상태", "status": "pending" },
     { "label": "TASK-060: 대시보드 모듈 카드 딥링크 안정성", "status": "pending" }
