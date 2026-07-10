@@ -20,6 +20,27 @@ def test_book_update_rating_must_be_1_to_5():
         BookRecordUpdate(rating=6)
 
 
+def test_book_start_date_cannot_be_future():
+    from datetime import date, timedelta
+    future = date.today() + timedelta(days=1)
+    with pytest.raises(ValidationError):
+        BookRecordCreate(title="책", start_date=future)
+
+
+def test_book_end_date_cannot_be_future():
+    from datetime import date, timedelta
+    future = date.today() + timedelta(days=1)
+    with pytest.raises(ValidationError):
+        BookRecordCreate(title="책", start_date=date.today(), end_date=future)
+
+
+def test_book_update_date_cannot_be_future():
+    from datetime import date, timedelta
+    future = date.today() + timedelta(days=1)
+    with pytest.raises(ValidationError):
+        BookRecordUpdate(end_date=future)
+
+
 def test_book_title_cannot_be_empty():
     with pytest.raises(ValidationError):
         BookRecordCreate(title="   ")

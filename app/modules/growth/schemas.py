@@ -10,6 +10,12 @@ class BookStatus(str, Enum):
     wishlist = "wishlist"
 
 
+def _reject_future_date(v: date | None) -> date | None:
+    if v is not None and v > date.today():
+        raise ValueError("미래 날짜는 기록할 수 없습니다")
+    return v
+
+
 class BookRecordCreate(BaseModel):
     title: str
     author: str | None = None
@@ -32,6 +38,11 @@ class BookRecordCreate(BaseModel):
         if v is not None and not 1 <= v <= 5:
             raise ValueError("평점은 1~5 사이여야 합니다")
         return v
+
+    @field_validator("start_date", "end_date")
+    @classmethod
+    def date_not_future(cls, v: date | None) -> date | None:
+        return _reject_future_date(v)
 
     @model_validator(mode="after")
     def end_after_start(self) -> "BookRecordCreate":
@@ -63,6 +74,11 @@ class BookRecordUpdate(BaseModel):
         if v is not None and not 1 <= v <= 5:
             raise ValueError("평점은 1~5 사이여야 합니다")
         return v
+
+    @field_validator("start_date", "end_date")
+    @classmethod
+    def date_not_future(cls, v: date | None) -> date | None:
+        return _reject_future_date(v)
 
     @model_validator(mode="after")
     def end_after_start(self) -> "BookRecordUpdate":

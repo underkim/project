@@ -1022,6 +1022,7 @@ export default function GrowthPage() {
                 <input
                   type="date"
                   value={bookForm.start_date}
+                  max={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setBookForm({ ...bookForm, start_date: e.target.value })}
                   className={inputCls}
                 />
@@ -1032,6 +1033,7 @@ export default function GrowthPage() {
                   type="date"
                   value={bookForm.end_date}
                   min={bookForm.start_date || undefined}
+                  max={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setBookForm({ ...bookForm, end_date: e.target.value })}
                   className={inputCls}
                 />
@@ -1132,6 +1134,7 @@ export default function GrowthPage() {
                     <input
                       type="date"
                       value={editingBook.start_date}
+                      max={new Date().toISOString().slice(0, 10)}
                       onChange={(e) =>
                         setEditingBook({ ...editingBook, start_date: e.target.value })
                       }
@@ -1141,6 +1144,7 @@ export default function GrowthPage() {
                       type="date"
                       value={editingBook.end_date}
                       min={editingBook.start_date || undefined}
+                      max={new Date().toISOString().slice(0, 10)}
                       onChange={(e) => setEditingBook({ ...editingBook, end_date: e.target.value })}
                       className="text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
                     />
