@@ -183,6 +183,66 @@ test.describe('여행 페이지', () => {
     await expect(page.getByText('[E2E] 돼지국밥집').first()).toBeVisible({ timeout: 10000 });
   });
 
+  test('중복된 이름의 맛집 추가 시 경고 후 확인해야 추가된다', async ({ page, request }) => {
+    const headers = await getAuthHeaders(request);
+    const tripRes = await request.post(`${API}/api/v1/travel/trips`, {
+      headers,
+      data: {
+        name: '[E2E] 맛집 중복 테스트',
+        destination: '부산',
+        start_date: '2030-04-01',
+        end_date: '2030-04-03',
+        status: 'planned',
+      },
+    });
+    expect(tripRes.ok()).toBeTruthy();
+    const trip = (await tripRes.json()) as { id: number };
+    await request.post(`${API}/api/v1/travel/trips/${trip.id}/restaurants`, {
+      headers,
+      data: { name: '[E2E] 중복맛집', cuisine: '한식' },
+    });
+
+    await page.goto('/travel');
+    const tripHeading = page.getByRole('heading', { name: '[E2E] 맛집 중복 테스트', exact: true });
+    await expect(tripHeading).toBeVisible();
+    const headerRow = tripHeading.locator(
+      'xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]',
+    );
+    const tripCard = tripHeading.locator(
+      'xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-xl")][1]',
+    );
+    page.on('console', (msg) => console.log('BROWSER:', msg.text()));
+    await headerRow.getByRole('button').last().click();
+    await tripCard.getByRole('button', { name: /^맛집\s+\d+$/ }).click();
+
+    await tripCard.getByPlaceholder('맛집 이름 *').fill('[E2E] 중복맛집');
+    console.log('=== about to click 맛집 추가 ===');
+    await tripCard.getByRole('button', { name: '맛집 추가' }).click();
+    await expect(tripCard.getByText('이미 추가된 맛집과 이름이 같습니다')).toBeVisible();
+
+    // 아직 추가되지 않아야 한다 (경고만 뜬 상태)
+    const listAfterWarning = await request.get(`${API}/api/v1/travel/trips`, { headers });
+    const tripsAfterWarning = (await listAfterWarning.json()) as Array<{
+      id: number;
+      restaurants: Array<{ name: string }>;
+    }>;
+    const tripAfterWarning = tripsAfterWarning.find((t) => t.id === trip.id);
+    expect(tripAfterWarning?.restaurants.length).toBe(1);
+
+    // "그래도 추가" 클릭 → 실제로 추가된다
+    await tripCard.getByRole('button', { name: '그래도 추가' }).click();
+    await expect
+      .poll(async () => {
+        const listRes = await request.get(`${API}/api/v1/travel/trips`, { headers });
+        const trips = (await listRes.json()) as Array<{
+          id: number;
+          restaurants: Array<{ name: string }>;
+        }>;
+        return trips.find((t) => t.id === trip.id)?.restaurants.length ?? 0;
+      })
+      .toBe(2);
+  });
+
   test('시작일이 종료일보다 늦어지면 종료일이 시작일로 자동 조정된다', async ({
     page,
     request,

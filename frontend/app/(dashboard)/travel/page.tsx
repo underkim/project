@@ -407,6 +407,7 @@ function TripCard({
   const [restCuisine, setRestCuisine] = useState('');
   const [restPickedLoc, setRestPickedLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [showRestPicker, setShowRestPicker] = useState(false);
+  const [restDuplicateConfirm, setRestDuplicateConfirm] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -426,8 +427,7 @@ function TripCard({
     onDelete(trip.id);
   }
 
-  const handleAddRestaurant = () => {
-    if (!restName.trim()) return;
+  const submitAddRestaurant = () => {
     onAddRestaurant(trip.id, {
       name: restName.trim(),
       address: restAddress.trim() || undefined,
@@ -438,6 +438,19 @@ function TripCard({
     setRestAddress('');
     setRestCuisine('');
     setRestPickedLoc(null);
+    setRestDuplicateConfirm(false);
+  };
+
+  const handleAddRestaurant = () => {
+    if (!restName.trim()) return;
+    const isDuplicate = (trip.restaurants ?? []).some(
+      (r) => r.name.trim().toLowerCase() === restName.trim().toLowerCase(),
+    );
+    if (isDuplicate && !restDuplicateConfirm) {
+      setRestDuplicateConfirm(true);
+      return;
+    }
+    submitAddRestaurant();
     setShowRestPicker(false);
   };
 
@@ -1119,7 +1132,10 @@ function TripCard({
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     value={restName}
-                    onChange={(e) => setRestName(e.target.value)}
+                    onChange={(e) => {
+                      setRestName(e.target.value);
+                      setRestDuplicateConfirm(false);
+                    }}
                     placeholder="맛집 이름 *"
                     className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
@@ -1161,20 +1177,48 @@ function TripCard({
                     }}
                   />
                 )}
-                <button
-                  onClick={handleAddRestaurant}
-                  disabled={!restName.trim() || mutatingKeys.has(`rest_add_${trip.id}`)}
-                  className="w-full py-1.5 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-40 transition-colors font-medium flex items-center justify-center gap-1"
-                >
-                  {mutatingKeys.has(`rest_add_${trip.id}`) ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin" />
-                      저장 중...
-                    </>
-                  ) : (
-                    '맛집 추가'
-                  )}
-                </button>
+                {restDuplicateConfirm ? (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                      이미 추가된 맛집과 이름이 같습니다. 그래도 추가할까요?
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={submitAddRestaurant}
+                        disabled={mutatingKeys.has(`rest_add_${trip.id}`)}
+                        className="flex-1 py-1.5 bg-amber-500 text-white text-xs rounded-lg hover:bg-amber-600 disabled:opacity-40 transition-colors font-medium flex items-center justify-center gap-1"
+                      >
+                        {mutatingKeys.has(`rest_add_${trip.id}`) ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          '그래도 추가'
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setRestDuplicateConfirm(false)}
+                        disabled={mutatingKeys.has(`rest_add_${trip.id}`)}
+                        className="px-3 py-1.5 text-xs text-slate-500 rounded-lg hover:bg-slate-100 disabled:opacity-40 transition-colors"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleAddRestaurant}
+                    disabled={!restName.trim() || mutatingKeys.has(`rest_add_${trip.id}`)}
+                    className="w-full py-1.5 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-40 transition-colors font-medium flex items-center justify-center gap-1"
+                  >
+                    {mutatingKeys.has(`rest_add_${trip.id}`) ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        저장 중...
+                      </>
+                    ) : (
+                      '맛집 추가'
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           )}
