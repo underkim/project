@@ -56,3 +56,15 @@ class DevStatusOverview(BaseModel):
     harness: HarnessStatus
     recent_dev_log: list[DevLogEntry]
     git: GitStatus
+
+
+class ActivityStep(BaseModel):
+    label: str
+    status: str  # pending | in_progress | done
+
+
+class ActivityLog(BaseModel):
+    task: str | None = None
+    started_at: str | None = None
+    updated_at: str | None = None
+    steps: list[ActivityStep] = []

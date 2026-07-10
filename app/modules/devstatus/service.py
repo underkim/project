@@ -1,8 +1,10 @@
+import json
 import re
 import subprocess
 from pathlib import Path
 
 from app.modules.devstatus.schemas import (
+    ActivityLog,
     DevLogEntry,
     DevStatusOverview,
     GitStatus,
@@ -115,7 +117,6 @@ def get_harness_status() -> HarnessStatus:
     settings_path = claude_dir / "settings.json"
     if settings_path.is_file():
         try:
-            import json
             data = json.loads(settings_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             data = {}
@@ -214,3 +215,16 @@ def get_overview() -> DevStatusOverview:
         recent_dev_log=get_recent_dev_log(),
         git=get_git_status(),
     )
+
+
+def get_activity_log() -> ActivityLog | None:
+    """Claude Code가 작업 시작 전 체크포인트를 적어두고 진행하며 갱신하는 실시간 로그.
+    파일이 없으면(=현재 진행 중인 작업이 없음) None을 반환한다."""
+    path = _repo_root() / ".claude" / "state" / "activity-log.json"
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return ActivityLog(**data)

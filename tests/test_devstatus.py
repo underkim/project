@@ -4,6 +4,7 @@ from app.modules.devstatus.schemas import TaskSummary
 from app.modules.devstatus.service import (
     _parse_task_file,
     compute_task_counts,
+    get_activity_log,
     get_harness_status,
     list_done_tasks,
 )
@@ -83,9 +84,25 @@ def test_get_harness_status_reflects_actual_claude_dir():
     assert "pre-commit-check.sh" in hook_files
 
 
+def test_get_activity_log_reads_real_state_file():
+    """이 저장소는 실제로 .claude/state/activity-log.json을 유지하고 있어야 한다."""
+    log = get_activity_log()
+    assert log is not None
+    assert isinstance(log.task, str)
+    assert len(log.steps) > 0
+    assert all(s.status in ("pending", "in_progress", "done") for s in log.steps)
+
+
+def test_get_activity_log_returns_none_when_missing(monkeypatch, tmp_path):
+    import app.modules.devstatus.service as devstatus_service
+    monkeypatch.setattr(devstatus_service, "_repo_root", lambda: tmp_path)
+    assert devstatus_service.get_activity_log() is None
+
+
 def test_devstatus_route_registered(app):
     routes = {route.path for route in app.routes}
     assert "/api/v1/devstatus/overview" in routes
+    assert "/api/v1/devstatus/activity" in routes
 
 
 @pytest.mark.asyncio
@@ -105,3 +122,12 @@ async def test_devstatus_overview_returns_expected_shape(auth_client):
     assert "recent_dev_log" in data
     assert "git" in data
     assert data["harness"]["claudeignore_present"] is True
+
+
+@pytest.mark.asyncio
+async def test_devstatus_activity_returns_current_log(auth_client):
+    resp = await auth_client.get("/api/v1/devstatus/activity")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data["steps"], list)
+    assert len(data["steps"]) > 0
