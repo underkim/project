@@ -620,7 +620,7 @@ function CategoryCard({
               {pendingDelete ? (
                 <>
                   <span className="text-[11px] font-semibold text-red-500 whitespace-nowrap">
-                    카드 삭제?
+                    {total > 0 ? `항목 ${total}개도 함께 삭제됩니다` : '카테고리를 삭제할까요?'}
                   </span>
                   <button
                     onClick={confirmDelete}
@@ -1184,6 +1184,11 @@ export default function PlannerPage() {
     setBulkDeletePending(false);
   }
 
+  const selectedItemCount = phases
+    .flatMap((p) => p.categories)
+    .filter((c) => selectedCatIds.has(c.id))
+    .reduce((sum, c) => sum + c.items.length, 0);
+
   function toggleCatSelect(id: number) {
     setSelectedCatIds((prev) => {
       const next = new Set(prev);
@@ -1684,7 +1689,11 @@ export default function PlannerPage() {
               <div className="flex items-center gap-2">
                 {bulkDeletePending ? (
                   <>
-                    <span className="text-sm font-medium text-red-500">정말 삭제할까요?</span>
+                    <span className="text-sm font-medium text-red-500">
+                      {selectedItemCount > 0
+                        ? `카테고리 ${selectedCatIds.size}개와 항목 ${selectedItemCount}개가 함께 삭제됩니다`
+                        : '정말 삭제할까요?'}
+                    </span>
                     <button
                       onClick={handleBulkCategoryDelete}
                       disabled={bulkDeleting}
