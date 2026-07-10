@@ -93,6 +93,22 @@
 - 검증: 정상 상태에서 실행 → 조용히 exit 0. `tests/test_finance.py`에 실패하는 테스트를
   임시로 추가해 실행 → `deny` JSON과 실패 로그가 정확히 출력됨을 확인 후 원상 복구.
 
+### `.claude/hooks/post-edit-eslint.sh`
+
+- 이벤트: `PostToolUse`, matcher `Write|Edit` — 모든 Write/Edit 호출마다 실행되지만,
+  대상이 `frontend/` 아래 `.ts`/`.tsx` 파일이 아니면 훅 스크립트 자체가 즉시 종료해
+  다른 파일 편집(백엔드 Python, docs 등)에는 지연이 전혀 없음.
+- 동작: 편집된 파일에 `npx eslint --fix`를 실행해 자동 수정 가능한 건 바로 고치고,
+  남은 경고/오류가 있으면 `hookSpecificOutput.additionalContext`로 대화에 즉시
+  주입 — Claude Code가 다음 턴을 기다리지 않고 바로 인지하고 고칠 수 있다.
+- **주의**: 이 프로젝트 CI(`ci.yml`)는 lint 단계 자체가 없고, ESLint는 기본적으로
+  경고(warning)에 대해 0이 아닌 종료 코드를 반환하지 않는다. 그래서 종료 코드가 아니라
+  **출력이 비어 있는지**로 판단한다 (`[ -n "$output" ]`) — 그렇지 않으면
+  `no-unused-vars`, `exhaustive-deps` 같은 흔한 경고가 조용히 통과해버린다.
+- 검증: 정상 파일 → 무출력. `no-unused-vars`를 유발하는 변수를 임시로 추가한 실제
+  Edit 호출로 실제 세션에서 훅이 라이브로 발동해 경고가 대화에 그대로 주입되는 것까지
+  확인 후 원복.
+
 ### `.claudeignore`
 
 `.env`, `*.db`, `.venv/`, `__pycache__/`, `frontend/node_modules/`,
@@ -115,10 +131,8 @@ main.py 등록) → 마이그레이션(dialect 가드, RLS 포함) → 테스트
 
 ## 커버되지 않은 것 (의도적으로 보류)
 
-- **PostToolUse 자동 포맷팅** — 이 프로젝트에 별도 formatter 설정(prettier/black 등)이
-  없어서 구성하지 않음. 도입 시 `docs/harness-engineering.md`의 훅 패턴 참고해 추가 가능.
-- **frontend eslint 훅** — `package.json`에 `lint` 스크립트가 있으나 훅으로 자동화하지
-  않음 (필요성 낮다고 판단, 커밋 차단 항목이 늘어나는 것에 대한 사용자 확인 필요).
+- **PostToolUse 자동 포맷팅(prettier/black 등)** — 이 프로젝트에 별도 formatter 설정이
+  없어서 구성하지 않음. 도입 시 아래 eslint 훅과 동일한 패턴으로 추가 가능.
 - **git push 시점 검사** — pre-commit 훅으로 이미 커버되어 중복 실행 방지 차원에서 생략.
 - **subagent 정의(.claude/agents/)** — 이 프로젝트 규모(단일 사용자 포트폴리오)에서는
   범용 Explore/Plan 등 기본 subagent로 충분하다고 판단, 프로젝트 전용 subagent는 아직
