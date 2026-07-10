@@ -86,6 +86,44 @@ test.describe('여행 페이지', () => {
       .toBe('2030-03-01|2030-03-10');
   });
 
+  test('여행 삭제 — 확인 단계 없이는 삭제되지 않는다', async ({ page, request }) => {
+    const headers = await getAuthHeaders(request);
+    const createRes = await request.post(`${API}/api/v1/travel/trips`, {
+      headers,
+      data: {
+        name: '[E2E] 삭제확인 테스트',
+        destination: '테스트',
+        start_date: '2030-01-01',
+        end_date: '2030-01-05',
+        status: 'planned',
+      },
+    });
+    expect(createRes.ok()).toBeTruthy();
+
+    await page.goto('/travel');
+    const tripHeading = page.getByRole('heading', { name: '[E2E] 삭제확인 테스트', exact: true });
+    await expect(tripHeading).toBeVisible();
+    const headerRow = tripHeading.locator(
+      'xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]',
+    );
+
+    await headerRow.getByRole('button', { name: '여행 삭제' }).click();
+    const confirmButton = headerRow.getByRole('button', { name: '삭제 확인' });
+    await expect(confirmButton).toBeVisible();
+
+    // 취소 클릭 → 여행이 그대로 남아있어야 한다
+    await headerRow.getByRole('button', { name: '취소' }).click();
+    await expect(tripHeading).toBeVisible();
+    const stillThere = await request.get(`${API}/api/v1/travel/trips`, { headers });
+    const tripsAfterCancel = (await stillThere.json()) as Array<{ name: string }>;
+    expect(tripsAfterCancel.some((t) => t.name === '[E2E] 삭제확인 테스트')).toBe(true);
+
+    // 다시 삭제 → 확인 클릭 → 실제로 삭제된다
+    await headerRow.getByRole('button', { name: '여행 삭제' }).click();
+    await headerRow.getByRole('button', { name: '삭제 확인' }).click();
+    await expect(tripHeading).not.toBeVisible();
+  });
+
   test('좌표가 있는 여행이 있으면 지도가 렌더된다', async ({ page, request }) => {
     const headers = await getAuthHeaders(request);
     const createRes = await request.post(`${API}/api/v1/travel/trips`, {

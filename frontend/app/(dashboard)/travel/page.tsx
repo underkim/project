@@ -407,6 +407,24 @@ function TripCard({
   const [restCuisine, setRestCuisine] = useState('');
   const [restPickedLoc, setRestPickedLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [showRestPicker, setShowRestPicker] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function askDeleteTrip() {
+    setDeletePending(true);
+    deleteTimerRef.current = setTimeout(() => setDeletePending(false), 3000);
+  }
+
+  function cancelDeleteTrip() {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setDeletePending(false);
+  }
+
+  function confirmDeleteTrip() {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setDeletePending(false);
+    onDelete(trip.id);
+  }
 
   const handleAddRestaurant = () => {
     if (!restName.trim()) return;
@@ -661,18 +679,41 @@ function TripCard({
               >
                 <Pencil size={14} />
               </button>
-              <button
-                onClick={() => onDelete(trip.id)}
-                aria-label="여행 삭제"
-                disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
-                className="p-1.5 text-slate-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {mutatingKeys.has(`trip_delete_${trip.id}`) ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Trash2 size={14} />
-                )}
-              </button>
+              {deletePending ? (
+                <span className="flex items-center gap-1">
+                  <button
+                    onClick={confirmDeleteTrip}
+                    disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
+                    className="text-[10px] px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {mutatingKeys.has(`trip_delete_${trip.id}`) ? (
+                      <Loader2 size={10} className="animate-spin inline" />
+                    ) : (
+                      '삭제 확인'
+                    )}
+                  </button>
+                  <button
+                    onClick={cancelDeleteTrip}
+                    disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
+                    className="text-[10px] px-2 py-1 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+                  >
+                    취소
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={askDeleteTrip}
+                  aria-label="여행 삭제"
+                  disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
+                  className="p-1.5 text-slate-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {mutatingKeys.has(`trip_delete_${trip.id}`) ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={14} />
+                  )}
+                </button>
+              )}
               <button
                 onClick={onToggleExpand}
                 className="p-1.5 text-slate-300 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors ml-1"
