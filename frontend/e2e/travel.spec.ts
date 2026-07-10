@@ -124,6 +124,52 @@ test.describe('여행 페이지', () => {
     await expect(tripHeading).not.toBeVisible();
   });
 
+  test('체크리스트를 모두 완료하면 진행률 배지가 완료 상태로 바뀐다', async ({ page, request }) => {
+    const headers = await getAuthHeaders(request);
+    const tripRes = await request.post(`${API}/api/v1/travel/trips`, {
+      headers,
+      data: {
+        name: '[E2E] 체크리스트 진행률 테스트',
+        destination: '테스트',
+        start_date: '2030-01-01',
+        end_date: '2030-01-05',
+        status: 'planned',
+      },
+    });
+    expect(tripRes.ok()).toBeTruthy();
+    const trip = (await tripRes.json()) as { id: number };
+    const item1 = await (
+      await request.post(`${API}/api/v1/travel/trips/${trip.id}/checklist`, {
+        headers,
+        data: { text: '여권' },
+      })
+    ).json();
+    const item2 = await (
+      await request.post(`${API}/api/v1/travel/trips/${trip.id}/checklist`, {
+        headers,
+        data: { text: '충전기' },
+      })
+    ).json();
+
+    await page.goto('/travel');
+    const tripHeading = page.getByRole('heading', {
+      name: '[E2E] 체크리스트 진행률 테스트',
+      exact: true,
+    });
+    await expect(tripHeading).toBeVisible();
+    await expect(page.getByText('0/2 · 0%')).toBeVisible();
+
+    await request.patch(`${API}/api/v1/travel/checklist/${item1.id}/toggle`, { headers });
+    await page.reload();
+    await expect(page.getByText('1/2 · 50%')).toBeVisible();
+
+    await request.patch(`${API}/api/v1/travel/checklist/${item2.id}/toggle`, { headers });
+    await page.reload();
+    const doneProgress = page.getByText('2/2 · 100%');
+    await expect(doneProgress).toBeVisible();
+    await expect(doneProgress).toHaveClass(/text-emerald-600/);
+  });
+
   test('좌표가 있는 여행이 있으면 지도가 렌더된다', async ({ page, request }) => {
     const headers = await getAuthHeaders(request);
     const createRes = await request.post(`${API}/api/v1/travel/trips`, {
@@ -211,12 +257,10 @@ test.describe('여행 페이지', () => {
     const tripCard = tripHeading.locator(
       'xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-xl")][1]',
     );
-    page.on('console', (msg) => console.log('BROWSER:', msg.text()));
     await headerRow.getByRole('button').last().click();
     await tripCard.getByRole('button', { name: /^맛집\s+\d+$/ }).click();
 
     await tripCard.getByPlaceholder('맛집 이름 *').fill('[E2E] 중복맛집');
-    console.log('=== about to click 맛집 추가 ===');
     await tripCard.getByRole('button', { name: '맛집 추가' }).click();
     await expect(tripCard.getByText('이미 추가된 맛집과 이름이 같습니다')).toBeVisible();
 

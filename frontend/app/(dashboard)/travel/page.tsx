@@ -742,13 +742,18 @@ function TripCard({
           <div className="mt-3">
             <div className="flex justify-between text-xs text-slate-400 mb-1">
               <span>준비물 체크리스트</span>
-              <span>
+              <span
+                className={`flex items-center gap-1 ${checked === total ? 'text-emerald-600 font-medium' : ''}`}
+              >
+                {checked === total && <Check size={11} strokeWidth={3} />}
                 {checked}/{total} · {Math.round((checked / total) * 100)}%
               </span>
             </div>
             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-slate-900 rounded-full transition-all duration-300"
+                className={`h-full rounded-full transition-all duration-300 ${
+                  checked === total ? 'bg-emerald-500' : 'bg-slate-900'
+                }`}
                 style={{ width: total > 0 ? `${Math.round((checked / total) * 100)}%` : '0%' }}
               />
             </div>
@@ -772,7 +777,13 @@ function TripCard({
               <CheckSquare size={13} />
               준비물
               {total > 0 && (
-                <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 rounded-full px-1.5 py-0.5">
+                <span
+                  className={`ml-1 text-[10px] rounded-full px-1.5 py-0.5 ${
+                    checked === total
+                      ? 'bg-emerald-100 text-emerald-600'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
                   {checked}/{total}
                 </span>
               )}
