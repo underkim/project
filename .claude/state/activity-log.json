@@ -1,13 +1,13 @@
 {
   "task": "실시간 작업 로그 스트리밍 기능 추가",
   "started_at": "2026-07-10T03:00:00Z",
-  "updated_at": "2026-07-10T03:10:00Z",
+  "updated_at": "2026-07-10T03:35:00Z",
   "steps": [
     { "label": "설계: 로그 파일 스키마 + pre-commit 훅 예외 처리 방식 결정", "status": "done" },
     { "label": "pre-commit-check.sh: 로그 파일만 변경된 커밋은 테스트 생략", "status": "done" },
-    { "label": "devstatus 백엔드: activity 엔드포인트 추가", "status": "in_progress" },
-    { "label": "devstatus 프론트엔드: 실시간 폴링 카드 추가", "status": "pending" },
-    { "label": "AGENTS.md에 로그 유지 컨벤션 문서화", "status": "pending" },
-    { "label": "검증 (pytest/tsc) 및 최종 커밋·푸시", "status": "pending" }
+    { "label": "devstatus 백엔드: activity 엔드포인트 추가", "status": "done" },
+    { "label": "devstatus 프론트엔드: 실시간 폴링 카드 추가", "status": "done" },
+    { "label": "AGENTS.md에 로그 유지 컨벤션 문서화", "status": "done" },
+    { "label": "검증 (pytest/tsc) 및 최종 커밋·푸시", "status": "done" }
   ]
 }
