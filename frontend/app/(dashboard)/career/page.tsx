@@ -463,6 +463,17 @@ export default function CareerPage() {
         </div>
       )}
 
+      {chartData.length < 2 && (
+        <div className="border border-slate-100 rounded-xl p-5">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+            레이팅 추이
+          </p>
+          <p className="text-xs text-slate-400">
+            레이팅 기록이 2개 이상 쌓이면 추이 차트가 표시돼요. (현재 {chartData.length}개)
+          </p>
+        </div>
+      )}
+
       {chartData.length >= 2 && (
         <div className="border border-slate-100 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
