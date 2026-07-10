@@ -1,7 +1,7 @@
 {
   "task": "승인된 백로그 배치 진행 (TASK-051 ~ TASK-060, 10개, task-workflow.md 배치 상한 준수)",
   "started_at": "2026-07-10T15:00:00Z",
-  "updated_at": "2026-07-10T16:00:00Z",
+  "updated_at": "2026-07-10T17:00:00Z",
   "steps": [
     { "label": "TASK-051: Backend 사용자 친화적 404 응답", "status": "done" },
     { "label": "TASK-052: 프론트엔드 삭제 확인 audit (여행 삭제에 확인 단계 추가)", "status": "done" },
@@ -12,6 +12,6 @@
     { "label": "TASK-057: 건강 수면 미래 날짜 거부", "status": "done" },
     { "label": "TASK-058: 자기계발 독서 기록 미래 날짜 거부", "status": "done" },
     { "label": "TASK-059: 커리어 CF 레이팅 추이 empty 상태 안내 (+ e2e 신규)", "status": "done" },
-    { "label": "TASK-060: 대시보드 모듈 카드 딥링크 안정성", "status": "pending" }
+    { "label": "TASK-060: 대시보드 개요 전체 실패 시에도 모듈 카드 유지", "status": "done" }
   ]
 }
