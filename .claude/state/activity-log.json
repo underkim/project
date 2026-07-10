@@ -1,11 +1,17 @@
 {
-  "task": "하네스 나머지 3개 진행: Prettier 포맷터, git push 시점 e2e 검사, 프로젝트 전용 subagent",
-  "started_at": "2026-07-10T10:30:00Z",
-  "updated_at": "2026-07-10T14:00:00Z",
+  "task": "승인된 백로그 배치 진행 (TASK-051 ~ TASK-060, 10개, task-workflow.md 배치 상한 준수)",
+  "started_at": "2026-07-10T15:00:00Z",
+  "updated_at": "2026-07-10T15:00:00Z",
   "steps": [
-    { "label": "Prettier 도입: 설정 + 1회 전체 포맷팅 커밋 + post-edit 훅에 통합", "status": "done" },
-    { "label": "git push 시점 e2e(Playwright) 검사 훅 작성·검증·settings.json 등록 완료", "status": "done" },
-    { "label": "프로젝트 전용 subagent 작성 (life-dashboard-reviewer)", "status": "done" },
-    { "label": "전체 검증(pytest 364/tsc/eslint/prettier 통과) + harness 문서 갱신 완료", "status": "done" }
+    { "label": "TASK-051: Backend 사용자 친화적 404 응답", "status": "pending" },
+    { "label": "TASK-052: 프론트엔드 삭제 확인 audit", "status": "pending" },
+    { "label": "TASK-053: 플래너 카테고리 삭제 안전성", "status": "pending" },
+    { "label": "TASK-054: 여행 맛집 중복 감지", "status": "pending" },
+    { "label": "TASK-055: 여행 체크리스트 진행률 피드백", "status": "pending" },
+    { "label": "TASK-056: 재테크 요약 stale/empty 상태", "status": "pending" },
+    { "label": "TASK-057: 건강 수면 시간 검증", "status": "pending" },
+    { "label": "TASK-058: 자기계발 독서 진행률 검증", "status": "pending" },
+    { "label": "TASK-059: 커리어 평점 추이 empty/error 상태", "status": "pending" },
+    { "label": "TASK-060: 대시보드 모듈 카드 딥링크 안정성", "status": "pending" }
   ]
 }
