@@ -27,6 +27,12 @@
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-commit-check.sh",
             "if": "Bash(git commit*)",
             "timeout": 120
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-push-e2e.sh",
+            "if": "Bash(git push*)",
+            "timeout": 300
           }
         ]
       }

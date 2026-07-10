@@ -4,7 +4,7 @@
   "updated_at": "2026-07-10T14:00:00Z",
   "steps": [
     { "label": "Prettier 도입: 설정 + 1회 전체 포맷팅 커밋 + post-edit 훅에 통합", "status": "done" },
-    { "label": "git push 시점 e2e(Playwright) 검사 훅 작성·검증 완료, settings.json 등록은 사용자 확인 대기 중", "status": "pending" },
+    { "label": "git push 시점 e2e(Playwright) 검사 훅 작성·검증·settings.json 등록 완료", "status": "done" },
     { "label": "프로젝트 전용 subagent 작성 (life-dashboard-reviewer)", "status": "done" },
     { "label": "전체 검증(pytest 364/tsc/eslint/prettier 통과) + harness 문서 갱신 완료", "status": "done" }
   ]
