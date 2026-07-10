@@ -18,7 +18,7 @@ test.describe('로그인 페이지', () => {
     await page.fill('input[type="password"]', 'wrong');
     // 응답 완료 후 오류 표시 확인
     await Promise.all([
-      page.waitForResponse(r => r.url().includes('/auth/token')),
+      page.waitForResponse((r) => r.url().includes('/auth/token')),
       page.click('button[type="submit"]'),
     ]);
     await expect(page.getByText('아이디 또는 비밀번호가 올바르지 않습니다.')).toBeVisible();
@@ -44,7 +44,7 @@ test.describe('로그인 페이지', () => {
     await page.fill('input[placeholder="admin"]', E2E_USER);
     await page.fill('input[type="password"]', E2E_PASS);
     await Promise.all([
-      page.waitForResponse(r => r.url().includes('/auth/token')),
+      page.waitForResponse((r) => r.url().includes('/auth/token')),
       page.click('button[type="submit"]'),
     ]);
     await page.waitForURL(/\/finance/);
@@ -56,11 +56,11 @@ test.describe('로그인 페이지', () => {
     await page.fill('input[placeholder="admin"]', E2E_USER);
     await page.fill('input[type="password"]', E2E_PASS);
     await Promise.all([
-      page.waitForResponse(r => r.url().includes('/auth/token')),
+      page.waitForResponse((r) => r.url().includes('/auth/token')),
       page.click('button[type="submit"]'),
     ]);
     // / 또는 dashboard 홈으로 이동해야 함 (example.com이 아님)
-    await page.waitForURL(url => !url.toString().includes('example.com'), { timeout: 5000 });
+    await page.waitForURL((url) => !url.toString().includes('example.com'), { timeout: 5000 });
     expect(page.url()).not.toContain('example.com');
   });
 
@@ -69,10 +69,10 @@ test.describe('로그인 페이지', () => {
     await page.fill('input[placeholder="admin"]', E2E_USER);
     await page.fill('input[type="password"]', E2E_PASS);
     await Promise.all([
-      page.waitForResponse(r => r.url().includes('/auth/token')),
+      page.waitForResponse((r) => r.url().includes('/auth/token')),
       page.click('button[type="submit"]'),
     ]);
-    await page.waitForURL(url => !url.toString().includes('example.com'), { timeout: 5000 });
+    await page.waitForURL((url) => !url.toString().includes('example.com'), { timeout: 5000 });
     expect(page.url()).not.toContain('example.com');
   });
 });

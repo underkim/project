@@ -4,16 +4,22 @@ test.describe('자기계발 페이지 - 뮤테이션 중복 방지', () => {
   test('책 추가 폼 중복 제출 방지', async ({ page }) => {
     let requestCount = 0;
 
-    await page.route('**/api/v1/growth/books', async route => {
+    await page.route('**/api/v1/growth/books', async (route) => {
       if (route.request().method() === 'POST') {
         requestCount += 1;
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise((resolve) => setTimeout(resolve, 400));
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
           body: JSON.stringify({
-            id: 9999, title: '테스트책', author: null, status: 'planned',
-            rating: null, note: null, start_date: null, end_date: null,
+            id: 9999,
+            title: '테스트책',
+            author: null,
+            status: 'planned',
+            rating: null,
+            note: null,
+            start_date: null,
+            end_date: null,
           }),
         });
       } else {
@@ -49,16 +55,19 @@ test.describe('자기계발 페이지 - 뮤테이션 중복 방지', () => {
   test('영어 학습 기록 추가 폼 중복 제출 방지', async ({ page }) => {
     let requestCount = 0;
 
-    await page.route('**/api/v1/growth/english', async route => {
+    await page.route('**/api/v1/growth/english', async (route) => {
       if (route.request().method() === 'POST') {
         requestCount += 1;
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise((resolve) => setTimeout(resolve, 400));
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
           body: JSON.stringify({
-            id: 9998, log_date: '2030-01-01', activity_type: 'reading',
-            duration_minutes: 30, note: null,
+            id: 9998,
+            log_date: '2030-01-01',
+            activity_type: 'reading',
+            duration_minutes: 30,
+            note: null,
           }),
         });
       } else {

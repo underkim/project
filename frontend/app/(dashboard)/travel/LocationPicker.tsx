@@ -43,9 +43,7 @@ export default function LocationPicker({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <MapClickHandler onPick={(lat, lng) => onChange({ lat, lng })} />
-          {value && (
-            <Marker position={[value.lat, value.lng]} icon={PICK_ICON} />
-          )}
+          {value && <Marker position={[value.lat, value.lng]} icon={PICK_ICON} />}
         </MapContainer>
       </div>
       <div className="flex items-center justify-between mt-1.5 text-xs">

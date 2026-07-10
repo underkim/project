@@ -10,7 +10,7 @@ async function getAuthHeaders(request: import('@playwright/test').APIRequestCont
       password: process.env.E2E_PASSWORD ?? 'admin',
     },
   });
-  const { access_token } = await res.json() as { access_token: string };
+  const { access_token } = (await res.json()) as { access_token: string };
   return { Authorization: `Bearer ${access_token}` };
 }
 
@@ -18,7 +18,7 @@ async function cleanupTestRecords(request: import('@playwright/test').APIRequest
   const headers = await getAuthHeaders(request);
   const res = await request.get(`${API}/api/v1/finance/records`, { headers });
   if (!res.ok()) return;
-  const records = await res.json() as Array<{ id: number; record_date: string }>;
+  const records = (await res.json()) as Array<{ id: number; record_date: string }>;
   for (const r of records) {
     if (r.record_date === TEST_DATE) {
       await request.delete(`${API}/api/v1/finance/records/${r.id}`, { headers });
@@ -35,12 +35,15 @@ test.describe('재테크 페이지', () => {
     let requestCount = 0;
 
     // export 요청을 지연시켜 in-flight 상태를 만들고 요청 수를 카운트
-    await page.route('**/api/v1/export/finance', async route => {
+    await page.route('**/api/v1/export/finance', async (route) => {
       requestCount += 1;
-      await new Promise(resolve => setTimeout(resolve, 400));
+      await new Promise((resolve) => setTimeout(resolve, 400));
       await route.fulfill({
         status: 200,
-        headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="finance.csv"' },
+        headers: {
+          'content-type': 'text/csv; charset=utf-8',
+          'content-disposition': 'attachment; filename="finance.csv"',
+        },
         body: 'record_date,total_assets\n',
       });
     });
@@ -80,9 +83,9 @@ test.describe('재테크 페이지', () => {
 
     // label과 input이 htmlFor로 연결되지 않으므로 type/nth 기반 셀렉터 사용
     await page.locator('form input[type="date"]').fill(TEST_DATE);
-    await page.locator('form input[type="number"]').nth(0).fill('9999');  // 총 자산
-    await page.locator('form input[type="number"]').nth(1).fill('500');   // 월 수입
-    await page.locator('form input[type="number"]').nth(2).fill('200');   // 월 지출
+    await page.locator('form input[type="number"]').nth(0).fill('9999'); // 총 자산
+    await page.locator('form input[type="number"]').nth(1).fill('500'); // 월 수입
+    await page.locator('form input[type="number"]').nth(2).fill('200'); // 월 지출
 
     await page.click('button[type="submit"]:has-text("저장")');
 
@@ -94,7 +97,12 @@ test.describe('재테크 페이지', () => {
     const headers = await getAuthHeaders(request);
     const createRes = await request.post(`${API}/api/v1/finance/records`, {
       headers,
-      data: { record_date: TEST_DATE, total_assets: 1234, monthly_income: 100, monthly_expense: 50 },
+      data: {
+        record_date: TEST_DATE,
+        total_assets: 1234,
+        monthly_income: 100,
+        monthly_expense: 50,
+      },
     });
     expect(createRes.ok()).toBeTruthy();
 

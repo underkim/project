@@ -2,7 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
-import { Plus, Trash2, Check, X, Pencil, AlertTriangle, Settings2, Loader2, CalendarClock, CheckSquare, Eye } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Check,
+  X,
+  Pencil,
+  AlertTriangle,
+  Settings2,
+  Loader2,
+  CalendarClock,
+  CheckSquare,
+  Eye,
+} from 'lucide-react';
 import { plannerApi } from '@/lib/api';
 import type { PhaseResponse, RoadmapItemResponse, ItemStatus } from '@/types';
 
@@ -31,8 +43,8 @@ function calendarMonthsDiff(startDateStr: string, endDateStr: string): number {
 
 // ─── Phase 진행률 계산 헬퍼 ─────────────────────────────
 function phaseProgress(phase: PhaseResponse) {
-  const items = phase.categories.flatMap(c => c.items);
-  const done = items.filter(i => i.is_completed).length;
+  const items = phase.categories.flatMap((c) => c.items);
+  const done = items.filter((i) => i.is_completed).length;
   const total = items.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   return { done, total, pct };
@@ -54,18 +66,23 @@ function computeStatus(deadline: string | null, isCompleted: boolean): ItemStatu
 // ─── 배지 ──────────────────────────────────────────────
 const statusStyle: Record<ItemStatus, string> = {
   completed: 'bg-emerald-100 text-emerald-700',
-  on_track:  'bg-blue-100 text-blue-700',
-  urgent:    'bg-amber-100 text-amber-700',
-  overdue:   'bg-red-100 text-red-600',
+  on_track: 'bg-blue-100 text-blue-700',
+  urgent: 'bg-amber-100 text-amber-700',
+  overdue: 'bg-red-100 text-red-600',
 };
 const statusLabel: Record<ItemStatus, string> = {
-  completed: '완료', on_track: '진행중', urgent: '임박', overdue: '지연',
+  completed: '완료',
+  on_track: '진행중',
+  urgent: '임박',
+  overdue: '지연',
 };
 
 function Badge({ status }: { status: ItemStatus | null }) {
   if (!status) return null;
   return (
-    <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${statusStyle[status]}`}>
+    <span
+      className={`text-[11px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${statusStyle[status]}`}
+    >
       {statusLabel[status]}
     </span>
   );
@@ -95,12 +112,18 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
   function handleDeadlineChange(val: string) {
     if (!val || !phaseStartDate || savingEdit) return;
     setSavingEdit(true);
-    Promise.resolve(onEditSave(item.id, { offset: calcDateToOffset(phaseStartDate, val) }))
-      .finally(() => setSavingEdit(false));
+    Promise.resolve(onEditSave(item.id, { offset: calcDateToOffset(phaseStartDate, val) })).finally(
+      () => setSavingEdit(false),
+    );
     setEditingDeadline(false);
   }
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
   function startEdit() {
     setDraft(item.text);
@@ -151,11 +174,17 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
   async function handleToggleClick() {
     if (toggling) return;
     setToggling(true);
-    try { await onToggle(item.id); } finally { setToggling(false); }
+    try {
+      await onToggle(item.id);
+    } finally {
+      setToggling(false);
+    }
   }
 
   return (
-    <div className={`flex items-center gap-2.5 py-2 px-2 rounded-lg group transition-colors hover:bg-slate-50 ${item.is_completed ? 'opacity-55' : ''}`}>
+    <div
+      className={`flex items-center gap-2.5 py-2 px-2 rounded-lg group transition-colors hover:bg-slate-50 ${item.is_completed ? 'opacity-55' : ''}`}
+    >
       <button
         onClick={handleToggleClick}
         disabled={toggling}
@@ -166,17 +195,22 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
         }`}
         style={{ width: 18, height: 18 }}
       >
-        {toggling
-          ? <Loader2 size={10} className="animate-spin text-slate-400" />
-          : item.is_completed && <Check size={11} className="text-white" strokeWidth={3} />}
+        {toggling ? (
+          <Loader2 size={10} className="animate-spin text-slate-400" />
+        ) : (
+          item.is_completed && <Check size={11} className="text-white" strokeWidth={3} />
+        )}
       </button>
 
       {editing ? (
         <input
           ref={inputRef}
           value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save();
+            if (e.key === 'Escape') cancel();
+          }}
           className="flex-1 text-sm border border-slate-300 rounded-md px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
         />
       ) : (
@@ -201,7 +235,7 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
               defaultValue={item.deadline ?? ''}
               min={phaseStartDate ?? undefined}
               autoFocus
-              onChange={e => handleDeadlineChange(e.target.value)}
+              onChange={(e) => handleDeadlineChange(e.target.value)}
               onBlur={() => setEditingDeadline(false)}
               className="text-[11px] border border-slate-300 rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white w-32"
             />
@@ -215,7 +249,10 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
                   : 'text-slate-300 hover:text-slate-400 hover:bg-slate-50'
               } ${!phaseStartDate ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              <CalendarClock size={10} className="opacity-0 group-hover/dl:opacity-100 transition-opacity" />
+              <CalendarClock
+                size={10}
+                className="opacity-0 group-hover/dl:opacity-100 transition-opacity"
+              />
               <span>{item.deadline ?? '—'}</span>
             </button>
           )}
@@ -226,10 +263,20 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
 
       {editing ? (
         <div className="flex gap-1 shrink-0">
-          <button onClick={save} disabled={savingEdit} className="p-1 rounded text-emerald-600 hover:bg-emerald-50 disabled:opacity-50">
+          <button
+            onClick={save}
+            disabled={savingEdit}
+            className="p-1 rounded text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+          >
             {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
           </button>
-          <button onClick={cancel} disabled={savingEdit} className="p-1 rounded text-slate-400 hover:bg-slate-100 disabled:opacity-50"><X size={14} /></button>
+          <button
+            onClick={cancel}
+            disabled={savingEdit}
+            className="p-1 rounded text-slate-400 hover:bg-slate-100 disabled:opacity-50"
+          >
+            <X size={14} />
+          </button>
         </div>
       ) : pendingDelete ? (
         <div className="flex items-center gap-1 shrink-0 animate-in fade-in duration-150">
@@ -239,11 +286,16 @@ function ItemRow({ item, phaseStartDate, onToggle, onDelete, onEditSave }: ItemR
             disabled={deleting}
             className="p-1 rounded bg-red-500 text-white hover:bg-red-600 disabled:opacity-60 transition-colors"
           >
-            {deleting
-              ? <Loader2 size={12} className="animate-spin" />
-              : <Check size={12} strokeWidth={3} />}
+            {deleting ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Check size={12} strokeWidth={3} />
+            )}
           </button>
-          <button onClick={cancelDelete} className="p-1 rounded text-slate-400 hover:bg-slate-100 transition-colors">
+          <button
+            onClick={cancelDelete}
+            className="p-1 rounded text-slate-400 hover:bg-slate-100 transition-colors"
+          >
             <X size={12} />
           </button>
         </div>
@@ -284,7 +336,9 @@ function AddItemForm({ phaseStartDate, onSave, onCancel }: AddItemFormProps) {
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { ref.current?.focus(); }, []);
+  useEffect(() => {
+    ref.current?.focus();
+  }, []);
 
   // offset → 날짜
   function offsetToDate(val: string): string {
@@ -308,27 +362,43 @@ function AddItemForm({ phaseStartDate, onSave, onCancel }: AddItemFormProps) {
     e.preventDefault();
     if (!text.trim()) return;
     setSaving(true);
-    await onSave(text.trim(), deadlineDate && phaseStartDate ? calcDateToOffset(phaseStartDate, deadlineDate) : Number(offset));
+    await onSave(
+      text.trim(),
+      deadlineDate && phaseStartDate
+        ? calcDateToOffset(phaseStartDate, deadlineDate)
+        : Number(offset),
+    );
     setSaving(false);
   }
 
   return (
-    <form onSubmit={submit} className="py-2 px-2 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+    <form
+      onSubmit={submit}
+      className="py-2 px-2 bg-slate-50 rounded-lg border border-slate-200 space-y-2"
+    >
       <div className="flex items-center gap-2">
         <input
           ref={ref}
           value={text}
-          onChange={e => setText(e.target.value)}
+          onChange={(e) => setText(e.target.value)}
           placeholder="항목 내용..."
           className="flex-1 text-sm bg-white border border-slate-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-slate-900 placeholder-slate-400 text-slate-700"
-          onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onCancel();
+          }}
         />
-        <button type="submit" disabled={saving || !text.trim()}
-          className="p-1.5 rounded-md bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-50 transition-colors shrink-0">
+        <button
+          type="submit"
+          disabled={saving || !text.trim()}
+          className="p-1.5 rounded-md bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-50 transition-colors shrink-0"
+        >
           <Check size={13} strokeWidth={3} />
         </button>
-        <button type="button" onClick={onCancel}
-          className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+        >
           <X size={13} />
         </button>
       </div>
@@ -339,7 +409,7 @@ function AddItemForm({ phaseStartDate, onSave, onCancel }: AddItemFormProps) {
             type="date"
             value={deadlineDate}
             min={phaseStartDate}
-            onChange={e => handleDateChange(e.target.value)}
+            onChange={(e) => handleDateChange(e.target.value)}
             className="flex-1 text-xs border border-slate-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-900 bg-white"
           />
         ) : (
@@ -347,7 +417,7 @@ function AddItemForm({ phaseStartDate, onSave, onCancel }: AddItemFormProps) {
             <input
               type="number"
               value={offset}
-              onChange={e => handleOffsetChange(e.target.value)}
+              onChange={(e) => handleOffsetChange(e.target.value)}
               min="0"
               step="0.5"
               className="w-14 text-xs text-center bg-white border border-slate-200 rounded-md px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-slate-900"
@@ -356,7 +426,9 @@ function AddItemForm({ phaseStartDate, onSave, onCancel }: AddItemFormProps) {
           </>
         )}
         {phaseStartDate && offset && (
-          <span className="text-[10px] text-slate-400 shrink-0">({parseFloat(Number(offset).toFixed(1))}개월 후)</span>
+          <span className="text-[10px] text-slate-400 shrink-0">
+            ({parseFloat(Number(offset).toFixed(1))}개월 후)
+          </span>
         )}
       </div>
     </form>
@@ -379,7 +451,20 @@ interface CategoryCardProps {
   hideCompleted?: boolean;
 }
 
-function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onAddItem, onCategoryUpdate, onCategoryDelete, selectMode, isSelected, onToggleSelect, hideCompleted }: CategoryCardProps) {
+function CategoryCard({
+  cat,
+  phaseStartDate,
+  onToggle,
+  onDelete,
+  onEditSave,
+  onAddItem,
+  onCategoryUpdate,
+  onCategoryDelete,
+  selectMode,
+  isSelected,
+  onToggleSelect,
+  hideCompleted,
+}: CategoryCardProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingMeta, setEditingMeta] = useState(false);
   const [metaIcon, setMetaIcon] = useState(cat.icon);
@@ -390,9 +475,14 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
   const [deleting, setDeleting] = useState(false);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => { if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    },
+    [],
+  );
 
-  const done = cat.items.filter(i => i.is_completed).length;
+  const done = cat.items.filter((i) => i.is_completed).length;
   const total = cat.items.length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -406,12 +496,19 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
   async function saveMeta() {
     if (!metaTitle.trim()) return;
     setMetaSaving(true);
-    const ok = await onCategoryUpdate(cat.id, metaIcon.trim() || cat.icon, metaTitle.trim(), metaSubtitle.trim());
+    const ok = await onCategoryUpdate(
+      cat.id,
+      metaIcon.trim() || cat.icon,
+      metaTitle.trim(),
+      metaSubtitle.trim(),
+    );
     setMetaSaving(false);
     if (ok) setEditingMeta(false);
   }
 
-  function cancelMeta() { setEditingMeta(false); }
+  function cancelMeta() {
+    setEditingMeta(false);
+  }
 
   function askDelete() {
     setPendingDelete(true);
@@ -451,7 +548,16 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
       onClick={selectMode ? () => onToggleSelect?.(cat.id) : undefined}
       role={selectMode ? 'button' : undefined}
       tabIndex={selectMode ? 0 : undefined}
-      onKeyDown={selectMode ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleSelect?.(cat.id); } } : undefined}
+      onKeyDown={
+        selectMode
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onToggleSelect?.(cat.id);
+              }
+            }
+          : undefined
+      }
     >
       {selectMode && <div className="absolute inset-0 z-10" />}
       <div className="px-4 pt-4 pb-3">
@@ -461,28 +567,36 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
             <div className="flex items-center gap-2">
               <input
                 value={metaIcon}
-                onChange={e => setMetaIcon(e.target.value)}
+                onChange={(e) => setMetaIcon(e.target.value)}
                 className="w-12 text-center text-xl border border-slate-200 rounded-lg px-1 py-1 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 placeholder="아이콘"
                 maxLength={2}
               />
               <input
                 value={metaTitle}
-                onChange={e => setMetaTitle(e.target.value)}
+                onChange={(e) => setMetaTitle(e.target.value)}
                 className="flex-1 text-sm font-bold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 placeholder="카테고리 제목"
                 autoFocus
-                onKeyDown={e => { if (e.key === 'Enter') saveMeta(); if (e.key === 'Escape') cancelMeta(); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveMeta();
+                  if (e.key === 'Escape') cancelMeta();
+                }}
               />
             </div>
             <input
               value={metaSubtitle}
-              onChange={e => setMetaSubtitle(e.target.value)}
+              onChange={(e) => setMetaSubtitle(e.target.value)}
               className="w-full text-xs border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-500"
               placeholder="부제목"
             />
             <div className="flex justify-end gap-1.5">
-              <button onClick={cancelMeta} className="px-3 py-1 text-xs text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100">취소</button>
+              <button
+                onClick={cancelMeta}
+                className="px-3 py-1 text-xs text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+              >
+                취소
+              </button>
               <button
                 onClick={saveMeta}
                 disabled={metaSaving || !metaTitle.trim()}
@@ -505,35 +619,56 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
             <div className="flex items-center gap-1 shrink-0 ml-2">
               {pendingDelete ? (
                 <>
-                  <span className="text-[11px] font-semibold text-red-500 whitespace-nowrap">카드 삭제?</span>
+                  <span className="text-[11px] font-semibold text-red-500 whitespace-nowrap">
+                    카드 삭제?
+                  </span>
                   <button
                     onClick={confirmDelete}
                     disabled={deleting}
                     className="p-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-60 transition-colors"
                   >
-                    {deleting ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} strokeWidth={3} />}
+                    {deleting ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Check size={12} strokeWidth={3} />
+                    )}
                   </button>
-                  <button onClick={cancelDelete} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+                  <button
+                    onClick={cancelDelete}
+                    className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors"
+                  >
                     <X size={12} />
                   </button>
                 </>
               ) : selectMode ? (
-                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors shrink-0 ${
-                  isSelected ? 'bg-slate-900 border-slate-900' : 'border-slate-300'
-                }`}>
+                <div
+                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors shrink-0 ${
+                    isSelected ? 'bg-slate-900 border-slate-900' : 'border-slate-300'
+                  }`}
+                >
                   {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
                 </div>
               ) : (
                 <>
-                  <span className="text-xs text-slate-400 font-medium mr-0.5">{done}/{total}</span>
-                  <button onClick={startEditMeta} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors" title="편집">
+                  <span className="text-xs text-slate-400 font-medium mr-0.5">
+                    {done}/{total}
+                  </span>
+                  <button
+                    onClick={startEditMeta}
+                    className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                    title="편집"
+                  >
                     <Pencil size={13} />
                   </button>
-                  <button onClick={askDelete} className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="카드 삭제">
+                  <button
+                    onClick={askDelete}
+                    className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    title="카드 삭제"
+                  >
                     <Trash2 size={13} />
                   </button>
                   <button
-                    onClick={() => setShowAdd(v => !v)}
+                    onClick={() => setShowAdd((v) => !v)}
                     className={`p-1.5 rounded-lg transition-all ${showAdd ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                     title="항목 추가"
                   >
@@ -559,23 +694,27 @@ function CategoryCard({ cat, phaseStartDate, onToggle, onDelete, onEditSave, onA
       {/* 항목 목록 */}
       <div className="px-3 pb-3 space-y-0.5 min-h-[40px]">
         {cat.items.length === 0 && !showAdd && (
-          <p className="text-xs text-slate-400 py-2 px-2">항목이 없습니다. + 버튼으로 추가하세요.</p>
+          <p className="text-xs text-slate-400 py-2 px-2">
+            항목이 없습니다. + 버튼으로 추가하세요.
+          </p>
         )}
         {cat.items
-          .filter(item => !hideCompleted || !item.is_completed)
-          .map(item => (
-          <ItemRow
-            key={item.id}
-            item={item}
-            phaseStartDate={phaseStartDate}
-            onToggle={onToggle}
-            onDelete={onDelete}
-            onEditSave={onEditSave}
-          />
-        ))}
-        {hideCompleted && cat.items.some(i => i.is_completed) && cat.items.filter(i => !i.is_completed).length === 0 && (
-          <p className="text-xs text-slate-400 py-2 px-2">모두 완료됐습니다 🎉</p>
-        )}
+          .filter((item) => !hideCompleted || !item.is_completed)
+          .map((item) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              phaseStartDate={phaseStartDate}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              onEditSave={onEditSave}
+            />
+          ))}
+        {hideCompleted &&
+          cat.items.some((i) => i.is_completed) &&
+          cat.items.filter((i) => !i.is_completed).length === 0 && (
+            <p className="text-xs text-slate-400 py-2 px-2">모두 완료됐습니다 🎉</p>
+          )}
         {showAdd && (
           <AddItemForm
             categoryId={cat.id}
@@ -617,33 +756,44 @@ function AddCategoryForm({ phaseId, onSave, onCancel }: AddCategoryFormProps) {
   }
 
   return (
-    <form onSubmit={submit} className="col-span-2 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-4 space-y-3">
+    <form
+      onSubmit={submit}
+      className="col-span-2 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-4 space-y-3"
+    >
       <p className="text-sm font-semibold text-slate-700">새 카테고리</p>
       <div className="flex gap-2">
         <input
           value={icon}
-          onChange={e => setIcon(e.target.value)}
+          onChange={(e) => setIcon(e.target.value)}
           className="w-12 text-center text-xl border border-slate-200 rounded-xl px-1 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
           placeholder="📌"
           maxLength={2}
         />
         <input
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="카테고리 이름 (필수)"
           autoFocus
           className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
-          onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onCancel();
+          }}
         />
       </div>
       <input
         value={subtitle}
-        onChange={e => setSubtitle(e.target.value)}
+        onChange={(e) => setSubtitle(e.target.value)}
         placeholder="부제목 (선택)"
         className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-500 bg-white"
       />
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-4 py-1.5 text-sm text-slate-500 hover:text-slate-700 rounded-xl hover:bg-slate-100">취소</button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-1.5 text-sm text-slate-500 hover:text-slate-700 rounded-xl hover:bg-slate-100"
+        >
+          취소
+        </button>
         <button
           type="submit"
           disabled={saving || !title.trim()}
@@ -659,7 +809,13 @@ function AddCategoryForm({ phaseId, onSave, onCancel }: AddCategoryFormProps) {
 // ─── Phase 편집 패널 ──────────────────────────────────────
 interface PhaseEditPanelProps {
   phase: PhaseResponse;
-  onSave: (id: number, name: string, label: string, months: number, color: string) => Promise<boolean>;
+  onSave: (
+    id: number,
+    name: string,
+    label: string,
+    months: number,
+    color: string,
+  ) => Promise<boolean>;
   onClose: () => void;
 }
 
@@ -695,7 +851,10 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
     <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm space-y-3">
       <div className="flex items-center justify-between mb-1">
         <p className="text-sm font-semibold text-slate-700">Phase 편집</p>
-        <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+        <button
+          onClick={onClose}
+          className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+        >
           <X size={14} />
         </button>
       </div>
@@ -704,9 +863,11 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
           <label className="text-xs text-slate-500 mb-1 block">Phase 이름</label>
           <input
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             autoFocus
-            onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') onClose();
+            }}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
             placeholder="예: Phase 1"
           />
@@ -715,7 +876,7 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
           <label className="text-xs text-slate-500 mb-1 block">레이블 (부제목)</label>
           <input
             value={label}
-            onChange={e => setLabel(e.target.value)}
+            onChange={(e) => setLabel(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
             placeholder="예: 기반 다지기"
           />
@@ -727,20 +888,25 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
             min="1"
             max="120"
             value={months}
-            onChange={e => setMonths(e.target.value)}
+            onChange={(e) => setMonths(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
           />
         </div>
         <div>
           <label className="text-xs text-slate-500 mb-1 block">
-            종료일 {phase.start_date ? <span className="text-slate-400">(자동 계산)</span> : <span className="text-slate-300">(시작일 미설정)</span>}
+            종료일{' '}
+            {phase.start_date ? (
+              <span className="text-slate-400">(자동 계산)</span>
+            ) : (
+              <span className="text-slate-300">(시작일 미설정)</span>
+            )}
           </label>
           <input
             type="date"
             value={computedEndDate ?? ''}
             min={phase.start_date ?? undefined}
             disabled={!phase.start_date}
-            onChange={e => handleEndDateChange(e.target.value)}
+            onChange={(e) => handleEndDateChange(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
           />
         </div>
@@ -750,12 +916,12 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
             <input
               type="color"
               value={color}
-              onChange={e => setColor(e.target.value)}
+              onChange={(e) => setColor(e.target.value)}
               className="w-10 h-9 rounded-lg border border-slate-200 cursor-pointer p-0.5"
             />
             <input
               value={color}
-              onChange={e => setColor(e.target.value)}
+              onChange={(e) => setColor(e.target.value)}
               className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
               placeholder="#6366f1"
             />
@@ -763,7 +929,10 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-1">
-        <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 rounded-xl hover:bg-slate-100">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 rounded-xl hover:bg-slate-100"
+        >
           취소
         </button>
         <button
@@ -779,7 +948,14 @@ function PhaseEditPanel({ phase, onSave, onClose }: PhaseEditPanelProps) {
 }
 
 // ─── 메인 페이지 ──────────────────────────────────────────
-interface UrgentItem { id: number; text: string; deadline: string; status: ItemStatus; phase: string; category: string; }
+interface UrgentItem {
+  id: number;
+  text: string;
+  deadline: string;
+  status: ItemStatus;
+  phase: string;
+  category: string;
+}
 
 export default function PlannerPage() {
   const [phases, setPhases] = useState<PhaseResponse[]>([]);
@@ -821,7 +997,7 @@ export default function PlannerPage() {
   // 최초 로드 후 is_current Phase로 자동 이동 (loadRoadmap과 분리)
   useEffect(() => {
     if (hasAutoFocused.current || phases.length === 0) return;
-    const idx = phases.findIndex(p => p.is_current);
+    const idx = phases.findIndex((p) => p.is_current);
     if (idx !== -1) {
       hasAutoFocused.current = true;
       queueMicrotask(() => setActiveTab(idx));
@@ -846,17 +1022,23 @@ export default function PlannerPage() {
   async function handleToggle(id: number): Promise<void> {
     try {
       const result = await plannerApi.toggleItem(id);
-      setPhases(prev => prev.map(p => ({
-        ...p,
-        categories: p.categories.map(c => ({
-          ...c,
-          items: c.items.map(i =>
-            i.id === id
-              ? { ...i, is_completed: result.is_completed, status: computeStatus(i.deadline, result.is_completed) }
-              : i
-          ),
+      setPhases((prev) =>
+        prev.map((p) => ({
+          ...p,
+          categories: p.categories.map((c) => ({
+            ...c,
+            items: c.items.map((i) =>
+              i.id === id
+                ? {
+                    ...i,
+                    is_completed: result.is_completed,
+                    status: computeStatus(i.deadline, result.is_completed),
+                  }
+                : i,
+            ),
+          })),
         })),
-      })));
+      );
     } catch {
       setError('체크 저장에 실패했습니다.');
     }
@@ -865,13 +1047,15 @@ export default function PlannerPage() {
   async function handleDelete(id: number) {
     try {
       await plannerApi.deleteItem(id);
-      setPhases(prev => prev.map(p => ({
-        ...p,
-        categories: p.categories.map(c => ({
-          ...c,
-          items: c.items.filter(i => i.id !== id),
+      setPhases((prev) =>
+        prev.map((p) => ({
+          ...p,
+          categories: p.categories.map((c) => ({
+            ...c,
+            items: c.items.filter((i) => i.id !== id),
+          })),
         })),
-      })));
+      );
     } catch {
       setError('삭제에 실패했습니다.');
       throw new Error('delete failed');
@@ -885,17 +1069,17 @@ export default function PlannerPage() {
         // offset 변경 시 deadline·status가 서버에서 재계산되므로 전체 리로드
         await loadRoadmap();
       } else {
-        setPhases(prev => prev.map(p => ({
-          ...p,
-          categories: p.categories.map(c => ({
-            ...c,
-            items: c.items.map(i =>
-              i.id === id
-                ? { ...i, ...(data.text !== undefined && { text: data.text }) }
-                : i
-            ),
+        setPhases((prev) =>
+          prev.map((p) => ({
+            ...p,
+            categories: p.categories.map((c) => ({
+              ...c,
+              items: c.items.map((i) =>
+                i.id === id ? { ...i, ...(data.text !== undefined && { text: data.text }) } : i,
+              ),
+            })),
           })),
-        })));
+        );
       }
     } catch {
       setError('수정에 실패했습니다.');
@@ -911,16 +1095,25 @@ export default function PlannerPage() {
     }
   }
 
-  async function handlePhaseUpdate(id: number, name: string, label: string, months: number, color: string): Promise<boolean> {
+  async function handlePhaseUpdate(
+    id: number,
+    name: string,
+    label: string,
+    months: number,
+    color: string,
+  ): Promise<boolean> {
     try {
       await plannerApi.updatePhase(id, { name, label, months, color });
       const todayStr = new Date().toISOString().split('T')[0];
-      setPhases(prev => prev.map(p => {
-        if (p.id !== id) return p;
-        const end_date = p.start_date ? addMonthsNoOverflow(p.start_date, months) : null;
-        const is_current = !!p.start_date && !!end_date && p.start_date <= todayStr && todayStr < end_date;
-        return { ...p, name, label, months, color, end_date, is_current };
-      }));
+      setPhases((prev) =>
+        prev.map((p) => {
+          if (p.id !== id) return p;
+          const end_date = p.start_date ? addMonthsNoOverflow(p.start_date, months) : null;
+          const is_current =
+            !!p.start_date && !!end_date && p.start_date <= todayStr && todayStr < end_date;
+          return { ...p, name, label, months, color, end_date, is_current };
+        }),
+      );
       // 기간 변경 시 이후 Phase들의 start_date·deadline도 바뀌므로 전체 재조회
       await loadRoadmap();
       return true;
@@ -930,15 +1123,20 @@ export default function PlannerPage() {
     }
   }
 
-  async function handleCategoryUpdate(id: number, icon: string, title: string, subtitle: string): Promise<boolean> {
+  async function handleCategoryUpdate(
+    id: number,
+    icon: string,
+    title: string,
+    subtitle: string,
+  ): Promise<boolean> {
     try {
       await plannerApi.updateCategory(id, { icon, title, subtitle });
-      setPhases(prev => prev.map(p => ({
-        ...p,
-        categories: p.categories.map(c =>
-          c.id === id ? { ...c, icon, title, subtitle } : c
-        ),
-      })));
+      setPhases((prev) =>
+        prev.map((p) => ({
+          ...p,
+          categories: p.categories.map((c) => (c.id === id ? { ...c, icon, title, subtitle } : c)),
+        })),
+      );
       return true;
     } catch {
       setError('카테고리 수정에 실패했습니다.');
@@ -949,22 +1147,31 @@ export default function PlannerPage() {
   async function handleCategoryDelete(id: number) {
     try {
       await plannerApi.deleteCategory(id);
-      setPhases(prev => prev.map(p => ({
-        ...p,
-        categories: p.categories.filter(c => c.id !== id),
-      })));
+      setPhases((prev) =>
+        prev.map((p) => ({
+          ...p,
+          categories: p.categories.filter((c) => c.id !== id),
+        })),
+      );
     } catch {
       setError('카테고리 삭제에 실패했습니다.');
       throw new Error('delete failed');
     }
   }
 
-  async function handleCategoryCreate(phaseId: number, icon: string, title: string, subtitle: string) {
+  async function handleCategoryCreate(
+    phaseId: number,
+    icon: string,
+    title: string,
+    subtitle: string,
+  ) {
     try {
       const newCat = await plannerApi.createCategory({ phase_id: phaseId, icon, title, subtitle });
-      setPhases(prev => prev.map(p =>
-        p.id === phaseId ? { ...p, categories: [...p.categories, { ...newCat, items: [] }] } : p
-      ));
+      setPhases((prev) =>
+        prev.map((p) =>
+          p.id === phaseId ? { ...p, categories: [...p.categories, { ...newCat, items: [] }] } : p,
+        ),
+      );
       setShowAddCategory(false);
     } catch {
       setError('카테고리 추가에 실패했습니다.');
@@ -978,9 +1185,10 @@ export default function PlannerPage() {
   }
 
   function toggleCatSelect(id: number) {
-    setSelectedCatIds(prev => {
+    setSelectedCatIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -991,14 +1199,16 @@ export default function PlannerPage() {
     setError(null);
     setBulkDeleting(true);
     try {
-      const results = await Promise.allSettled(ids.map(id => plannerApi.deleteCategory(id)));
+      const results = await Promise.allSettled(ids.map((id) => plannerApi.deleteCategory(id)));
       const succeededIds = new Set(ids.filter((_, i) => results[i].status === 'fulfilled'));
-      const failedCount = results.filter(r => r.status === 'rejected').length;
+      const failedCount = results.filter((r) => r.status === 'rejected').length;
       if (succeededIds.size > 0) {
-        setPhases(prev => prev.map(p => ({
-          ...p,
-          categories: p.categories.filter(c => !succeededIds.has(c.id)),
-        })));
+        setPhases((prev) =>
+          prev.map((p) => ({
+            ...p,
+            categories: p.categories.filter((c) => !succeededIds.has(c.id)),
+          })),
+        );
       }
       if (failedCount > 0) {
         setSelectedCatIds(new Set(ids.filter((_, i) => results[i].status === 'rejected')));
@@ -1022,39 +1232,66 @@ export default function PlannerPage() {
   }
 
   const activePhase = phases[activeTab] ?? phases[0];
-  const allItems = phases.flatMap(p => p.categories.flatMap(c => c.items));
+  const allItems = phases.flatMap((p) => p.categories.flatMap((c) => c.items));
   const totalItems = allItems.length;
-  const doneItems = allItems.filter(i => i.is_completed).length;
+  const doneItems = allItems.filter((i) => i.is_completed).length;
   const completionPct = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
   const activePhaseProg = activePhase ? phaseProgress(activePhase) : { done: 0, total: 0, pct: 0 };
 
-  const urgentItems: UrgentItem[] = phases.flatMap(p =>
-    p.categories.flatMap(c =>
-      c.items
-        .filter(i => i.status === 'urgent' || i.status === 'overdue')
-        .map(i => ({ id: i.id, text: i.text, deadline: i.deadline!, status: i.status!, phase: p.name, category: c.title }))
+  const urgentItems: UrgentItem[] = phases
+    .flatMap((p) =>
+      p.categories.flatMap((c) =>
+        c.items
+          .filter((i) => i.status === 'urgent' || i.status === 'overdue')
+          .map((i) => ({
+            id: i.id,
+            text: i.text,
+            deadline: i.deadline!,
+            status: i.status!,
+            phase: p.name,
+            category: c.title,
+          })),
+      ),
     )
-  ).sort((a, b) => a.deadline.localeCompare(b.deadline));
+    .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
   const searchQuery = itemSearch.trim().toLowerCase();
-  const searchResults = searchQuery.length >= 2
-    ? phases.flatMap(p =>
-        p.categories.flatMap(c =>
-          c.items
-            .filter(i => i.text.toLowerCase().includes(searchQuery))
-            .map(i => ({ id: i.id, text: i.text, deadline: i.deadline, status: i.status, phase: p.name, category: c.title, is_completed: i.is_completed }))
+  const searchResults =
+    searchQuery.length >= 2
+      ? phases.flatMap((p) =>
+          p.categories.flatMap((c) =>
+            c.items
+              .filter((i) => i.text.toLowerCase().includes(searchQuery))
+              .map((i) => ({
+                id: i.id,
+                text: i.text,
+                deadline: i.deadline,
+                status: i.status,
+                phase: p.name,
+                category: c.title,
+                is_completed: i.is_completed,
+              })),
+          ),
         )
-      )
-    : [];
+      : [];
 
   // 마감일 순 미완료 항목 목록
-  const deadlineSortedItems = phases.flatMap(p =>
-    p.categories.flatMap(c =>
-      c.items
-        .filter(i => !i.is_completed && i.deadline)
-        .map(i => ({ id: i.id, text: i.text, deadline: i.deadline!, status: i.status, phase: p.name, category: c.title }))
+  const deadlineSortedItems = phases
+    .flatMap((p) =>
+      p.categories.flatMap((c) =>
+        c.items
+          .filter((i) => !i.is_completed && i.deadline)
+          .map((i) => ({
+            id: i.id,
+            text: i.text,
+            deadline: i.deadline!,
+            status: i.status,
+            phase: p.name,
+            category: c.title,
+          })),
+      ),
     )
-  ).sort((a, b) => a.deadline.localeCompare(b.deadline));
+    .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
   return (
     <div className="space-y-6">
@@ -1071,7 +1308,7 @@ export default function PlannerPage() {
           <input
             type="date"
             value={startDate}
-            onChange={e => setStartDate(e.target.value)}
+            onChange={(e) => setStartDate(e.target.value)}
             className="border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white shadow-sm"
           />
           <button
@@ -1087,14 +1324,19 @@ export default function PlannerPage() {
       {error && (
         <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
           {error}
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-4"><X size={14} /></button>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-4">
+            <X size={14} />
+          </button>
         </div>
       )}
 
       {!startDate && phases.length > 0 && (
         <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
           <span className="shrink-0">💡</span>
-          <span>오른쪽 상단에서 <strong>로드맵 시작일</strong>을 설정하면 마감일과 진행 상태가 자동으로 계산됩니다.</span>
+          <span>
+            오른쪽 상단에서 <strong>로드맵 시작일</strong>을 설정하면 마감일과 진행 상태가 자동으로
+            계산됩니다.
+          </span>
         </div>
       )}
 
@@ -1120,13 +1362,25 @@ export default function PlannerPage() {
               return (
                 <button
                   key={phase.id}
-                  onClick={() => { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); cancelSelectMode(); }}
+                  onClick={() => {
+                    setActiveTab(idx);
+                    setEditingPhaseId(null);
+                    setShowAddCategory(false);
+                    cancelSelectMode();
+                  }}
                   className={`text-left rounded-xl p-2.5 transition-colors hover:bg-slate-50 ${isActive ? 'bg-slate-50 ring-1 ring-slate-200' : ''}`}
                 >
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: phase.color }} />
-                    <span className="text-xs font-semibold text-slate-700 truncate">{phase.name}</span>
-                    {phase.is_current && <span className="text-[9px] text-emerald-500 font-black shrink-0">●</span>}
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: phase.color }}
+                    />
+                    <span className="text-xs font-semibold text-slate-700 truncate">
+                      {phase.name}
+                    </span>
+                    {phase.is_current && (
+                      <span className="text-[9px] text-emerald-500 font-black shrink-0">●</span>
+                    )}
                   </div>
                   <div className="h-1 bg-slate-100 rounded-full overflow-hidden mb-1">
                     <div
@@ -1134,7 +1388,9 @@ export default function PlannerPage() {
                       style={{ width: `${phPct}%`, backgroundColor: phase.color }}
                     />
                   </div>
-                  <span className="text-[10px] text-slate-400">{phDone}/{phTotal} · {phPct}%</span>
+                  <span className="text-[10px] text-slate-400">
+                    {phDone}/{phTotal} · {phPct}%
+                  </span>
                 </button>
               );
             })}
@@ -1147,19 +1403,27 @@ export default function PlannerPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle size={15} className="text-amber-500" />
-            <p className="font-semibold text-amber-800 text-sm">주의 필요 ({urgentItems.length}개)</p>
+            <p className="font-semibold text-amber-800 text-sm">
+              주의 필요 ({urgentItems.length}개)
+            </p>
           </div>
           <div className="space-y-1.5">
-            {urgentItems.map(item => (
+            {urgentItems.map((item) => (
               <div key={item.id} className="flex items-center gap-2 text-sm">
-                <span className={`text-[11px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${
-                  item.status === 'overdue' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'
-                }`}>
+                <span
+                  className={`text-[11px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${
+                    item.status === 'overdue'
+                      ? 'bg-red-100 text-red-600'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}
+                >
                   {item.status === 'overdue' ? '지연' : '임박'}
                 </span>
                 <span className="text-slate-700 flex-1 truncate">{item.text}</span>
                 <span className="text-slate-400 text-xs shrink-0">{item.deadline}</span>
-                <span className="text-slate-400 text-xs shrink-0 hidden sm:inline">· {item.phase} / {item.category}</span>
+                <span className="text-slate-400 text-xs shrink-0 hidden sm:inline">
+                  · {item.phase} / {item.category}
+                </span>
               </div>
             ))}
           </div>
@@ -1173,13 +1437,16 @@ export default function PlannerPage() {
             <input
               type="text"
               value={itemSearch}
-              onChange={e => { setItemSearch(e.target.value); if (e.target.value) setShowDeadlineView(false); }}
+              onChange={(e) => {
+                setItemSearch(e.target.value);
+                if (e.target.value) setShowDeadlineView(false);
+              }}
               placeholder="항목 검색 (2자 이상)..."
               className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
             />
             {deadlineSortedItems.length > 0 && !searchQuery && (
               <button
-                onClick={() => setShowDeadlineView(v => !v)}
+                onClick={() => setShowDeadlineView((v) => !v)}
                 className={`px-3.5 py-2.5 rounded-xl text-sm border transition-colors shrink-0 flex items-center gap-1.5 ${
                   showDeadlineView
                     ? 'bg-slate-900 text-white border-slate-900'
@@ -1195,23 +1462,40 @@ export default function PlannerPage() {
           {searchQuery.length >= 2 && (
             <div className="mt-2 border border-slate-100 rounded-xl overflow-hidden bg-white">
               {searchResults.length === 0 ? (
-                <p className="py-6 text-center text-sm text-slate-400">&apos;{itemSearch}&apos;에 해당하는 항목이 없어요</p>
+                <p className="py-6 text-center text-sm text-slate-400">
+                  &apos;{itemSearch}&apos;에 해당하는 항목이 없어요
+                </p>
               ) : (
                 <div>
-                  <p className="px-4 py-2 text-xs text-slate-400 border-b border-slate-50">{searchResults.length}개 항목 발견</p>
-                  {searchResults.map(item => (
-                    <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${item.is_completed ? 'bg-emerald-400' : 'bg-slate-300'}`} />
-                      <span className={`flex-1 text-sm truncate ${item.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>{item.text}</span>
+                  <p className="px-4 py-2 text-xs text-slate-400 border-b border-slate-50">
+                    {searchResults.length}개 항목 발견
+                  </p>
+                  {searchResults.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors"
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 ${item.is_completed ? 'bg-emerald-400' : 'bg-slate-300'}`}
+                      />
+                      <span
+                        className={`flex-1 text-sm truncate ${item.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}
+                      >
+                        {item.text}
+                      </span>
                       {item.status && !item.is_completed && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${statusStyle[item.status]}`}>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${statusStyle[item.status]}`}
+                        >
                           {statusLabel[item.status]}
                         </span>
                       )}
                       {item.deadline && (
                         <span className="text-xs text-slate-400 shrink-0">{item.deadline}</span>
                       )}
-                      <span className="text-[11px] text-slate-300 shrink-0 hidden sm:inline">{item.phase} / {item.category}</span>
+                      <span className="text-[11px] text-slate-300 shrink-0 hidden sm:inline">
+                        {item.phase} / {item.category}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -1223,17 +1507,26 @@ export default function PlannerPage() {
               <p className="px-4 py-2 text-xs text-slate-400 border-b border-slate-50">
                 미완료 {deadlineSortedItems.length}개 · 마감일 순
               </p>
-              {deadlineSortedItems.map(item => (
-                <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+              {deadlineSortedItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors"
+                >
                   <span className="w-2 h-2 rounded-full shrink-0 bg-slate-300" />
                   <span className="flex-1 text-sm text-slate-700 truncate">{item.text}</span>
                   {item.status && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${statusStyle[item.status]}`}>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${statusStyle[item.status]}`}
+                    >
                       {statusLabel[item.status]}
                     </span>
                   )}
-                  <span className="text-xs text-slate-400 shrink-0 font-medium">{item.deadline}</span>
-                  <span className="text-[11px] text-slate-300 shrink-0 hidden sm:inline">{item.phase} / {item.category}</span>
+                  <span className="text-xs text-slate-400 shrink-0 font-medium">
+                    {item.deadline}
+                  </span>
+                  <span className="text-[11px] text-slate-300 shrink-0 hidden sm:inline">
+                    {item.phase} / {item.category}
+                  </span>
                 </div>
               ))}
             </div>
@@ -1251,8 +1544,20 @@ export default function PlannerPage() {
               key={phase.id}
               role="button"
               tabIndex={0}
-              onClick={() => { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); cancelSelectMode(); }}
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setActiveTab(idx); setEditingPhaseId(null); setShowAddCategory(false); cancelSelectMode(); } }}
+              onClick={() => {
+                setActiveTab(idx);
+                setEditingPhaseId(null);
+                setShowAddCategory(false);
+                cancelSelectMode();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setActiveTab(idx);
+                  setEditingPhaseId(null);
+                  setShowAddCategory(false);
+                  cancelSelectMode();
+                }
+              }}
               className={`flex-1 py-2.5 px-2 rounded-xl text-sm font-medium transition-all duration-200 relative group cursor-pointer select-none ${
                 isActive
                   ? 'bg-white text-slate-800 shadow-sm ring-2 ring-slate-200/80'
@@ -1260,11 +1565,18 @@ export default function PlannerPage() {
               } ${phase.is_current && !isActive ? 'ring-1 ring-emerald-300 bg-emerald-50/50' : ''}`}
             >
               <div className="flex items-center justify-center gap-1.5 mb-0.5">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: phase.color }} />
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: phase.color }}
+                />
                 <span className="truncate">{phase.name}</span>
                 {isActive && (
                   <button
-                    onClick={e => { e.stopPropagation(); cancelSelectMode(); setEditingPhaseId(editingPhaseId === phase.id ? null : phase.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      cancelSelectMode();
+                      setEditingPhaseId(editingPhaseId === phase.id ? null : phase.id);
+                    }}
                     className="p-0.5 rounded text-slate-300 hover:text-slate-600 transition-colors ml-0.5"
                     title="Phase 편집"
                   >
@@ -1273,7 +1585,9 @@ export default function PlannerPage() {
                 )}
               </div>
               <div className="text-[11px] font-normal text-slate-400">{phase.label}</div>
-              <div className="text-[11px] font-normal opacity-60">{pDone}/{pTotal}</div>
+              <div className="text-[11px] font-normal opacity-60">
+                {pDone}/{pTotal}
+              </div>
               {pTotal > 0 && (
                 <div className="mt-1.5 h-1 bg-slate-200/60 rounded-full overflow-hidden">
                   <div
@@ -1284,14 +1598,19 @@ export default function PlannerPage() {
               )}
               {phase.is_current && (
                 <div className="mt-1 flex items-center gap-1 flex-wrap">
-                  <span className="inline-block text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">진행 중</span>
-                  {phase.end_date && (() => {
-                    const today = new Date(); today.setHours(0,0,0,0);
-                    const end = new Date(phase.end_date); end.setHours(0,0,0,0);
-                    const rem = Math.ceil((end.getTime() - today.getTime()) / 86400000);
-                    if (rem <= 0) return null;
-                    return <span className="text-[9px] text-slate-400">D-{rem}</span>;
-                  })()}
+                  <span className="inline-block text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
+                    진행 중
+                  </span>
+                  {phase.end_date &&
+                    (() => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const end = new Date(phase.end_date);
+                      end.setHours(0, 0, 0, 0);
+                      const rem = Math.ceil((end.getTime() - today.getTime()) / 86400000);
+                      if (rem <= 0) return null;
+                      return <span className="text-[9px] text-slate-400">D-{rem}</span>;
+                    })()}
                 </div>
               )}
             </div>
@@ -1313,23 +1632,30 @@ export default function PlannerPage() {
         <div className="space-y-2 px-1">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: activePhase.color }} />
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: activePhase.color }}
+              />
               <span>{activePhase.months}개월</span>
             </span>
             {activePhase.start_date && activePhase.end_date && (
-              <span>{activePhase.start_date} → {activePhase.end_date}</span>
+              <span>
+                {activePhase.start_date} → {activePhase.end_date}
+              </span>
             )}
-            {activePhase.is_current && (() => {
-              const today = new Date(); today.setHours(0,0,0,0);
-              const end = activePhase.end_date ? new Date(activePhase.end_date) : null;
-              if (end) end.setHours(0,0,0,0);
-              const rem = end ? Math.ceil((end.getTime() - today.getTime()) / 86400000) : null;
-              return (
-                <span className="text-emerald-600 font-semibold">
-                  현재 진행 중{rem != null && rem > 0 ? ` · 종료까지 ${rem}일` : ''}
-                </span>
-              );
-            })()}
+            {activePhase.is_current &&
+              (() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const end = activePhase.end_date ? new Date(activePhase.end_date) : null;
+                if (end) end.setHours(0, 0, 0, 0);
+                const rem = end ? Math.ceil((end.getTime() - today.getTime()) / 86400000) : null;
+                return (
+                  <span className="text-emerald-600 font-semibold">
+                    현재 진행 중{rem != null && rem > 0 ? ` · 종료까지 ${rem}일` : ''}
+                  </span>
+                );
+              })()}
             <span className="font-medium text-slate-600 ml-auto">
               {activePhaseProg.done}/{activePhaseProg.total} 완료 ({activePhaseProg.pct}%)
             </span>
@@ -1351,7 +1677,9 @@ export default function PlannerPage() {
           {selectMode ? (
             <>
               <span className="text-sm text-slate-500">
-                {selectedCatIds.size > 0 ? `${selectedCatIds.size}개 선택됨` : '카테고리를 선택하세요'}
+                {selectedCatIds.size > 0
+                  ? `${selectedCatIds.size}개 선택됨`
+                  : '카테고리를 선택하세요'}
               </span>
               <div className="flex items-center gap-2">
                 {bulkDeletePending ? (
@@ -1362,7 +1690,11 @@ export default function PlannerPage() {
                       disabled={bulkDeleting}
                       className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 font-medium transition-colors"
                     >
-                      {bulkDeleting ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} strokeWidth={3} />}
+                      {bulkDeleting ? (
+                        <Loader2 size={11} className="animate-spin" />
+                      ) : (
+                        <Check size={11} strokeWidth={3} />
+                      )}
                       확인
                     </button>
                     <button
@@ -1395,7 +1727,7 @@ export default function PlannerPage() {
           ) : (
             <div className="ml-auto flex items-center gap-1">
               <button
-                onClick={() => setHideCompleted(v => !v)}
+                onClick={() => setHideCompleted((v) => !v)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ${
                   hideCompleted
                     ? 'bg-slate-900 text-white'
@@ -1407,7 +1739,10 @@ export default function PlannerPage() {
                 {hideCompleted ? '완료 숨김' : '전체 보기'}
               </button>
               <button
-                onClick={() => { setShowAddCategory(false); setSelectMode(true); }}
+                onClick={() => {
+                  setShowAddCategory(false);
+                  setSelectMode(true);
+                }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 rounded-lg hover:text-slate-600 hover:bg-slate-100 transition-colors"
               >
                 <CheckSquare size={13} />
@@ -1432,7 +1767,7 @@ export default function PlannerPage() {
               </button>
             </div>
           )}
-          {activePhase.categories.map(cat => (
+          {activePhase.categories.map((cat) => (
             <CategoryCard
               key={cat.id}
               cat={cat}

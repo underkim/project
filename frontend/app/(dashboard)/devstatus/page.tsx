@@ -4,15 +4,25 @@ import { useEffect, useRef, useState } from 'react';
 import { devstatusApi } from '@/lib/api';
 import type { ActivityLog, DevStatusOverview, TaskSummary } from '@/types';
 import {
-  GitBranch, GitCommit, ShieldCheck, Sparkles, RefreshCw, AlertCircle, PowerOff,
-  CheckCircle2, Circle, Loader2, Radio,
+  GitBranch,
+  GitCommit,
+  ShieldCheck,
+  Sparkles,
+  RefreshCw,
+  AlertCircle,
+  PowerOff,
+  CheckCircle2,
+  Circle,
+  Loader2,
+  Radio,
 } from 'lucide-react';
 
 const ACTIVITY_POLL_MS = 8000;
 
 function StepIcon({ status }: { status: string }) {
   if (status === 'done') return <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />;
-  if (status === 'in_progress') return <Loader2 size={14} className="text-blue-500 shrink-0 animate-spin" />;
+  if (status === 'in_progress')
+    return <Loader2 size={14} className="text-blue-500 shrink-0 animate-spin" />;
   return <Circle size={14} className="text-slate-300 shrink-0" />;
 }
 
@@ -25,7 +35,7 @@ function ActivityCard({ activity }: { activity: ActivityLog | null }) {
       </div>
     );
   }
-  const done = activity.steps.filter(s => s.status === 'done').length;
+  const done = activity.steps.filter((s) => s.status === 'done').length;
   return (
     <div className="border border-blue-100 bg-blue-50/30 rounded-xl p-5">
       <div className="flex items-center justify-between mb-3">
@@ -33,14 +43,18 @@ function ActivityCard({ activity }: { activity: ActivityLog | null }) {
           <Radio size={13} className="text-blue-500 animate-pulse" />
           <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">지금 작업 중</p>
         </div>
-        <span className="text-[10px] text-slate-400">{done} / {activity.steps.length}</span>
+        <span className="text-[10px] text-slate-400">
+          {done} / {activity.steps.length}
+        </span>
       </div>
       <p className="text-sm font-medium text-slate-800 mb-3">{activity.task ?? '(제목 없음)'}</p>
       <div className="space-y-1.5">
         {activity.steps.map((step, i) => (
           <div key={i} className="flex items-center gap-2">
             <StepIcon status={step.status} />
-            <span className={`text-xs ${step.status === 'done' ? 'text-slate-400 line-through' : step.status === 'in_progress' ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+            <span
+              className={`text-xs ${step.status === 'done' ? 'text-slate-400 line-through' : step.status === 'in_progress' ? 'text-slate-800 font-medium' : 'text-slate-500'}`}
+            >
               {step.label}
             </span>
           </div>
@@ -53,11 +67,24 @@ function ActivityCard({ activity }: { activity: ActivityLog | null }) {
   );
 }
 
-const STATUS_ORDER = ['draft', 'approved', 'working', 'blocked', 'implemented', 'reviewed', 'done'] as const;
+const STATUS_ORDER = [
+  'draft',
+  'approved',
+  'working',
+  'blocked',
+  'implemented',
+  'reviewed',
+  'done',
+] as const;
 
 const STATUS_LABEL: Record<string, string> = {
-  draft: '초안', approved: '승인됨', working: '진행 중', blocked: '막힘',
-  implemented: '구현됨', reviewed: '검토됨', done: '완료',
+  draft: '초안',
+  approved: '승인됨',
+  working: '진행 중',
+  blocked: '막힘',
+  implemented: '구현됨',
+  reviewed: '검토됨',
+  done: '완료',
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -89,9 +116,7 @@ function TaskRow({ task }: { task: TaskSummary }) {
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        {task.priority && (
-          <span className="text-[10px] text-slate-400">{task.priority}</span>
-        )}
+        {task.priority && <span className="text-[10px] text-slate-400">{task.priority}</span>}
         <StatusBadge status={task.status} />
       </div>
     </div>
@@ -135,8 +160,11 @@ export default function DevStatusPage() {
     }
   }
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); loadActivity(); }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+    loadActivity();
+  }, []);
 
   // 지금 작업 중인 내용을 폴링으로 갱신 — 커밋 단위로 업데이트되는 activity-log.json을
   // 새로고침 없이도 몇 초 안에 반영한다.
@@ -145,47 +173,57 @@ export default function DevStatusPage() {
     return () => clearInterval(id);
   }, []);
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-24">
-      <div className="w-5 h-5 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-5 h-5 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
+      </div>
+    );
 
-  if (disabled) return (
-    <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
-      <PowerOff size={22} className="text-slate-300" />
-      <p className="text-sm font-medium text-slate-600">개발 현황 모듈이 비활성화되어 있어요</p>
-      <p className="text-xs text-slate-400 max-w-sm">
-        백엔드 환경변수 <code className="bg-slate-100 px-1 py-0.5 rounded">ENABLE_DEVSTATUS_MODULE=true</code>로
-        설정하면 다시 활성화됩니다.
-      </p>
-    </div>
-  );
+  if (disabled)
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+        <PowerOff size={22} className="text-slate-300" />
+        <p className="text-sm font-medium text-slate-600">개발 현황 모듈이 비활성화되어 있어요</p>
+        <p className="text-xs text-slate-400 max-w-sm">
+          백엔드 환경변수{' '}
+          <code className="bg-slate-100 px-1 py-0.5 rounded">ENABLE_DEVSTATUS_MODULE=true</code>로
+          설정하면 다시 활성화됩니다.
+        </p>
+      </div>
+    );
 
-  if (error || !data) return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4">
-      <AlertCircle size={22} className="text-amber-400" />
-      <p className="text-sm text-slate-600">데이터를 불러오지 못했습니다.</p>
-      <button
-        onClick={load}
-        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm rounded-xl hover:bg-slate-700 transition-colors"
-      >
-        <RefreshCw size={14} />
-        다시 시도
-      </button>
-    </div>
-  );
+  if (error || !data)
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <AlertCircle size={22} className="text-amber-400" />
+        <p className="text-sm text-slate-600">데이터를 불러오지 못했습니다.</p>
+        <button
+          onClick={load}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm rounded-xl hover:bg-slate-700 transition-colors"
+        >
+          <RefreshCw size={14} />
+          다시 시도
+        </button>
+      </div>
+    );
 
-  const totalUnfinished = data.task_counts.draft + data.task_counts.approved + data.task_counts.working;
+  const totalUnfinished =
+    data.task_counts.draft + data.task_counts.approved + data.task_counts.working;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-slate-900">개발 현황</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Claude Code 엔지니어링 상태 &amp; 태스크 진행 상황</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Claude Code 엔지니어링 상태 &amp; 태스크 진행 상황
+          </p>
         </div>
-        <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors">
+        <button
+          onClick={load}
+          className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors"
+        >
           <RefreshCw size={14} />
         </button>
       </div>
@@ -200,7 +238,7 @@ export default function DevStatusPage() {
           <span className="text-xs text-slate-400">진행 대기 {totalUnfinished}개</span>
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-          {STATUS_ORDER.map(s => (
+          {STATUS_ORDER.map((s) => (
             <div key={s} className="text-center rounded-lg bg-slate-50 px-2 py-3">
               <p className="text-lg font-semibold text-slate-900">{data.task_counts[s]}</p>
               <p className="text-[10px] text-slate-400 mt-0.5">{STATUS_LABEL[s]}</p>
@@ -212,13 +250,17 @@ export default function DevStatusPage() {
       {/* 진행 중인 태스크 목록 */}
       <div className="border border-slate-100 rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-50">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">활성 태스크 ({data.active_tasks.length})</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+            활성 태스크 ({data.active_tasks.length})
+          </p>
         </div>
         {data.active_tasks.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-8">활성 태스크가 없습니다</p>
         ) : (
           <div className="divide-y divide-slate-50 max-h-96 overflow-y-auto">
-            {data.active_tasks.map(t => <TaskRow key={t.id} task={t} />)}
+            {data.active_tasks.map((t) => (
+              <TaskRow key={t.id} task={t} />
+            ))}
           </div>
         )}
       </div>
@@ -228,23 +270,29 @@ export default function DevStatusPage() {
         <div className="border border-slate-100 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <ShieldCheck size={14} className="text-slate-400" />
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">하네스 (Claude Code 엔지니어링)</p>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+              하네스 (Claude Code 엔지니어링)
+            </p>
           </div>
           <div className="space-y-2 text-xs text-slate-500">
             <div className="flex justify-between">
               <span>권한 allowlist</span>
-              <span className="font-medium text-slate-700">{data.harness.permission_rule_count}개</span>
+              <span className="font-medium text-slate-700">
+                {data.harness.permission_rule_count}개
+              </span>
             </div>
             <div className="flex justify-between">
               <span>.claudeignore</span>
-              <span className={`font-medium ${data.harness.claudeignore_present ? 'text-emerald-600' : 'text-red-500'}`}>
+              <span
+                className={`font-medium ${data.harness.claudeignore_present ? 'text-emerald-600' : 'text-red-500'}`}
+              >
                 {data.harness.claudeignore_present ? '적용됨' : '없음'}
               </span>
             </div>
             {data.harness.hooks.length > 0 && (
               <div className="pt-2 border-t border-slate-50">
                 <p className="text-slate-400 mb-1">Hooks</p>
-                {data.harness.hooks.map(h => (
+                {data.harness.hooks.map((h) => (
                   <div key={h.file} className="flex justify-between py-0.5">
                     <span className="font-mono text-slate-600">{h.file}</span>
                     <span className="text-slate-400">{h.events.join(', ')}</span>
@@ -255,10 +303,12 @@ export default function DevStatusPage() {
             {data.harness.skills.length > 0 && (
               <div className="pt-2 border-t border-slate-50">
                 <p className="text-slate-400 mb-1">Skills</p>
-                {data.harness.skills.map(s => (
+                {data.harness.skills.map((s) => (
                   <div key={s.name} className="py-0.5">
                     <span className="font-mono text-slate-600">{s.name}</span>
-                    <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">{s.description}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">
+                      {s.description}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -282,7 +332,9 @@ export default function DevStatusPage() {
                 <GitCommit size={12} className="text-slate-300 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <p className="text-slate-700 truncate">{data.git.last_commit_message}</p>
-                  <p className="text-[10px] text-slate-400 font-mono">{data.git.last_commit_hash}</p>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    {data.git.last_commit_hash}
+                  </p>
                 </div>
               </div>
             )}
@@ -295,7 +347,7 @@ export default function DevStatusPage() {
                 <p className="text-[10px] text-slate-400 uppercase tracking-wide">최근 작업 기록</p>
               </div>
               <div className="space-y-1.5">
-                {data.recent_dev_log.map(entry => (
+                {data.recent_dev_log.map((entry) => (
                   <div key={entry.date} className="text-xs">
                     <span className="text-slate-400 font-mono mr-1.5">{entry.date}</span>
                     <span className="text-slate-600">{entry.summary || '—'}</span>
@@ -311,10 +363,14 @@ export default function DevStatusPage() {
       {data.recent_done.length > 0 && (
         <div className="border border-slate-100 rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-50">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">최근 완료 태스크</p>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+              최근 완료 태스크
+            </p>
           </div>
           <div className="divide-y divide-slate-50">
-            {data.recent_done.map(t => <TaskRow key={t.id} task={t} />)}
+            {data.recent_done.map((t) => (
+              <TaskRow key={t.id} task={t} />
+            ))}
           </div>
         </div>
       )}

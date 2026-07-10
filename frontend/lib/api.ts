@@ -1,13 +1,28 @@
 import axios from 'axios';
 import { showToast } from '@/lib/toast';
 import type {
-  RoadmapResponse, RoadmapItemResponse, CategoryResponse, FinanceSummaryResponse, AssetRecordResponse, FinanceGoalResponse,
-  ExerciseLogResponse, SleepLogResponse, HealthSummaryResponse,
-  BookRecordResponse, EnglishLogResponse, GrowthSummaryResponse,
-  CareerSettingsResponse, CFRatingLogResponse,
+  RoadmapResponse,
+  RoadmapItemResponse,
+  CategoryResponse,
+  FinanceSummaryResponse,
+  AssetRecordResponse,
+  FinanceGoalResponse,
+  ExerciseLogResponse,
+  SleepLogResponse,
+  HealthSummaryResponse,
+  BookRecordResponse,
+  EnglishLogResponse,
+  GrowthSummaryResponse,
+  CareerSettingsResponse,
+  CFRatingLogResponse,
   OverviewResponse,
-  TripResponse, ChecklistItemResponse, TravelSummaryResponse, TripPlanItemResponse, RestaurantResponse,
-  DevStatusOverview, ActivityLog,
+  TripResponse,
+  ChecklistItemResponse,
+  TravelSummaryResponse,
+  TripPlanItemResponse,
+  RestaurantResponse,
+  DevStatusOverview,
+  ActivityLog,
 } from '@/types';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -52,15 +67,16 @@ client.interceptors.response.use(
       err.message = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
     }
     return Promise.reject(err);
-  }
+  },
 );
 
 export const authApi = {
   login: async (username: string, password: string) => {
     const form = new URLSearchParams({ username, password });
     const res = await client.post<{ access_token: string; token_type: string }>(
-      '/api/v1/auth/token', form,
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      '/api/v1/auth/token',
+      form,
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
     );
     return res.data;
   },
@@ -75,19 +91,30 @@ export const plannerApi = {
     (await client.put('/api/v1/planner/settings', { start_date })).data,
   toggleItem: async (id: number): Promise<{ id: number; is_completed: boolean }> =>
     (await client.patch(`/api/v1/planner/items/${id}/toggle`)).data,
-  createItem: async (data: { category_id: number; text: string; offset: number }): Promise<RoadmapItemResponse> =>
-    (await client.post('/api/v1/planner/items', data)).data,
-  updateItem: async (id: number, data: { text?: string; offset?: number }): Promise<RoadmapItemResponse> =>
-    (await client.put(`/api/v1/planner/items/${id}`, data)).data,
+  createItem: async (data: {
+    category_id: number;
+    text: string;
+    offset: number;
+  }): Promise<RoadmapItemResponse> => (await client.post('/api/v1/planner/items', data)).data,
+  updateItem: async (
+    id: number,
+    data: { text?: string; offset?: number },
+  ): Promise<RoadmapItemResponse> => (await client.put(`/api/v1/planner/items/${id}`, data)).data,
   deleteItem: async (id: number): Promise<void> => {
     await client.delete(`/api/v1/planner/items/${id}`);
   },
-  updatePhase: async (id: number, data: { name?: string; label?: string; months?: number; color?: string }) =>
-    (await client.put(`/api/v1/planner/phases/${id}`, data)).data,
+  updatePhase: async (
+    id: number,
+    data: { name?: string; label?: string; months?: number; color?: string },
+  ) => (await client.put(`/api/v1/planner/phases/${id}`, data)).data,
   updateCategory: async (id: number, data: { icon?: string; title?: string; subtitle?: string }) =>
     (await client.put(`/api/v1/planner/categories/${id}`, data)).data,
-  createCategory: async (data: { phase_id: number; icon?: string; title: string; subtitle?: string }): Promise<CategoryResponse> =>
-    (await client.post('/api/v1/planner/categories', data)).data,
+  createCategory: async (data: {
+    phase_id: number;
+    icon?: string;
+    title: string;
+    subtitle?: string;
+  }): Promise<CategoryResponse> => (await client.post('/api/v1/planner/categories', data)).data,
   deleteCategory: async (id: number): Promise<void> => {
     await client.delete(`/api/v1/planner/categories/${id}`);
   },
@@ -95,27 +122,42 @@ export const plannerApi = {
 
 export const financeApi = {
   getSummary: async (recordsLimit = 20, recordsOffset = 0): Promise<FinanceSummaryResponse> =>
-    (await client.get('/api/v1/finance/summary', { params: { records_limit: recordsLimit, records_offset: recordsOffset } })).data,
+    (
+      await client.get('/api/v1/finance/summary', {
+        params: { records_limit: recordsLimit, records_offset: recordsOffset },
+      })
+    ).data,
   listRecords: async (limit = 20, offset = 0): Promise<AssetRecordResponse[]> =>
     (await client.get('/api/v1/finance/records', { params: { limit, offset } })).data,
   createRecord: async (data: {
-    record_date: string; total_assets: number;
-    monthly_income: number; monthly_expense: number; note?: string;
-  }): Promise<AssetRecordResponse> =>
-    (await client.post('/api/v1/finance/records', data)).data,
-  updateRecord: async (id: number, data: Partial<{
-    record_date: string; total_assets: number; monthly_income: number; monthly_expense: number; note: string | null;
-  }>): Promise<AssetRecordResponse> =>
-    (await client.put(`/api/v1/finance/records/${id}`, data)).data,
+    record_date: string;
+    total_assets: number;
+    monthly_income: number;
+    monthly_expense: number;
+    note?: string;
+  }): Promise<AssetRecordResponse> => (await client.post('/api/v1/finance/records', data)).data,
+  updateRecord: async (
+    id: number,
+    data: Partial<{
+      record_date: string;
+      total_assets: number;
+      monthly_income: number;
+      monthly_expense: number;
+      note: string | null;
+    }>,
+  ): Promise<AssetRecordResponse> => (await client.put(`/api/v1/finance/records/${id}`, data)).data,
   deleteRecord: async (id: number): Promise<void> => {
     await client.delete(`/api/v1/finance/records/${id}`);
   },
   getGoal: async (): Promise<FinanceGoalResponse> =>
     (await client.get('/api/v1/finance/goal')).data,
-  updateGoal: async (data: Partial<{
-    target_amount: number; target_date: string; expected_annual_return_rate: number;
-  }>): Promise<FinanceGoalResponse> =>
-    (await client.put('/api/v1/finance/goal', data)).data,
+  updateGoal: async (
+    data: Partial<{
+      target_amount: number;
+      target_date: string;
+      expected_annual_return_rate: number;
+    }>,
+  ): Promise<FinanceGoalResponse> => (await client.put('/api/v1/finance/goal', data)).data,
 };
 
 export const healthApi = {
@@ -124,25 +166,41 @@ export const healthApi = {
   listExercise: async (limit = 20, offset = 0): Promise<ExerciseLogResponse[]> =>
     (await client.get('/api/v1/health/exercise', { params: { limit, offset } })).data,
   createExercise: async (data: {
-    log_date: string; exercise_type: string; duration_minutes: number; note?: string;
-  }): Promise<ExerciseLogResponse> =>
-    (await client.post('/api/v1/health/exercise', data)).data,
-  deleteExercise: async (id: number) => { await client.delete(`/api/v1/health/exercise/${id}`); },
-  updateExercise: async (id: number, data: Partial<{
-    exercise_type: string; duration_minutes: number; note: string | null;
-  }>): Promise<ExerciseLogResponse> =>
-    (await client.put(`/api/v1/health/exercise/${id}`, data)).data,
+    log_date: string;
+    exercise_type: string;
+    duration_minutes: number;
+    note?: string;
+  }): Promise<ExerciseLogResponse> => (await client.post('/api/v1/health/exercise', data)).data,
+  deleteExercise: async (id: number) => {
+    await client.delete(`/api/v1/health/exercise/${id}`);
+  },
+  updateExercise: async (
+    id: number,
+    data: Partial<{
+      exercise_type: string;
+      duration_minutes: number;
+      note: string | null;
+    }>,
+  ): Promise<ExerciseLogResponse> => (await client.put(`/api/v1/health/exercise/${id}`, data)).data,
   listSleep: async (limit = 20, offset = 0): Promise<SleepLogResponse[]> =>
     (await client.get('/api/v1/health/sleep', { params: { limit, offset } })).data,
   createSleep: async (data: {
-    log_date: string; sleep_hours: number; quality: number; note?: string;
-  }): Promise<SleepLogResponse> =>
-    (await client.post('/api/v1/health/sleep', data)).data,
-  deleteSleep: async (id: number) => { await client.delete(`/api/v1/health/sleep/${id}`); },
-  updateSleep: async (id: number, data: Partial<{
-    sleep_hours: number; quality: number; note: string | null;
-  }>): Promise<SleepLogResponse> =>
-    (await client.put(`/api/v1/health/sleep/${id}`, data)).data,
+    log_date: string;
+    sleep_hours: number;
+    quality: number;
+    note?: string;
+  }): Promise<SleepLogResponse> => (await client.post('/api/v1/health/sleep', data)).data,
+  deleteSleep: async (id: number) => {
+    await client.delete(`/api/v1/health/sleep/${id}`);
+  },
+  updateSleep: async (
+    id: number,
+    data: Partial<{
+      sleep_hours: number;
+      quality: number;
+      note: string | null;
+    }>,
+  ): Promise<SleepLogResponse> => (await client.put(`/api/v1/health/sleep/${id}`, data)).data,
 };
 
 export const growthApi = {
@@ -151,47 +209,77 @@ export const growthApi = {
   listBooks: async (limit = 20, offset = 0): Promise<BookRecordResponse[]> =>
     (await client.get('/api/v1/growth/books', { params: { limit, offset } })).data,
   createBook: async (data: {
-    title: string; author?: string; status?: string;
-    start_date?: string; end_date?: string; rating?: number; note?: string;
-  }): Promise<BookRecordResponse> =>
-    (await client.post('/api/v1/growth/books', data)).data,
-  updateBook: async (id: number, data: Partial<{
-    title: string; author: string | null; status: string;
-    start_date: string | null; end_date: string | null; rating: number | null; note: string | null;
-  }>): Promise<BookRecordResponse> =>
-    (await client.put(`/api/v1/growth/books/${id}`, data)).data,
-  deleteBook: async (id: number) => { await client.delete(`/api/v1/growth/books/${id}`); },
+    title: string;
+    author?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    rating?: number;
+    note?: string;
+  }): Promise<BookRecordResponse> => (await client.post('/api/v1/growth/books', data)).data,
+  updateBook: async (
+    id: number,
+    data: Partial<{
+      title: string;
+      author: string | null;
+      status: string;
+      start_date: string | null;
+      end_date: string | null;
+      rating: number | null;
+      note: string | null;
+    }>,
+  ): Promise<BookRecordResponse> => (await client.put(`/api/v1/growth/books/${id}`, data)).data,
+  deleteBook: async (id: number) => {
+    await client.delete(`/api/v1/growth/books/${id}`);
+  },
   listEnglish: async (limit = 20, offset = 0): Promise<EnglishLogResponse[]> =>
     (await client.get('/api/v1/growth/english', { params: { limit, offset } })).data,
   createEnglish: async (data: {
-    log_date: string; activity_type: string; duration_minutes: number; note?: string;
-  }): Promise<EnglishLogResponse> =>
-    (await client.post('/api/v1/growth/english', data)).data,
-  updateEnglish: async (id: number, data: Partial<{
-    activity_type: string; duration_minutes: number; note: string | null;
-  }>): Promise<EnglishLogResponse> =>
-    (await client.put(`/api/v1/growth/english/${id}`, data)).data,
-  deleteEnglish: async (id: number) => { await client.delete(`/api/v1/growth/english/${id}`); },
+    log_date: string;
+    activity_type: string;
+    duration_minutes: number;
+    note?: string;
+  }): Promise<EnglishLogResponse> => (await client.post('/api/v1/growth/english', data)).data,
+  updateEnglish: async (
+    id: number,
+    data: Partial<{
+      activity_type: string;
+      duration_minutes: number;
+      note: string | null;
+    }>,
+  ): Promise<EnglishLogResponse> => (await client.put(`/api/v1/growth/english/${id}`, data)).data,
+  deleteEnglish: async (id: number) => {
+    await client.delete(`/api/v1/growth/english/${id}`);
+  },
 };
 
 export const careerApi = {
   getSettings: async (): Promise<CareerSettingsResponse> =>
     (await client.get('/api/v1/career/settings')).data,
   updateSettings: async (data: {
-    cf_handle?: string | null; github_username?: string | null; blog_url?: string | null;
-  }): Promise<CareerSettingsResponse> =>
-    (await client.put('/api/v1/career/settings', data)).data,
+    cf_handle?: string | null;
+    github_username?: string | null;
+    blog_url?: string | null;
+  }): Promise<CareerSettingsResponse> => (await client.put('/api/v1/career/settings', data)).data,
   listCFRatings: async (limit = 20, offset = 0): Promise<CFRatingLogResponse[]> =>
     (await client.get('/api/v1/career/cf-ratings', { params: { limit, offset } })).data,
   createCFRating: async (data: {
-    log_date: string; rating: number; rank_name: string;
-  }): Promise<CFRatingLogResponse> =>
-    (await client.post('/api/v1/career/cf-ratings', data)).data,
-  updateCFRating: async (id: number, data: Partial<{
-    log_date: string; rating: number; rank_name: string;
-  }>): Promise<CFRatingLogResponse> =>
+    log_date: string;
+    rating: number;
+    rank_name: string;
+  }): Promise<CFRatingLogResponse> => (await client.post('/api/v1/career/cf-ratings', data)).data,
+  updateCFRating: async (
+    id: number,
+    data: Partial<{
+      log_date: string;
+      rating: number;
+      rank_name: string;
+    }>,
+  ): Promise<CFRatingLogResponse> =>
     (await client.put(`/api/v1/career/cf-ratings/${id}`, data)).data,
-  deleteCFRating: async (id: number) => { await client.delete(`/api/v1/career/cf-ratings/${id}`); },
+  deleteCFRating: async (id: number) => {
+    await client.delete(`/api/v1/career/cf-ratings/${id}`);
+  },
 };
 
 export const dashboardApi = {
@@ -202,58 +290,103 @@ export const dashboardApi = {
 export const travelApi = {
   getSummary: async (): Promise<TravelSummaryResponse> =>
     (await client.get('/api/v1/travel/summary')).data,
-  listTrips: async (): Promise<TripResponse[]> =>
-    (await client.get('/api/v1/travel/trips')).data,
+  listTrips: async (): Promise<TripResponse[]> => (await client.get('/api/v1/travel/trips')).data,
   getTrip: async (id: number): Promise<TripResponse> =>
     (await client.get(`/api/v1/travel/trips/${id}`)).data,
   createTrip: async (data: {
-    name: string; destination: string; start_date: string; end_date: string;
-    status?: string; note?: string;
-    address?: string | null; latitude?: number | null; longitude?: number | null;
-  }): Promise<TripResponse> =>
-    (await client.post('/api/v1/travel/trips', data)).data,
-  updateTrip: async (id: number, data: Partial<{
-    name: string; destination: string; start_date: string; end_date: string;
-    status: string; note: string | null;
-    address: string | null; latitude: number | null; longitude: number | null;
-  }>): Promise<TripResponse> =>
-    (await client.put(`/api/v1/travel/trips/${id}`, data)).data,
+    name: string;
+    destination: string;
+    start_date: string;
+    end_date: string;
+    status?: string;
+    note?: string;
+    address?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  }): Promise<TripResponse> => (await client.post('/api/v1/travel/trips', data)).data,
+  updateTrip: async (
+    id: number,
+    data: Partial<{
+      name: string;
+      destination: string;
+      start_date: string;
+      end_date: string;
+      status: string;
+      note: string | null;
+      address: string | null;
+      latitude: number | null;
+      longitude: number | null;
+    }>,
+  ): Promise<TripResponse> => (await client.put(`/api/v1/travel/trips/${id}`, data)).data,
   deleteTrip: async (id: number): Promise<void> => {
     await client.delete(`/api/v1/travel/trips/${id}`);
   },
-  addChecklistItem: async (tripId: number, data: { text: string; order_index?: number }): Promise<ChecklistItemResponse> =>
+  addChecklistItem: async (
+    tripId: number,
+    data: { text: string; order_index?: number },
+  ): Promise<ChecklistItemResponse> =>
     (await client.post(`/api/v1/travel/trips/${tripId}/checklist`, data)).data,
   toggleChecklistItem: async (itemId: number): Promise<ChecklistItemResponse> =>
     (await client.patch(`/api/v1/travel/checklist/${itemId}/toggle`)).data,
   deleteChecklistItem: async (itemId: number): Promise<void> => {
     await client.delete(`/api/v1/travel/checklist/${itemId}`);
   },
-  addPlanItem: async (tripId: number, data: {
-    day: number; title: string; time?: string; description?: string; sort_order?: number;
-  }): Promise<TripPlanItemResponse> =>
+  addPlanItem: async (
+    tripId: number,
+    data: {
+      day: number;
+      title: string;
+      time?: string;
+      description?: string;
+      sort_order?: number;
+    },
+  ): Promise<TripPlanItemResponse> =>
     (await client.post(`/api/v1/travel/trips/${tripId}/plan`, data)).data,
-  updatePlanItem: async (itemId: number, data: Partial<{
-    title: string; time: string | null; description: string | null; day: number;
-  }>): Promise<TripPlanItemResponse> =>
+  updatePlanItem: async (
+    itemId: number,
+    data: Partial<{
+      title: string;
+      time: string | null;
+      description: string | null;
+      day: number;
+    }>,
+  ): Promise<TripPlanItemResponse> =>
     (await client.put(`/api/v1/travel/plan/${itemId}`, data)).data,
   deletePlanItem: async (itemId: number): Promise<void> => {
     await client.delete(`/api/v1/travel/plan/${itemId}`);
   },
-  addRestaurant: async (tripId: number, data: {
-    name: string; address?: string | null; latitude?: number | null; longitude?: number | null;
-    cuisine?: string | null; note?: string | null; is_visited?: boolean; order_index?: number;
-  }): Promise<RestaurantResponse> =>
+  addRestaurant: async (
+    tripId: number,
+    data: {
+      name: string;
+      address?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
+      cuisine?: string | null;
+      note?: string | null;
+      is_visited?: boolean;
+      order_index?: number;
+    },
+  ): Promise<RestaurantResponse> =>
     (await client.post(`/api/v1/travel/trips/${tripId}/restaurants`, data)).data,
-  updateRestaurant: async (restaurantId: number, data: Partial<{
-    name: string; address: string | null; latitude: number | null; longitude: number | null;
-    cuisine: string | null; note: string | null; is_visited: boolean; order_index: number;
-  }>): Promise<RestaurantResponse> =>
+  updateRestaurant: async (
+    restaurantId: number,
+    data: Partial<{
+      name: string;
+      address: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      cuisine: string | null;
+      note: string | null;
+      is_visited: boolean;
+      order_index: number;
+    }>,
+  ): Promise<RestaurantResponse> =>
     (await client.put(`/api/v1/travel/restaurants/${restaurantId}`, data)).data,
   deleteRestaurant: async (restaurantId: number): Promise<void> => {
     await client.delete(`/api/v1/travel/restaurants/${restaurantId}`);
   },
 };
-
 
 export type AiChatResponse = {
   reply: string;
@@ -270,13 +403,9 @@ export const aiApi = {
   chat: async (
     message: string,
     history: { role: string; text: string }[] = [],
-  ): Promise<AiChatResponse> =>
-    (await client.post('/api/v1/ai/chat', { message, history })).data,
+  ): Promise<AiChatResponse> => (await client.post('/api/v1/ai/chat', { message, history })).data,
 
-  execute: async (
-    module: string,
-    filter: Record<string, unknown>,
-  ): Promise<AiChatResponse> =>
+  execute: async (module: string, filter: Record<string, unknown>): Promise<AiChatResponse> =>
     (await client.post('/api/v1/ai/execute', { module, filter })).data,
 
   weeklyReport: async (): Promise<{ report: string }> =>

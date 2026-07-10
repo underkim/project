@@ -5,13 +5,35 @@ import type { Map as LeafletMap } from 'leaflet';
 import dynamic from 'next/dynamic';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
-  Plane, MapPin, Calendar, Plus, Trash2, Pencil, Check, X,
-  ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Clock, ListOrdered, Download, Loader2,
-  Utensils, Map as MapIcon, RefreshCw,
+  Plane,
+  MapPin,
+  Calendar,
+  Plus,
+  Trash2,
+  Pencil,
+  Check,
+  X,
+  ChevronDown,
+  ChevronUp,
+  CheckSquare,
+  Square,
+  AlertCircle,
+  Clock,
+  ListOrdered,
+  Download,
+  Loader2,
+  Utensils,
+  Map as MapIcon,
+  RefreshCw,
 } from 'lucide-react';
 import { travelApi, exportApi } from '@/lib/api';
 import { showToast } from '@/lib/toast';
-import type { TripResponse, TripStatus, ChecklistItemResponse, TripPlanItemResponse } from '@/types';
+import type {
+  TripResponse,
+  TripStatus,
+  ChecklistItemResponse,
+  TripPlanItemResponse,
+} from '@/types';
 
 // 지도는 Leaflet 기반 — window 의존성 때문에 클라이언트에서만 로드 (SSR 비활성)
 const TravelMap = dynamic(() => import('./TravelMap'), {
@@ -34,15 +56,17 @@ const LocationPickerMap = dynamic(() => import('./LocationPicker'), {
 
 // ── 상태 배지 ──────────────────────────────────────────────
 const STATUS_META: Record<TripStatus, { label: string; cls: string }> = {
-  planned:   { label: '예정',   cls: 'bg-blue-100 text-blue-700' },
-  ongoing:   { label: '진행중', cls: 'bg-emerald-100 text-emerald-700' },
-  completed: { label: '완료',   cls: 'bg-slate-100 text-slate-500' },
+  planned: { label: '예정', cls: 'bg-blue-100 text-blue-700' },
+  ongoing: { label: '진행중', cls: 'bg-emerald-100 text-emerald-700' },
+  completed: { label: '완료', cls: 'bg-slate-100 text-slate-500' },
 };
 
 function StatusBadge({ status }: { status: TripStatus }) {
   const m = STATUS_META[status];
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${m.cls}`}>
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${m.cls}`}
+    >
       {m.label}
     </span>
   );
@@ -71,7 +95,10 @@ function getDDay(startDate: string, status: TripStatus): { label: string; cls: s
   const diff = Math.round((start.getTime() - today.getTime()) / 86400000);
   if (diff === 0) return { label: 'D-Day', cls: 'bg-red-100 text-red-600' };
   if (diff < 0) return null;
-  return { label: `D-${diff}`, cls: diff <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600' };
+  return {
+    label: `D-${diff}`,
+    cls: diff <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600',
+  };
 }
 
 // ── 체크리스트 행 ──────────────────────────────────────────
@@ -90,12 +117,20 @@ function ChecklistRow({
 }) {
   return (
     <div className="flex items-center gap-2 group">
-      <button onClick={onToggle} disabled={toggleDisabled} className="text-slate-400 hover:text-slate-700 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
-        {item.is_checked
-          ? <CheckSquare size={16} className="text-slate-700" />
-          : <Square size={16} />}
+      <button
+        onClick={onToggle}
+        disabled={toggleDisabled}
+        className="text-slate-400 hover:text-slate-700 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {item.is_checked ? (
+          <CheckSquare size={16} className="text-slate-700" />
+        ) : (
+          <Square size={16} />
+        )}
       </button>
-      <span className={`flex-1 text-sm ${item.is_checked ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+      <span
+        className={`flex-1 text-sm ${item.is_checked ? 'line-through text-slate-400' : 'text-slate-700'}`}
+      >
         {item.text}
       </span>
       <button
@@ -112,9 +147,15 @@ function ChecklistRow({
 // ── 여행 추가 폼 ───────────────────────────────────────────
 interface AddTripFormProps {
   onSave: (data: {
-    name: string; destination: string; start_date: string; end_date: string;
-    status: TripStatus; note: string; address: string;
-    latitude?: number | null; longitude?: number | null;
+    name: string;
+    destination: string;
+    start_date: string;
+    end_date: string;
+    status: TripStatus;
+    note: string;
+    address: string;
+    latitude?: number | null;
+    longitude?: number | null;
   }) => Promise<void>;
   onCancel: () => void;
 }
@@ -133,16 +174,22 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { nameRef.current?.focus(); }, []);
+  useEffect(() => {
+    nameRef.current?.focus();
+  }, []);
 
   const handleSubmit = async () => {
     if (!name.trim() || !dest.trim()) return;
     setSaving(true);
     try {
       await onSave({
-        name: name.trim(), destination: dest.trim(),
-        start_date: startDate, end_date: endDate,
-        status, note: note.trim(), address: address.trim(),
+        name: name.trim(),
+        destination: dest.trim(),
+        start_date: startDate,
+        end_date: endDate,
+        status,
+        note: note.trim(),
+        address: address.trim(),
         ...(pickedLoc ? { latitude: pickedLoc.lat, longitude: pickedLoc.lng } : {}),
       });
     } finally {
@@ -159,17 +206,17 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
           <input
             ref={nameRef}
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             placeholder="예: 도쿄 여행"
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-            onKeyDown={e => e.key === 'Escape' && onCancel()}
+            onKeyDown={(e) => e.key === 'Escape' && onCancel()}
           />
         </div>
         <div>
           <label className="text-xs text-slate-500 mb-1 block">목적지 *</label>
           <input
             value={dest}
-            onChange={e => setDest(e.target.value)}
+            onChange={(e) => setDest(e.target.value)}
             placeholder="예: 일본 도쿄"
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
           />
@@ -179,7 +226,7 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
           <input
             type="date"
             value={startDate}
-            onChange={e => {
+            onChange={(e) => {
               const newStart = e.target.value;
               setStartDate(newStart);
               if (endDate < newStart) setEndDate(newStart);
@@ -193,7 +240,7 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
             type="date"
             value={endDate}
             min={startDate}
-            onChange={e => setEndDate(e.target.value)}
+            onChange={(e) => setEndDate(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
           />
         </div>
@@ -201,7 +248,7 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
           <label className="text-xs text-slate-500 mb-1 block">상태</label>
           <select
             value={status}
-            onChange={e => setStatus(e.target.value as TripStatus)}
+            onChange={(e) => setStatus(e.target.value as TripStatus)}
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
           >
             <option value="planned">예정</option>
@@ -213,7 +260,7 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
           <label className="text-xs text-slate-500 mb-1 block">메모</label>
           <input
             value={note}
-            onChange={e => setNote(e.target.value)}
+            onChange={(e) => setNote(e.target.value)}
             placeholder="간단한 메모 (선택)"
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
           />
@@ -223,13 +270,13 @@ function AddTripForm({ onSave, onCancel }: AddTripFormProps) {
           <div className="flex gap-2">
             <input
               value={address}
-              onChange={e => setAddress(e.target.value)}
+              onChange={(e) => setAddress(e.target.value)}
               placeholder="주소·장소명 입력 시 지도에 표시돼요 (예: 도쿄 신주쿠)"
               className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
             />
             <button
               type="button"
-              onClick={() => setShowPicker(v => !v)}
+              onClick={() => setShowPicker((v) => !v)}
               title="지도에서 직접 위치 선택"
               className={`shrink-0 px-3 py-2 text-xs rounded-xl border transition-colors ${
                 showPicker || pickedLoc
@@ -281,11 +328,32 @@ interface TripCardProps {
   onToggleChecklist: (tripId: number, itemId: number) => void;
   onDeleteChecklist: (tripId: number, itemId: number) => void;
   onAddChecklist: (tripId: number, text: string) => void;
-  onAddPlanItem: (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => void;
-  onUpdatePlanItem: (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => void;
+  onAddPlanItem: (
+    tripId: number,
+    data: { day: number; title: string; time?: string; description?: string },
+  ) => void;
+  onUpdatePlanItem: (
+    tripId: number,
+    itemId: number,
+    data: Partial<{ title: string; time: string | null; description: string | null; day: number }>,
+  ) => void;
   onDeletePlanItem: (tripId: number, itemId: number) => void;
-  onAddRestaurant: (tripId: number, data: { name: string; address?: string; cuisine?: string; note?: string; latitude?: number | null; longitude?: number | null }) => void;
-  onUpdateRestaurant: (tripId: number, restaurantId: number, data: Partial<{ is_visited: boolean; note: string | null }>) => void;
+  onAddRestaurant: (
+    tripId: number,
+    data: {
+      name: string;
+      address?: string;
+      cuisine?: string;
+      note?: string;
+      latitude?: number | null;
+      longitude?: number | null;
+    },
+  ) => void;
+  onUpdateRestaurant: (
+    tripId: number,
+    restaurantId: number,
+    data: Partial<{ is_visited: boolean; note: string | null }>,
+  ) => void;
   onDeleteRestaurant: (tripId: number, restaurantId: number) => void;
   onShowOnMap: (tripId: number) => void;
   onAddRestaurantOnMap: (tripId: number) => void;
@@ -293,12 +361,22 @@ interface TripCardProps {
 }
 
 function TripCard({
-  trip, expanded, onToggleExpand,
-  onDelete, onUpdate,
-  onToggleChecklist, onDeleteChecklist, onAddChecklist,
-  onAddPlanItem, onUpdatePlanItem, onDeletePlanItem,
-  onAddRestaurant, onUpdateRestaurant, onDeleteRestaurant,
-  onShowOnMap, onAddRestaurantOnMap,
+  trip,
+  expanded,
+  onToggleExpand,
+  onDelete,
+  onUpdate,
+  onToggleChecklist,
+  onDeleteChecklist,
+  onAddChecklist,
+  onAddPlanItem,
+  onUpdatePlanItem,
+  onDeletePlanItem,
+  onAddRestaurant,
+  onUpdateRestaurant,
+  onDeleteRestaurant,
+  onShowOnMap,
+  onAddRestaurantOnMap,
   mutatingKeys,
 }: TripCardProps) {
   const [editing, setEditing] = useState(false);
@@ -317,7 +395,13 @@ function TripCard({
   const [planTime, setPlanTime] = useState('');
   const [planTitle, setPlanTitle] = useState('');
   const [planDesc, setPlanDesc] = useState('');
-  const [editingPlan, setEditingPlan] = useState<{ id: number; day: number; title: string; time: string; description: string } | null>(null);
+  const [editingPlan, setEditingPlan] = useState<{
+    id: number;
+    day: number;
+    title: string;
+    time: string;
+    description: string;
+  } | null>(null);
   const [restName, setRestName] = useState('');
   const [restAddress, setRestAddress] = useState('');
   const [restCuisine, setRestCuisine] = useState('');
@@ -339,18 +423,24 @@ function TripCard({
     setShowRestPicker(false);
   };
 
-  const checked = trip.checklist_items.filter(i => i.is_checked).length;
+  const checked = trip.checklist_items.filter((i) => i.is_checked).length;
   const total = trip.checklist_items.length;
 
-  const tripDays = Math.max(1, Math.round(
-    (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000
-  ) + 1);
+  const tripDays = Math.max(
+    1,
+    Math.round(
+      (new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000,
+    ) + 1,
+  );
 
-  const planByDay = (trip.plan_items ?? []).reduce((acc, item) => {
-    if (!acc[item.day]) acc[item.day] = [];
-    acc[item.day].push(item);
-    return acc;
-  }, {} as Record<number, TripPlanItemResponse[]>);
+  const planByDay = (trip.plan_items ?? []).reduce(
+    (acc, item) => {
+      if (!acc[item.day]) acc[item.day] = [];
+      acc[item.day].push(item);
+      return acc;
+    },
+    {} as Record<number, TripPlanItemResponse[]>,
+  );
 
   const handleAddPlan = () => {
     if (!planTitle.trim()) return;
@@ -369,7 +459,7 @@ function TripCard({
     setEditPickedLoc(
       trip.latitude != null && trip.longitude != null
         ? { lat: trip.latitude, lng: trip.longitude }
-        : null
+        : null,
     );
     setShowEditPicker(false);
     setEditing(true);
@@ -382,14 +472,18 @@ function TripCard({
     let locationPayload: Partial<TripResponse> = {};
     if (editPickedLoc !== null) {
       // 지도에서 명시적으로 선택한 좌표 → 지오코딩보다 우선
-      locationPayload = { latitude: editPickedLoc.lat, longitude: editPickedLoc.lng } as Partial<TripResponse>;
-      if (addressChanged) (locationPayload as Record<string, unknown>).address = nextAddress || null;
+      locationPayload = {
+        latitude: editPickedLoc.lat,
+        longitude: editPickedLoc.lng,
+      } as Partial<TripResponse>;
+      if (addressChanged)
+        (locationPayload as Record<string, unknown>).address = nextAddress || null;
     } else if (addressChanged) {
       // 좌표 선택 없이 주소만 변경 → 백엔드가 지오코딩으로 좌표 갱신.
       // 주소를 비우면 좌표도 함께 비운다.
       locationPayload = nextAddress
-        ? { address: nextAddress } as Partial<TripResponse>
-        : { address: null, latitude: null, longitude: null } as Partial<TripResponse>;
+        ? ({ address: nextAddress } as Partial<TripResponse>)
+        : ({ address: null, latitude: null, longitude: null } as Partial<TripResponse>);
     }
 
     onUpdate(trip.id, {
@@ -420,20 +514,20 @@ function TripCard({
             <div className="grid grid-cols-2 gap-2">
               <input
                 value={editName}
-                onChange={e => setEditName(e.target.value)}
+                onChange={(e) => setEditName(e.target.value)}
                 className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                 placeholder="여행 이름"
                 autoFocus
               />
               <input
                 value={editDest}
-                onChange={e => setEditDest(e.target.value)}
+                onChange={(e) => setEditDest(e.target.value)}
                 className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                 placeholder="목적지"
               />
               <select
                 value={editStatus}
-                onChange={e => setEditStatus(e.target.value as TripStatus)}
+                onChange={(e) => setEditStatus(e.target.value as TripStatus)}
                 className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white"
               >
                 <option value="planned">예정</option>
@@ -442,14 +536,14 @@ function TripCard({
               </select>
               <input
                 value={editNote}
-                onChange={e => setEditNote(e.target.value)}
+                onChange={(e) => setEditNote(e.target.value)}
                 className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                 placeholder="메모 (선택)"
               />
               <input
                 type="date"
                 value={editStartDate}
-                onChange={e => {
+                onChange={(e) => {
                   const v = e.target.value;
                   setEditStartDate(v);
                   if (v > editEndDate) setEditEndDate(v);
@@ -460,20 +554,20 @@ function TripCard({
                 type="date"
                 value={editEndDate}
                 min={editStartDate}
-                onChange={e => setEditEndDate(e.target.value)}
+                onChange={(e) => setEditEndDate(e.target.value)}
                 className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
               <div className="col-span-2 space-y-2">
                 <div className="flex gap-2">
                   <input
                     value={editAddress}
-                    onChange={e => setEditAddress(e.target.value)}
+                    onChange={(e) => setEditAddress(e.target.value)}
                     className="flex-1 border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="위치 (지도 표시용, 선택)"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowEditPicker(v => !v)}
+                    onClick={() => setShowEditPicker((v) => !v)}
                     title="지도에서 직접 위치 선택"
                     className={`shrink-0 px-2.5 py-1.5 text-xs rounded-xl border transition-colors ${
                       showEditPicker || editPickedLoc
@@ -490,18 +584,35 @@ function TripCard({
                     value={editPickedLoc}
                     onChange={(v) => {
                       setEditPickedLoc(v);
-                      if (!v) { setEditAddress(''); setShowEditPicker(false); }
+                      if (!v) {
+                        setEditAddress('');
+                        setShowEditPicker(false);
+                      }
                     }}
                   />
                 )}
               </div>
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setEditing(false)} aria-label="편집 취소" disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-40">
+              <button
+                onClick={() => setEditing(false)}
+                aria-label="편집 취소"
+                disabled={mutatingKeys.has(`trip_update_${trip.id}`)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-40"
+              >
                 <X size={15} />
               </button>
-              <button onClick={saveEdit} aria-label="여행 저장" disabled={mutatingKeys.has(`trip_update_${trip.id}`)} className="p-1.5 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
-                {mutatingKeys.has(`trip_update_${trip.id}`) ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+              <button
+                onClick={saveEdit}
+                aria-label="여행 저장"
+                disabled={mutatingKeys.has(`trip_update_${trip.id}`)}
+                className="p-1.5 text-slate-700 hover:text-slate-900 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {mutatingKeys.has(`trip_update_${trip.id}`) ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Check size={15} />
+                )}
               </button>
             </div>
           </div>
@@ -513,7 +624,9 @@ function TripCard({
                 {(() => {
                   const dd = getDDay(trip.start_date, trip.status as TripStatus);
                   return dd ? (
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${dd.cls}`}>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${dd.cls}`}
+                    >
                       {dd.label}
                     </span>
                   ) : null;
@@ -554,7 +667,11 @@ function TripCard({
                 disabled={mutatingKeys.has(`trip_delete_${trip.id}`)}
                 className="p-1.5 text-slate-300 hover:text-red-400 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {mutatingKeys.has(`trip_delete_${trip.id}`) ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                {mutatingKeys.has(`trip_delete_${trip.id}`) ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Trash2 size={14} />
+                )}
               </button>
               <button
                 onClick={onToggleExpand}
@@ -571,7 +688,9 @@ function TripCard({
           <div className="mt-3">
             <div className="flex justify-between text-xs text-slate-400 mb-1">
               <span>준비물 체크리스트</span>
-              <span>{checked}/{total} · {Math.round((checked / total) * 100)}%</span>
+              <span>
+                {checked}/{total} · {Math.round((checked / total) * 100)}%
+              </span>
             </div>
             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div
@@ -644,7 +763,7 @@ function TripCard({
               {trip.checklist_items.length === 0 && (
                 <p className="text-xs text-slate-400">아직 준비물이 없습니다.</p>
               )}
-              {trip.checklist_items.map(item => (
+              {trip.checklist_items.map((item) => (
                 <ChecklistRow
                   key={item.id}
                   item={item}
@@ -657,10 +776,12 @@ function TripCard({
               <div className="flex items-center gap-2 pt-1">
                 <input
                   value={checkText}
-                  onChange={e => setCheckText(e.target.value)}
+                  onChange={(e) => setCheckText(e.target.value)}
                   onKeyDown={handleAddChecklist}
                   disabled={mutatingKeys.has(`check_add_${trip.id}`)}
-                  placeholder={mutatingKeys.has(`check_add_${trip.id}`) ? '저장 중...' : '항목 추가 후 Enter'}
+                  placeholder={
+                    mutatingKeys.has(`check_add_${trip.id}`) ? '저장 중...' : '항목 추가 후 Enter'
+                  }
                   className="flex-1 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white disabled:opacity-50"
                 />
               </div>
@@ -683,41 +804,62 @@ function TripCard({
                       Day {day}
                     </p>
                     <div className="space-y-1.5">
-                      {items.map((item: TripPlanItemResponse) => (
+                      {items.map((item: TripPlanItemResponse) =>
                         editingPlan?.id === item.id ? (
-                          <div key={item.id} className="bg-blue-50 border-l-2 border-blue-400 rounded-lg p-2 space-y-1.5">
+                          <div
+                            key={item.id}
+                            className="bg-blue-50 border-l-2 border-blue-400 rounded-lg p-2 space-y-1.5"
+                          >
                             <div className="flex gap-2">
                               <div>
-                                <label className="text-[10px] text-slate-400 block mb-0.5">Day</label>
+                                <label className="text-[10px] text-slate-400 block mb-0.5">
+                                  Day
+                                </label>
                                 <select
                                   value={editingPlan.day}
-                                  onChange={e => setEditingPlan(p => p ? { ...p, day: Number(e.target.value) } : p)}
+                                  onChange={(e) =>
+                                    setEditingPlan((p) =>
+                                      p ? { ...p, day: Number(e.target.value) } : p,
+                                    )
+                                  }
                                   className="border border-slate-200 rounded px-1.5 py-1 text-xs bg-white w-16"
                                 >
-                                  {Array.from({ length: tripDays }, (_, i) => i + 1).map(d => (
-                                    <option key={d} value={d}>Day {d}</option>
+                                  {Array.from({ length: tripDays }, (_, i) => i + 1).map((d) => (
+                                    <option key={d} value={d}>
+                                      Day {d}
+                                    </option>
                                   ))}
                                 </select>
                               </div>
                               <div>
-                                <label className="text-[10px] text-slate-400 block mb-0.5">시간</label>
+                                <label className="text-[10px] text-slate-400 block mb-0.5">
+                                  시간
+                                </label>
                                 <input
                                   type="time"
                                   value={editingPlan.time}
-                                  onChange={e => setEditingPlan(p => p ? { ...p, time: e.target.value } : p)}
+                                  onChange={(e) =>
+                                    setEditingPlan((p) => (p ? { ...p, time: e.target.value } : p))
+                                  }
                                   className="border border-slate-200 rounded px-1.5 py-1 text-xs w-28"
                                 />
                               </div>
                             </div>
                             <input
                               value={editingPlan.title}
-                              onChange={e => setEditingPlan(p => p ? { ...p, title: e.target.value } : p)}
+                              onChange={(e) =>
+                                setEditingPlan((p) => (p ? { ...p, title: e.target.value } : p))
+                              }
                               placeholder="제목"
                               className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
                             />
                             <input
                               value={editingPlan.description}
-                              onChange={e => setEditingPlan(p => p ? { ...p, description: e.target.value } : p)}
+                              onChange={(e) =>
+                                setEditingPlan((p) =>
+                                  p ? { ...p, description: e.target.value } : p,
+                                )
+                              }
                               placeholder="메모 (선택)"
                               className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
                             />
@@ -743,7 +885,11 @@ function TripCard({
                                 }}
                                 className="p-1 text-slate-700 hover:text-slate-900 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
                               >
-                                {mutatingKeys.has(`plan_update_${editingPlan.id}`) ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                                {mutatingKeys.has(`plan_update_${editingPlan.id}`) ? (
+                                  <Loader2 size={13} className="animate-spin" />
+                                ) : (
+                                  <Check size={13} />
+                                )}
                               </button>
                             </div>
                           </div>
@@ -751,7 +897,15 @@ function TripCard({
                           <div
                             key={item.id}
                             className="flex items-start gap-2 group cursor-pointer hover:bg-slate-100/60 rounded-lg px-1 py-0.5 -mx-1"
-                            onClick={() => setEditingPlan({ id: item.id, day: item.day, title: item.title, time: item.time ?? '', description: item.description ?? '' })}
+                            onClick={() =>
+                              setEditingPlan({
+                                id: item.id,
+                                day: item.day,
+                                title: item.title,
+                                time: item.time ?? '',
+                                description: item.description ?? '',
+                              })
+                            }
                           >
                             {item.time && (
                               <span className="flex items-center gap-0.5 text-[10px] text-slate-400 mt-0.5 shrink-0 w-10">
@@ -762,19 +916,28 @@ function TripCard({
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-slate-700">{item.title}</p>
                               {item.description && (
-                                <p className="text-[10px] text-slate-400 mt-0.5">{item.description}</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                  {item.description}
+                                </p>
                               )}
                             </div>
                             <button
-                              onClick={e => { e.stopPropagation(); onDeletePlanItem(trip.id, item.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeletePlanItem(trip.id, item.id);
+                              }}
                               disabled={mutatingKeys.has(`plan_delete_${item.id}`)}
                               className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-all shrink-0 mt-0.5 disabled:opacity-20 disabled:cursor-not-allowed"
                             >
-                              {mutatingKeys.has(`plan_delete_${item.id}`) ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                              {mutatingKeys.has(`plan_delete_${item.id}`) ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={12} />
+                              )}
                             </button>
                           </div>
-                        )
-                      ))}
+                        ),
+                      )}
                     </div>
                   </div>
                 ))}
@@ -787,11 +950,13 @@ function TripCard({
                     <label className="text-[10px] text-slate-400 block mb-0.5">Day</label>
                     <select
                       value={planDay}
-                      onChange={e => setPlanDay(Number(e.target.value))}
+                      onChange={(e) => setPlanDay(Number(e.target.value))}
                       className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white w-16"
                     >
-                      {Array.from({ length: tripDays }, (_, i) => i + 1).map(d => (
-                        <option key={d} value={d}>Day {d}</option>
+                      {Array.from({ length: tripDays }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d}>
+                          Day {d}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -800,7 +965,7 @@ function TripCard({
                     <input
                       type="time"
                       value={planTime}
-                      onChange={e => setPlanTime(e.target.value)}
+                      onChange={(e) => setPlanTime(e.target.value)}
                       className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 w-28"
                     />
                   </div>
@@ -809,8 +974,8 @@ function TripCard({
                   <label className="text-[10px] text-slate-400 block mb-0.5">제목 *</label>
                   <input
                     value={planTitle}
-                    onChange={e => setPlanTitle(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddPlan()}
+                    onChange={(e) => setPlanTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddPlan()}
                     placeholder="예: 도쿄 타워 방문"
                     className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
@@ -819,7 +984,7 @@ function TripCard({
                   <label className="text-[10px] text-slate-400 block mb-0.5">메모 (선택)</label>
                   <input
                     value={planDesc}
-                    onChange={e => setPlanDesc(e.target.value)}
+                    onChange={(e) => setPlanDesc(e.target.value)}
                     placeholder="간단한 메모"
                     className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
@@ -829,7 +994,14 @@ function TripCard({
                   disabled={!planTitle.trim() || mutatingKeys.has(`plan_add_${trip.id}`)}
                   className="w-full py-1.5 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-40 transition-colors font-medium flex items-center justify-center gap-1"
                 >
-                  {mutatingKeys.has(`plan_add_${trip.id}`) ? <><Loader2 size={12} className="animate-spin" />저장 중...</> : '일정 추가'}
+                  {mutatingKeys.has(`plan_add_${trip.id}`) ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      저장 중...
+                    </>
+                  ) : (
+                    '일정 추가'
+                  )}
                 </button>
               </div>
             </div>
@@ -848,36 +1020,57 @@ function TripCard({
                 </button>
               </div>
               {(trip.restaurants ?? []).length === 0 && (
-                <p className="text-xs text-slate-400">아직 등록된 맛집이 없습니다. 주소를 입력하거나 지도에서 위치를 선택하세요.</p>
+                <p className="text-xs text-slate-400">
+                  아직 등록된 맛집이 없습니다. 주소를 입력하거나 지도에서 위치를 선택하세요.
+                </p>
               )}
-              {(trip.restaurants ?? []).map(r => (
-                <div key={r.id} className="flex items-center gap-2 bg-white border border-slate-100 rounded-lg px-3 py-2">
+              {(trip.restaurants ?? []).map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-center gap-2 bg-white border border-slate-100 rounded-lg px-3 py-2"
+                >
                   <button
                     onClick={() => onUpdateRestaurant(trip.id, r.id, { is_visited: !r.is_visited })}
                     disabled={mutatingKeys.has(`rest_update_${r.id}`)}
                     title={r.is_visited ? '방문함' : '방문 예정'}
                     className="shrink-0 disabled:opacity-40"
                   >
-                    {r.is_visited
-                      ? <CheckSquare size={15} className="text-emerald-500" />
-                      : <Square size={15} className="text-slate-300" />}
+                    {r.is_visited ? (
+                      <CheckSquare size={15} className="text-emerald-500" />
+                    ) : (
+                      <Square size={15} className="text-slate-300" />
+                    )}
                   </button>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-sm truncate ${r.is_visited ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{r.name}</span>
-                      {r.cuisine && <span className="text-[10px] text-orange-500 bg-orange-50 rounded-full px-1.5 py-0.5 shrink-0">{r.cuisine}</span>}
+                      <span
+                        className={`text-sm truncate ${r.is_visited ? 'text-slate-400 line-through' : 'text-slate-700'}`}
+                      >
+                        {r.name}
+                      </span>
+                      {r.cuisine && (
+                        <span className="text-[10px] text-orange-500 bg-orange-50 rounded-full px-1.5 py-0.5 shrink-0">
+                          {r.cuisine}
+                        </span>
+                      )}
                       {r.latitude != null && r.longitude != null && (
                         <MapPin size={11} className="text-orange-400 shrink-0" />
                       )}
                     </div>
-                    {r.address && <p className="text-[11px] text-slate-400 truncate">{r.address}</p>}
+                    {r.address && (
+                      <p className="text-[11px] text-slate-400 truncate">{r.address}</p>
+                    )}
                   </div>
                   <button
                     onClick={() => onDeleteRestaurant(trip.id, r.id)}
                     disabled={mutatingKeys.has(`rest_delete_${r.id}`)}
                     className="shrink-0 p-1 text-slate-300 hover:text-red-400 rounded disabled:opacity-40"
                   >
-                    {mutatingKeys.has(`rest_delete_${r.id}`) ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                    {mutatingKeys.has(`rest_delete_${r.id}`) ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={13} />
+                    )}
                   </button>
                 </div>
               ))}
@@ -885,13 +1078,13 @@ function TripCard({
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     value={restName}
-                    onChange={e => setRestName(e.target.value)}
+                    onChange={(e) => setRestName(e.target.value)}
                     placeholder="맛집 이름 *"
                     className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                   <input
                     value={restCuisine}
-                    onChange={e => setRestCuisine(e.target.value)}
+                    onChange={(e) => setRestCuisine(e.target.value)}
                     placeholder="종류 (예: 라멘)"
                     className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
@@ -899,14 +1092,14 @@ function TripCard({
                 <div className="flex gap-2">
                   <input
                     value={restAddress}
-                    onChange={e => setRestAddress(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddRestaurant()}
+                    onChange={(e) => setRestAddress(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddRestaurant()}
                     placeholder="주소·장소명 (선택, 입력 시 지도에 표시)"
                     className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowRestPicker(v => !v)}
+                    onClick={() => setShowRestPicker((v) => !v)}
                     title="지도에서 직접 위치 선택"
                     className={`shrink-0 px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
                       showRestPicker || restPickedLoc
@@ -932,7 +1125,14 @@ function TripCard({
                   disabled={!restName.trim() || mutatingKeys.has(`rest_add_${trip.id}`)}
                   className="w-full py-1.5 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-40 transition-colors font-medium flex items-center justify-center gap-1"
                 >
-                  {mutatingKeys.has(`rest_add_${trip.id}`) ? <><Loader2 size={12} className="animate-spin" />저장 중...</> : '맛집 추가'}
+                  {mutatingKeys.has(`rest_add_${trip.id}`) ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      저장 중...
+                    </>
+                  ) : (
+                    '맛집 추가'
+                  )}
                 </button>
               </div>
             </div>
@@ -971,17 +1171,29 @@ export default function TravelPage() {
 
   async function withMutation(key: string, fn: () => Promise<void>) {
     if (mutating.has(key)) return;
-    setMutating(prev => new Set(prev).add(key));
-    try { await fn(); } finally {
-      setMutating(prev => { const next = new Set(prev); next.delete(key); return next; });
+    setMutating((prev) => new Set(prev).add(key));
+    try {
+      await fn();
+    } finally {
+      setMutating((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   }
 
   async function handleExport(key: string, fn: () => Promise<void>) {
     if (exporting.has(key)) return;
-    setExporting(prev => new Set(prev).add(key));
-    try { await fn(); } finally {
-      setExporting(prev => { const next = new Set(prev); next.delete(key); return next; });
+    setExporting((prev) => new Set(prev).add(key));
+    try {
+      await fn();
+    } finally {
+      setExporting((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   }
 
@@ -997,42 +1209,50 @@ export default function TravelPage() {
     }
   };
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, []);
 
   useAiRefresh(['travel'], load);
 
   // 요약 (클라이언트 계산)
   const summary = {
     total: trips.length,
-    planned: trips.filter(t => t.status === 'planned').length,
-    ongoing: trips.filter(t => t.status === 'ongoing').length,
-    completed: trips.filter(t => t.status === 'completed').length,
+    planned: trips.filter((t) => t.status === 'planned').length,
+    ongoing: trips.filter((t) => t.status === 'ongoing').length,
+    completed: trips.filter((t) => t.status === 'completed').length,
   };
 
   // 완료 여행 통계
-  const completedTrips = trips.filter(t => t.status === 'completed');
-  const uniqueDestinations = new Set(completedTrips.map(t => t.destination).filter(Boolean)).size;
+  const completedTrips = trips.filter((t) => t.status === 'completed');
+  const uniqueDestinations = new Set(completedTrips.map((t) => t.destination).filter(Boolean)).size;
   const totalTravelDays = completedTrips.reduce((sum, t) => {
     if (!t.start_date || !t.end_date) return sum;
-    return sum + Math.round((new Date(t.end_date).getTime() - new Date(t.start_date).getTime()) / 86400000) + 1;
+    return (
+      sum +
+      Math.round((new Date(t.end_date).getTime() - new Date(t.start_date).getTime()) / 86400000) +
+      1
+    );
   }, 0);
 
-  const filtered = trips.filter(t => {
+  const filtered = trips.filter((t) => {
     const matchStatus = filter === 'all' || t.status === filter;
     const q = tripSearch.trim().toLowerCase();
-    const matchSearch = !q || t.name.toLowerCase().includes(q) || (t.destination ?? '').toLowerCase().includes(q);
+    const matchSearch =
+      !q || t.name.toLowerCase().includes(q) || (t.destination ?? '').toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });
 
   // 지도에 표시 가능한 좌표가 하나라도 있는지 (현재 필터 기준)
-  const hasMapPoints = filtered.some(t =>
-    (t.latitude != null && t.longitude != null) ||
-    (t.restaurants ?? []).some(r => r.latitude != null && r.longitude != null)
+  const hasMapPoints = filtered.some(
+    (t) =>
+      (t.latitude != null && t.longitude != null) ||
+      (t.restaurants ?? []).some((r) => r.latitude != null && r.longitude != null),
   );
 
   const showOnMap = (tripId: number) => {
-    const trip = trips.find(t => t.id === tripId);
+    const trip = trips.find((t) => t.id === tripId);
     if (!trip) return;
     if (trip.latitude == null || trip.longitude == null) {
       showToast('먼저 여행에 위치(주소)를 설정해주세요.', 'error');
@@ -1051,7 +1271,7 @@ export default function TravelPage() {
   };
 
   const enterAddRestMode = (tripId: number) => {
-    const trip = trips.find(t => t.id === tripId);
+    const trip = trips.find((t) => t.id === tripId);
     if (!trip) return;
     cancelAddRestMode();
     setAddRestMode(true);
@@ -1082,12 +1302,15 @@ export default function TravelPage() {
   const handleCreate = async (data: Parameters<typeof travelApi.createTrip>[0]) => {
     try {
       const created = await travelApi.createTrip(data);
-      setTrips(prev => [created, ...prev]);
+      setTrips((prev) => [created, ...prev]);
       setShowAddForm(false);
       setExpandedId(created.id);
       // 주소를 입력했는데 좌표 해석에 실패한 경우(직접 좌표 미지정), 지도 선택 안내
       if (data.address && data.latitude == null && created.latitude == null) {
-        showToast('주소의 위치를 찾지 못했어요. 수정에서 지도를 눌러 직접 선택할 수 있어요.', 'info');
+        showToast(
+          '주소의 위치를 찾지 못했어요. 수정에서 지도를 눌러 직접 선택할 수 있어요.',
+          'info',
+        );
       }
     } catch {
       showToast('여행 추가에 실패했습니다.', 'error');
@@ -1096,46 +1319,73 @@ export default function TravelPage() {
 
   const handleDelete = async (id: number) => {
     await withMutation(`trip_delete_${id}`, async () => {
-      setTrips(prev => prev.filter(t => t.id !== id));
-      try { await travelApi.deleteTrip(id); }
-      catch { showToast('여행 삭제에 실패했습니다.', 'error'); await load(); }
+      setTrips((prev) => prev.filter((t) => t.id !== id));
+      try {
+        await travelApi.deleteTrip(id);
+      } catch {
+        showToast('여행 삭제에 실패했습니다.', 'error');
+        await load();
+      }
     });
   };
 
   const handleUpdate = async (id: number, data: Partial<TripResponse>) => {
     await withMutation(`trip_update_${id}`, async () => {
       try {
-        const updated = await travelApi.updateTrip(id, data as Parameters<typeof travelApi.updateTrip>[1]);
-        setTrips(prev => prev.map(t => t.id === id ? updated : t));
+        const updated = await travelApi.updateTrip(
+          id,
+          data as Parameters<typeof travelApi.updateTrip>[1],
+        );
+        setTrips((prev) => prev.map((t) => (t.id === id ? updated : t)));
         // 주소를 새로 입력했는데 좌표 해석에 실패한 경우, 지도 선택 안내
         if (data.address && data.latitude == null && updated.latitude == null) {
           showToast('주소의 위치를 찾지 못했어요. 지도를 눌러 직접 선택할 수 있어요.', 'info');
         }
-      } catch { showToast('여행 수정에 실패했습니다.', 'error'); await load(); }
+      } catch {
+        showToast('여행 수정에 실패했습니다.', 'error');
+        await load();
+      }
     });
   };
 
   const handleToggleChecklist = async (tripId: number, itemId: number) => {
     await withMutation(`check_toggle_${itemId}`, async () => {
-      setTrips(prev => prev.map(t =>
-        t.id === tripId
-          ? { ...t, checklist_items: t.checklist_items.map(i => i.id === itemId ? { ...i, is_checked: !i.is_checked } : i) }
-          : t
-      ));
-      try { await travelApi.toggleChecklistItem(itemId); }
-      catch { showToast('체크 상태 변경에 실패했습니다.', 'error'); await load(); }
+      setTrips((prev) =>
+        prev.map((t) =>
+          t.id === tripId
+            ? {
+                ...t,
+                checklist_items: t.checklist_items.map((i) =>
+                  i.id === itemId ? { ...i, is_checked: !i.is_checked } : i,
+                ),
+              }
+            : t,
+        ),
+      );
+      try {
+        await travelApi.toggleChecklistItem(itemId);
+      } catch {
+        showToast('체크 상태 변경에 실패했습니다.', 'error');
+        await load();
+      }
     });
   };
 
   const handleDeleteChecklist = async (tripId: number, itemId: number) => {
     await withMutation(`check_delete_${itemId}`, async () => {
-      setTrips(prev => prev.map(t =>
-        t.id === tripId
-          ? { ...t, checklist_items: t.checklist_items.filter(i => i.id !== itemId) }
-          : t
-      ));
-      try { await travelApi.deleteChecklistItem(itemId); }
-      catch { showToast('체크리스트 삭제에 실패했습니다.', 'error'); await load(); }
+      setTrips((prev) =>
+        prev.map((t) =>
+          t.id === tripId
+            ? { ...t, checklist_items: t.checklist_items.filter((i) => i.id !== itemId) }
+            : t,
+        ),
+      );
+      try {
+        await travelApi.deleteChecklistItem(itemId);
+      } catch {
+        showToast('체크리스트 삭제에 실패했습니다.', 'error');
+        await load();
+      }
     });
   };
 
@@ -1143,86 +1393,145 @@ export default function TravelPage() {
     await withMutation(`check_add_${tripId}`, async () => {
       try {
         const item = await travelApi.addChecklistItem(tripId, { text });
-        setTrips(prev => prev.map(t =>
-          t.id === tripId
-            ? { ...t, checklist_items: [...t.checklist_items, item] }
-            : t
-        ));
-      } catch { showToast('항목 추가에 실패했습니다.', 'error'); }
+        setTrips((prev) =>
+          prev.map((t) =>
+            t.id === tripId ? { ...t, checklist_items: [...t.checklist_items, item] } : t,
+          ),
+        );
+      } catch {
+        showToast('항목 추가에 실패했습니다.', 'error');
+      }
     });
   };
 
-  const handleAddPlanItem = async (tripId: number, data: { day: number; title: string; time?: string; description?: string }) => {
+  const handleAddPlanItem = async (
+    tripId: number,
+    data: { day: number; title: string; time?: string; description?: string },
+  ) => {
     await withMutation(`plan_add_${tripId}`, async () => {
       try {
         const item = await travelApi.addPlanItem(tripId, data);
-        setTrips(prev => prev.map(t =>
-          t.id === tripId
-            ? { ...t, plan_items: [...(t.plan_items ?? []), item] }
-            : t
-        ));
-      } catch { showToast('일정 추가에 실패했습니다.', 'error'); }
+        setTrips((prev) =>
+          prev.map((t) =>
+            t.id === tripId ? { ...t, plan_items: [...(t.plan_items ?? []), item] } : t,
+          ),
+        );
+      } catch {
+        showToast('일정 추가에 실패했습니다.', 'error');
+      }
     });
   };
 
-  const handleUpdatePlanItem = async (tripId: number, itemId: number, data: Partial<{ title: string; time: string | null; description: string | null; day: number }>) => {
+  const handleUpdatePlanItem = async (
+    tripId: number,
+    itemId: number,
+    data: Partial<{ title: string; time: string | null; description: string | null; day: number }>,
+  ) => {
     await withMutation(`plan_update_${itemId}`, async () => {
       try {
         const updated = await travelApi.updatePlanItem(itemId, data);
-        setTrips(prev => prev.map(t =>
-          t.id === tripId
-            ? { ...t, plan_items: (t.plan_items ?? []).map(p => p.id === itemId ? updated : p) }
-            : t
-        ));
-      } catch { showToast('일정 수정에 실패했습니다.', 'error'); await load(); }
+        setTrips((prev) =>
+          prev.map((t) =>
+            t.id === tripId
+              ? {
+                  ...t,
+                  plan_items: (t.plan_items ?? []).map((p) => (p.id === itemId ? updated : p)),
+                }
+              : t,
+          ),
+        );
+      } catch {
+        showToast('일정 수정에 실패했습니다.', 'error');
+        await load();
+      }
     });
   };
 
   const handleDeletePlanItem = async (tripId: number, itemId: number) => {
     await withMutation(`plan_delete_${itemId}`, async () => {
-      setTrips(prev => prev.map(t =>
-        t.id === tripId
-          ? { ...t, plan_items: (t.plan_items ?? []).filter(p => p.id !== itemId) }
-          : t
-      ));
-      try { await travelApi.deletePlanItem(itemId); }
-      catch { showToast('일정 삭제에 실패했습니다.', 'error'); await load(); }
+      setTrips((prev) =>
+        prev.map((t) =>
+          t.id === tripId
+            ? { ...t, plan_items: (t.plan_items ?? []).filter((p) => p.id !== itemId) }
+            : t,
+        ),
+      );
+      try {
+        await travelApi.deletePlanItem(itemId);
+      } catch {
+        showToast('일정 삭제에 실패했습니다.', 'error');
+        await load();
+      }
     });
   };
 
-  const handleAddRestaurant = async (tripId: number, data: { name: string; address?: string; cuisine?: string; note?: string; latitude?: number | null; longitude?: number | null }) => {
+  const handleAddRestaurant = async (
+    tripId: number,
+    data: {
+      name: string;
+      address?: string;
+      cuisine?: string;
+      note?: string;
+      latitude?: number | null;
+      longitude?: number | null;
+    },
+  ) => {
     await withMutation(`rest_add_${tripId}`, async () => {
       try {
         const r = await travelApi.addRestaurant(tripId, data);
-        setTrips(prev => prev.map(t =>
-          t.id === tripId ? { ...t, restaurants: [...(t.restaurants ?? []), r] } : t
-        ));
-      } catch { showToast('맛집 추가에 실패했습니다.', 'error'); }
+        setTrips((prev) =>
+          prev.map((t) =>
+            t.id === tripId ? { ...t, restaurants: [...(t.restaurants ?? []), r] } : t,
+          ),
+        );
+      } catch {
+        showToast('맛집 추가에 실패했습니다.', 'error');
+      }
     });
   };
 
-  const handleUpdateRestaurant = async (tripId: number, restaurantId: number, data: Partial<{ is_visited: boolean; note: string | null }>) => {
+  const handleUpdateRestaurant = async (
+    tripId: number,
+    restaurantId: number,
+    data: Partial<{ is_visited: boolean; note: string | null }>,
+  ) => {
     await withMutation(`rest_update_${restaurantId}`, async () => {
       try {
         const updated = await travelApi.updateRestaurant(restaurantId, data);
-        setTrips(prev => prev.map(t =>
-          t.id === tripId
-            ? { ...t, restaurants: (t.restaurants ?? []).map(r => r.id === restaurantId ? updated : r) }
-            : t
-        ));
-      } catch { showToast('맛집 수정에 실패했습니다.', 'error'); await load(); }
+        setTrips((prev) =>
+          prev.map((t) =>
+            t.id === tripId
+              ? {
+                  ...t,
+                  restaurants: (t.restaurants ?? []).map((r) =>
+                    r.id === restaurantId ? updated : r,
+                  ),
+                }
+              : t,
+          ),
+        );
+      } catch {
+        showToast('맛집 수정에 실패했습니다.', 'error');
+        await load();
+      }
     });
   };
 
   const handleDeleteRestaurant = async (tripId: number, restaurantId: number) => {
     await withMutation(`rest_delete_${restaurantId}`, async () => {
-      setTrips(prev => prev.map(t =>
-        t.id === tripId
-          ? { ...t, restaurants: (t.restaurants ?? []).filter(r => r.id !== restaurantId) }
-          : t
-      ));
-      try { await travelApi.deleteRestaurant(restaurantId); }
-      catch { showToast('맛집 삭제에 실패했습니다.', 'error'); await load(); }
+      setTrips((prev) =>
+        prev.map((t) =>
+          t.id === tripId
+            ? { ...t, restaurants: (t.restaurants ?? []).filter((r) => r.id !== restaurantId) }
+            : t,
+        ),
+      );
+      try {
+        await travelApi.deleteRestaurant(restaurantId);
+      } catch {
+        showToast('맛집 삭제에 실패했습니다.', 'error');
+        await load();
+      }
     });
   };
 
@@ -1246,11 +1555,20 @@ export default function TravelPage() {
           <p className="text-slate-400 text-sm mt-1 truncate">나만의 여행을 계획하고 관리하세요</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => handleExport('travel', exportApi.travel)} disabled={exporting.has('travel')} title="CSV 내보내기 (여행·일정·체크리스트·맛집)" className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed">
-            {exporting.has('travel') ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+          <button
+            onClick={() => handleExport('travel', exportApi.travel)}
+            disabled={exporting.has('travel')}
+            title="CSV 내보내기 (여행·일정·체크리스트·맛집)"
+            className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting.has('travel') ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Download size={16} />
+            )}
           </button>
           <button
-            onClick={() => setShowAddForm(v => !v)}
+            onClick={() => setShowAddForm((v) => !v)}
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-700 transition-colors text-sm font-medium"
           >
             <Plus size={16} />
@@ -1277,28 +1595,27 @@ export default function TravelPage() {
       )}
 
       {/* 추가 폼 */}
-      {showAddForm && (
-        <AddTripForm
-          onSave={handleCreate}
-          onCancel={() => setShowAddForm(false)}
-        />
-      )}
+      {showAddForm && <AddTripForm onSave={handleCreate} onCancel={() => setShowAddForm(false)} />}
 
       {/* 요약 바 + 검색 */}
       {trips.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="flex gap-2 flex-wrap">
-            {([
-              ['all', '전체', summary.total, 'bg-slate-100 text-slate-600'],
-              ['planned', '예정', summary.planned, 'bg-blue-100 text-blue-700'],
-              ['ongoing', '진행중', summary.ongoing, 'bg-emerald-100 text-emerald-700'],
-              ['completed', '완료', summary.completed, 'bg-slate-100 text-slate-500'],
-            ] as const).map(([key, label, count, cls]) => (
+            {(
+              [
+                ['all', '전체', summary.total, 'bg-slate-100 text-slate-600'],
+                ['planned', '예정', summary.planned, 'bg-blue-100 text-blue-700'],
+                ['ongoing', '진행중', summary.ongoing, 'bg-emerald-100 text-emerald-700'],
+                ['completed', '완료', summary.completed, 'bg-slate-100 text-slate-500'],
+              ] as const
+            ).map(([key, label, count, cls]) => (
               <button
                 key={key}
                 onClick={() => setFilter(key as TripStatus | 'all')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                  filter === key ? cls + ' ring-2 ring-offset-1 ring-current' : cls + ' opacity-60 hover:opacity-100'
+                  filter === key
+                    ? cls + ' ring-2 ring-offset-1 ring-current'
+                    : cls + ' opacity-60 hover:opacity-100'
                 }`}
               >
                 {label} {count}
@@ -1307,15 +1624,22 @@ export default function TravelPage() {
           </div>
           {summary.completed > 0 && (
             <div className="flex gap-3 text-xs text-slate-500">
-              <span>🌍 방문 목적지 <span className="font-semibold text-slate-700">{uniqueDestinations}곳</span></span>
+              <span>
+                🌍 방문 목적지{' '}
+                <span className="font-semibold text-slate-700">{uniqueDestinations}곳</span>
+              </span>
               {totalTravelDays > 0 && (
-                <span>📅 총 <span className="font-semibold text-slate-700">{totalTravelDays}일</span></span>
+                <span>
+                  📅 총 <span className="font-semibold text-slate-700">{totalTravelDays}일</span>
+                </span>
               )}
             </div>
           )}
           {trips.length > 3 && (
             <input
-              type="text" value={tripSearch} onChange={e => setTripSearch(e.target.value)}
+              type="text"
+              value={tripSearch}
+              onChange={(e) => setTripSearch(e.target.value)}
               placeholder="여행 이름·목적지 검색..."
               className="text-sm border border-slate-200 rounded-xl px-3.5 py-2 w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
@@ -1331,9 +1655,16 @@ export default function TravelPage() {
               <MapIcon size={13} />
               <span>
                 지도 —{' '}
-                <span className="inline-block w-2 h-2 rounded-full align-middle" style={{ background: '#0f172a' }} /> 여행 ·{' '}
-                <span className="inline-block w-2 h-2 rounded-full align-middle" style={{ background: '#f97316' }} /> 맛집{' '}
-                {!addRestMode && '(마커 클릭 시 해당 여행 펼침)'}
+                <span
+                  className="inline-block w-2 h-2 rounded-full align-middle"
+                  style={{ background: '#0f172a' }}
+                />{' '}
+                여행 ·{' '}
+                <span
+                  className="inline-block w-2 h-2 rounded-full align-middle"
+                  style={{ background: '#f97316' }}
+                />{' '}
+                맛집 {!addRestMode && '(마커 클릭 시 해당 여행 펼침)'}
               </span>
             </div>
             {addRestMode && (
@@ -1360,7 +1691,9 @@ export default function TravelPage() {
           />
           {!hasMapPoints && !addRestMode && (
             <p className="text-xs text-slate-400 px-1">
-              여행이나 맛집에 <span className="font-medium text-slate-600">위치(주소 또는 지도 선택)</span>를 입력하면 지도에 표시돼요.
+              여행이나 맛집에{' '}
+              <span className="font-medium text-slate-600">위치(주소 또는 지도 선택)</span>를
+              입력하면 지도에 표시돼요.
             </p>
           )}
           {/* 맛집 맵-추가 인라인 폼 */}
@@ -1371,7 +1704,7 @@ export default function TravelPage() {
                   맛집 추가
                   {addRestTripId && (
                     <span className="ml-1.5 text-xs font-normal text-slate-400">
-                      — {trips.find(t => t.id === addRestTripId)?.name}
+                      — {trips.find((t) => t.id === addRestTripId)?.name}
                     </span>
                   )}
                 </p>
@@ -1382,20 +1715,20 @@ export default function TravelPage() {
               <div className="grid grid-cols-2 gap-2">
                 <input
                   value={pendingName}
-                  onChange={e => setPendingName(e.target.value)}
+                  onChange={(e) => setPendingName(e.target.value)}
                   placeholder="맛집 이름 *"
                   autoFocus
                   className="col-span-2 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
                 <input
                   value={pendingCuisine}
-                  onChange={e => setPendingCuisine(e.target.value)}
+                  onChange={(e) => setPendingCuisine(e.target.value)}
                   placeholder="종류 (예: 라멘)"
                   className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
                 <input
                   value={pendingNote}
-                  onChange={e => setPendingNote(e.target.value)}
+                  onChange={(e) => setPendingNote(e.target.value)}
                   placeholder="메모 (선택)"
                   className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
@@ -1415,12 +1748,20 @@ export default function TravelPage() {
                 </button>
                 <button
                   onClick={savePendingRestaurant}
-                  disabled={!pendingName.trim() || (addRestTripId ? mutating.has(`rest_add_${addRestTripId}`) : false)}
+                  disabled={
+                    !pendingName.trim() ||
+                    (addRestTripId ? mutating.has(`rest_add_${addRestTripId}`) : false)
+                  }
                   className="px-4 py-1.5 text-sm bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-1.5"
                 >
-                  {addRestTripId && mutating.has(`rest_add_${addRestTripId}`)
-                    ? <><Loader2 size={14} className="animate-spin" />저장 중...</>
-                    : '저장'}
+                  {addRestTripId && mutating.has(`rest_add_${addRestTripId}`) ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      저장 중...
+                    </>
+                  ) : (
+                    '저장'
+                  )}
                 </button>
               </div>
             </div>
@@ -1435,15 +1776,23 @@ export default function TravelPage() {
             <Plane size={28} className="text-slate-300" />
           </div>
           <p className="text-slate-700 font-semibold">
-            {tripSearch ? '검색 결과가 없습니다' : filter === 'all' ? '첫 여행을 계획해보세요!' : `${STATUS_META[filter as TripStatus].label} 여행이 없습니다`}
+            {tripSearch
+              ? '검색 결과가 없습니다'
+              : filter === 'all'
+                ? '첫 여행을 계획해보세요!'
+                : `${STATUS_META[filter as TripStatus].label} 여행이 없습니다`}
           </p>
           <p className="text-slate-400 text-sm mt-1">
-            {tripSearch ? '다른 키워드나 필터를 시도해보세요' : filter === 'all' ? '오른쪽 상단의 "여행 추가" 버튼을 눌러 시작하세요' : '다른 상태의 여행을 확인해보세요'}
+            {tripSearch
+              ? '다른 키워드나 필터를 시도해보세요'
+              : filter === 'all'
+                ? '오른쪽 상단의 "여행 추가" 버튼을 눌러 시작하세요'
+                : '다른 상태의 여행을 확인해보세요'}
           </p>
         </div>
       ) : (
         <div className="grid gap-4">
-          {filtered.map(trip => (
+          {filtered.map((trip) => (
             <TripCard
               key={trip.id}
               trip={trip}

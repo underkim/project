@@ -1,8 +1,9 @@
 #!/bin/bash
 # PostToolUse hook, matcher: Write|Edit.
-# After Claude writes/edits a frontend .ts/.tsx file, auto-fix what ESLint can
-# and surface any remaining errors back into the conversation so they get
-# addressed immediately instead of surfacing later at commit/CI time.
+# After Claude writes/edits a frontend .ts/.tsx file: format with Prettier,
+# then auto-fix what ESLint can, and surface any remaining errors/warnings
+# back into the conversation so they get addressed immediately instead of
+# surfacing later at commit/CI time.
 set -uo pipefail
 
 file=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty')
@@ -21,6 +22,8 @@ esac
 
 cd "$CLAUDE_PROJECT_DIR/frontend" || exit 0
 rel="${file#*/frontend/}"
+
+npx prettier --write "$rel" >/dev/null 2>&1
 
 output=$(npx eslint --fix "$rel" 2>&1)
 

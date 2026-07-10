@@ -9,7 +9,7 @@ async function getAuthHeaders(request: import('@playwright/test').APIRequestCont
       password: process.env.E2E_PASSWORD ?? 'admin',
     },
   });
-  const { access_token } = await res.json() as { access_token: string };
+  const { access_token } = (await res.json()) as { access_token: string };
   return { Authorization: `Bearer ${access_token}` };
 }
 
@@ -17,7 +17,7 @@ async function cleanupTestTrips(request: import('@playwright/test').APIRequestCo
   const headers = await getAuthHeaders(request);
   const res = await request.get(`${API}/api/v1/travel/trips`, { headers });
   if (!res.ok()) return;
-  const trips = await res.json() as Array<{ id: number; name: string }>;
+  const trips = (await res.json()) as Array<{ id: number; name: string }>;
   for (const t of trips) {
     if (t.name.startsWith('[E2E]')) {
       await request.delete(`${API}/api/v1/travel/trips/${t.id}`, { headers });
@@ -54,7 +54,9 @@ test.describe('여행 페이지', () => {
     await expect(tripHeading).toBeVisible();
 
     // 편집 버튼 클릭 (지도·삭제 버튼과 섞여 있어 aria-label로 정확히 지정)
-    const headerRow = tripHeading.locator('xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]');
+    const headerRow = tripHeading.locator(
+      'xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]',
+    );
     await headerRow.getByRole('button', { name: '여행 편집' }).click();
 
     // start_date input 수정
@@ -66,13 +68,22 @@ test.describe('여행 페이지', () => {
     // 저장 (Check 아이콘 버튼)
     await page.locator('div.flex.gap-2.justify-end').first().getByRole('button').last().click();
 
-    await expect.poll(async () => {
-      const listRes = await request.get(`${API}/api/v1/travel/trips`, { headers });
-      if (!listRes.ok()) return '';
-      const trips = await listRes.json() as Array<{ name: string; start_date: string; end_date: string }>;
-      const updated = trips.find(t => t.name === '[E2E] 날짜편집 테스트');
-      return updated ? `${updated.start_date}|${updated.end_date}` : '';
-    }, { timeout: 5000 }).toBe('2030-03-01|2030-03-10');
+    await expect
+      .poll(
+        async () => {
+          const listRes = await request.get(`${API}/api/v1/travel/trips`, { headers });
+          if (!listRes.ok()) return '';
+          const trips = (await listRes.json()) as Array<{
+            name: string;
+            start_date: string;
+            end_date: string;
+          }>;
+          const updated = trips.find((t) => t.name === '[E2E] 날짜편집 테스트');
+          return updated ? `${updated.start_date}|${updated.end_date}` : '';
+        },
+        { timeout: 5000 },
+      )
+      .toBe('2030-03-01|2030-03-10');
   });
 
   test('좌표가 있는 여행이 있으면 지도가 렌더된다', async ({ page, request }) => {
@@ -86,13 +97,15 @@ test.describe('여행 페이지', () => {
         end_date: '2030-02-03',
         status: 'planned',
         latitude: 37.5665,
-        longitude: 126.9780,
+        longitude: 126.978,
       },
     });
     expect(createRes.ok()).toBeTruthy();
 
     await page.goto('/travel');
-    await expect(page.getByRole('heading', { name: '[E2E] 지도렌더 테스트', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '[E2E] 지도렌더 테스트', exact: true }),
+    ).toBeVisible();
 
     // Leaflet 맵 컨테이너가 마운트되어야 한다 (타일 로딩 변동에 영향받지 않도록 컨테이너만 확인)
     await expect(page.locator('.leaflet-container').first()).toBeVisible({ timeout: 10000 });
@@ -111,7 +124,7 @@ test.describe('여행 페이지', () => {
       },
     });
     expect(tripRes.ok()).toBeTruthy();
-    const trip = await tripRes.json() as { id: number };
+    const trip = (await tripRes.json()) as { id: number };
     await request.post(`${API}/api/v1/travel/trips/${trip.id}/restaurants`, {
       headers,
       data: { name: '[E2E] 돼지국밥집', cuisine: '한식' },
@@ -121,14 +134,21 @@ test.describe('여행 페이지', () => {
     const tripHeading = page.getByRole('heading', { name: '[E2E] 맛집 테스트', exact: true });
     await expect(tripHeading).toBeVisible();
     // 카드를 펼친 뒤(헤더 우측 Chevron 토글) 맛집 탭으로 이동해 맛집 이름 노출 확인
-    const headerRow = tripHeading.locator('xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]');
-    const tripCard = tripHeading.locator('xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-xl")][1]');
+    const headerRow = tripHeading.locator(
+      'xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]',
+    );
+    const tripCard = tripHeading.locator(
+      'xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-xl")][1]',
+    );
     await headerRow.getByRole('button').last().click();
     await tripCard.getByRole('button', { name: /^맛집\s+\d+$/ }).click();
     await expect(page.getByText('[E2E] 돼지국밥집').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('시작일이 종료일보다 늦어지면 종료일이 시작일로 자동 조정된다', async ({ page, request }) => {
+  test('시작일이 종료일보다 늦어지면 종료일이 시작일로 자동 조정된다', async ({
+    page,
+    request,
+  }) => {
     const headers = await getAuthHeaders(request);
     const createRes = await request.post(`${API}/api/v1/travel/trips`, {
       headers,
@@ -146,7 +166,9 @@ test.describe('여행 페이지', () => {
     const tripHeading = page.getByRole('heading', { name: '[E2E] 날짜클램프 테스트', exact: true });
     await expect(tripHeading).toBeVisible();
 
-    const headerRow = tripHeading.locator('xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]');
+    const headerRow = tripHeading.locator(
+      'xpath=ancestor::div[contains(@class,"items-start") and contains(@class,"justify-between")][1]',
+    );
     await headerRow.getByRole('button', { name: '여행 편집' }).click();
 
     const dateInputs = page.locator('input[type="date"]');

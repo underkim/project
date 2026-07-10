@@ -2,7 +2,18 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Bot, Send, Loader2, X, CheckCircle2, Trash2, Eraser, ChevronDown, Copy, Check, ChevronsDown, BarChart2,
+  Bot,
+  Send,
+  Loader2,
+  X,
+  CheckCircle2,
+  Trash2,
+  Eraser,
+  ChevronDown,
+  Copy,
+  Check,
+  ChevronsDown,
+  BarChart2,
 } from 'lucide-react';
 import { aiApi } from '@/lib/api';
 import type { AiChatResponse } from '@/lib/api';
@@ -49,7 +60,7 @@ function safeLoadHistory(): Message[] {
 function safeSaveHistory(msgs: Message[], onQuotaWarn: () => void): void {
   if (typeof window === 'undefined') return;
   try {
-    const toSave: StoredMessage[] = msgs.slice(-HISTORY_LIMIT).map(m => ({
+    const toSave: StoredMessage[] = msgs.slice(-HISTORY_LIMIT).map((m) => ({
       id: m.id,
       role: m.role,
       text: m.text,
@@ -77,7 +88,11 @@ function safeSaveHistory(msgs: Message[], onQuotaWarn: () => void): void {
 
 function safeClearHistory(): void {
   if (typeof window === 'undefined') return;
-  try { localStorage.removeItem(HISTORY_KEY); } catch { /* storage unavailable */ }
+  try {
+    localStorage.removeItem(HISTORY_KEY);
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 // ── 복사 버튼 ──────────────────────────────────────────────────
@@ -85,12 +100,15 @@ function safeClearHistory(): void {
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
-    navigator.clipboard.writeText(text)
+    navigator.clipboard
+      .writeText(text)
       .then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       })
-      .catch(() => { /* clipboard unavailable — do not show false success */ });
+      .catch(() => {
+        /* clipboard unavailable — do not show false success */
+      });
   };
   return (
     <button
@@ -110,9 +128,13 @@ function parseBold(text: string) {
   return (
     <>
       {parts.map((part, i) =>
-        i % 2 === 1
-          ? <strong key={i} className="font-semibold text-slate-800">{part}</strong>
-          : <Fragment key={i}>{part}</Fragment>
+        i % 2 === 1 ? (
+          <strong key={i} className="font-semibold text-slate-800">
+            {part}
+          </strong>
+        ) : (
+          <Fragment key={i}>{part}</Fragment>
+        ),
       )}
     </>
   );
@@ -123,9 +145,16 @@ function parseInlineCode(text: string) {
   return (
     <>
       {parts.map((part, i) =>
-        i % 2 === 1
-          ? <code key={i} className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded text-[11px] font-mono">{part}</code>
-          : <Fragment key={i}>{parseBold(part)}</Fragment>
+        i % 2 === 1 ? (
+          <code
+            key={i}
+            className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded text-[11px] font-mono"
+          >
+            {part}
+          </code>
+        ) : (
+          <Fragment key={i}>{parseBold(part)}</Fragment>
+        ),
       )}
     </>
   );
@@ -140,7 +169,10 @@ function MarkdownText({ text }: { text: string }) {
         if (seg.startsWith('```') && seg.endsWith('```')) {
           const inner = seg.slice(3, -3).replace(/^\w+\n/, '');
           return (
-            <pre key={si} className="mt-1.5 mb-1.5 bg-slate-800 text-emerald-300 text-[11px] font-mono rounded-xl px-3 py-2.5 overflow-x-auto whitespace-pre leading-relaxed">
+            <pre
+              key={si}
+              className="mt-1.5 mb-1.5 bg-slate-800 text-emerald-300 text-[11px] font-mono rounded-xl px-3 py-2.5 overflow-x-auto whitespace-pre leading-relaxed"
+            >
               {inner}
             </pre>
           );
@@ -154,16 +186,19 @@ function MarkdownText({ text }: { text: string }) {
               const content = isBullet
                 ? line.replace(/^[-•] /, '')
                 : isHeading
-                ? line.replace(/^#{1,3} /, '')
-                : line;
+                  ? line.replace(/^#{1,3} /, '')
+                  : line;
               return (
                 <Fragment key={i}>
                   {(si > 0 || i > 0) && <br />}
                   {isBullet && <span className="mr-1 select-none text-slate-400">•</span>}
-                  {isHeading
-                    ? <strong className="font-semibold text-slate-800">{parseInlineCode(content)}</strong>
-                    : parseInlineCode(content)
-                  }
+                  {isHeading ? (
+                    <strong className="font-semibold text-slate-800">
+                      {parseInlineCode(content)}
+                    </strong>
+                  ) : (
+                    parseInlineCode(content)
+                  )}
                 </Fragment>
               );
             })}
@@ -216,7 +251,7 @@ function formatFilterValue(value: unknown): string | null {
   }
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (Array.isArray(value)) {
-    const prims = value.filter(x => ['string', 'number', 'boolean'].includes(typeof x));
+    const prims = value.filter((x) => ['string', 'number', 'boolean'].includes(typeof x));
     if (prims.length === 0) return `${value.length}개 항목`;
     const joined = prims.slice(0, 5).map(String).join(', ');
     const text = prims.length > 5 ? `${joined} 외 ${prims.length - 5}개` : joined;
@@ -226,7 +261,13 @@ function formatFilterValue(value: unknown): string | null {
   return null;
 }
 
-function DeleteFilterPreview({ module, filter }: { module: string | null; filter: Record<string, unknown> }) {
+function DeleteFilterPreview({
+  module,
+  filter,
+}: {
+  module: string | null;
+  filter: Record<string, unknown>;
+}) {
   const entries = Object.entries(filter)
     .map(([k, v]) => [k, formatFilterValue(v)] as const)
     .filter((e): e is readonly [string, string] => e[1] !== null);
@@ -271,7 +312,7 @@ export default function AiModal() {
   const quotaWarnedRef = useRef(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     const msgs = safeLoadHistory();
-    if (msgs.length > 0) msgId = Math.max(msgId, ...msgs.map(m => m.id));
+    if (msgs.length > 0) msgId = Math.max(msgId, ...msgs.map((m) => m.id));
     return msgs;
   });
 
@@ -304,7 +345,7 @@ export default function AiModal() {
   // 접근성: 열려 있을 때 Escape로 닫기, 닫히면 FAB로 포커스 복원
   useEffect(() => {
     if (!open) return;
-    const fab = fabRef.current;  // 트리거 버튼은 항상 렌더되므로 setup 시점 참조가 안정적
+    const fab = fabRef.current; // 트리거 버튼은 항상 렌더되므로 setup 시점 참조가 안정적
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false);
     }
@@ -342,13 +383,16 @@ export default function AiModal() {
     safeSaveHistory(messages, () => {
       if (!quotaWarnedRef.current) {
         quotaWarnedRef.current = true;
-        showToast('저장 공간이 부족해 대화 기록을 저장하지 못했어요. 채팅은 계속 사용할 수 있어요.', 'error');
+        showToast(
+          '저장 공간이 부족해 대화 기록을 저장하지 못했어요. 채팅은 계속 사용할 수 있어요.',
+          'error',
+        );
       }
     });
   }, [messages]);
 
   function getHistory() {
-    return messages.slice(-20).map(m => {
+    return messages.slice(-20).map((m) => {
       let text = m.text;
       // 저장 완료된 AI 메시지는 모듈 힌트 추가 → 다음 턴에서 AI가 "방금 뭘 저장했는지" 참조 가능
       if (m.role === 'ai' && m.saved && m.module) {
@@ -361,10 +405,17 @@ export default function AiModal() {
   function makeTimestamp() {
     const d = new Date();
     const time = d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-    const today = new Date(); today.setHours(0,0,0,0);
-    const msgDay = new Date(d); msgDay.setHours(0,0,0,0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const msgDay = new Date(d);
+    msgDay.setHours(0, 0, 0, 0);
     const diffDays = Math.round((today.getTime() - msgDay.getTime()) / 86400000);
-    const dateLabel = diffDays === 0 ? '' : diffDays === 1 ? '어제 ' : d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) + ' ';
+    const dateLabel =
+      diffDays === 0
+        ? ''
+        : diffDays === 1
+          ? '어제 '
+          : d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) + ' ';
     return { time, dateLabel };
   }
 
@@ -384,17 +435,20 @@ export default function AiModal() {
       dateLabel,
       suggestions: res.suggestions ?? null,
     };
-    setMessages(prev => [...prev, aiMsg]);
+    setMessages((prev) => [...prev, aiMsg]);
     if (res.saved) {
       const mods = res.modules ?? (res.module ? [res.module] : []);
-      mods.forEach(m => dispatchAiSaved(m));
+      mods.forEach((m) => dispatchAiSaved(m));
     }
   }
 
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return;
     const { time, dateLabel } = makeTimestamp();
-    setMessages(prev => [...prev, { id: ++msgId, role: 'user', text, timestamp: time, dateLabel }]);
+    setMessages((prev) => [
+      ...prev,
+      { id: ++msgId, role: 'user', text, timestamp: time, dateLabel },
+    ]);
     setLoading(true);
     try {
       const res = await aiApi.chat(text, getHistory());
@@ -402,10 +456,11 @@ export default function AiModal() {
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status;
       const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      const errText = status === 429
-        ? 'API 할당량 초과예요. Google AI Studio에서 키를 재발급해주세요.'
-        : detail ?? '요청에 실패했어요. 잠시 후 다시 시도해주세요.';
-      setMessages(prev => [...prev, { id: ++msgId, role: 'ai', text: errText }]);
+      const errText =
+        status === 429
+          ? 'API 할당량 초과예요. Google AI Studio에서 키를 재발급해주세요.'
+          : (detail ?? '요청에 실패했어요. 잠시 후 다시 시도해주세요.');
+      setMessages((prev) => [...prev, { id: ++msgId, role: 'ai', text: errText }]);
     } finally {
       setLoading(false);
     }
@@ -419,33 +474,58 @@ export default function AiModal() {
     await sendMessage(text);
   }
 
-  async function handleConfirmDelete(msgLocalId: number, module: string, filter: Record<string, unknown>) {
-    setMessages(prev => prev.map(m => m.id === msgLocalId ? { ...m, confirmLoading: true } : m));
+  async function handleConfirmDelete(
+    msgLocalId: number,
+    module: string,
+    filter: Record<string, unknown>,
+  ) {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgLocalId ? { ...m, confirmLoading: true } : m)),
+    );
     try {
       const res = await aiApi.execute(module, filter);
-      setMessages(prev => prev.map(m =>
-        m.id === msgLocalId
-          ? { ...m, confirmLoading: false, action: 'delete', saved: res.saved, pendingFilter: null }
-          : m
-      ));
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgLocalId
+            ? {
+                ...m,
+                confirmLoading: false,
+                action: 'delete',
+                saved: res.saved,
+                pendingFilter: null,
+              }
+            : m,
+        ),
+      );
       if (res.saved) dispatchAiSaved(module);
     } catch {
-      setMessages(prev => prev.map(m =>
-        m.id === msgLocalId
-          ? { ...m, confirmLoading: false, pendingFilter: null, text: m.text + '\n\n⚠️ 삭제 중 오류가 발생했습니다.' }
-          : m
-      ));
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgLocalId
+            ? {
+                ...m,
+                confirmLoading: false,
+                pendingFilter: null,
+                text: m.text + '\n\n⚠️ 삭제 중 오류가 발생했습니다.',
+              }
+            : m,
+        ),
+      );
     }
   }
 
   function handleCancelDelete(msgLocalId: number) {
-    setMessages(prev => prev.map(m =>
-      m.id === msgLocalId ? { ...m, action: null, pendingFilter: null } : m
-    ));
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgLocalId ? { ...m, action: null, pendingFilter: null } : m)),
+    );
   }
 
   function clearChat() {
-    if (!clearConfirm) { setClearConfirm(true); setTimeout(() => setClearConfirm(false), 3000); return; }
+    if (!clearConfirm) {
+      setClearConfirm(true);
+      setTimeout(() => setClearConfirm(false), 3000);
+      return;
+    }
     setMessages([]);
     safeClearHistory();
     setClearConfirm(false);
@@ -454,14 +534,33 @@ export default function AiModal() {
   async function handleWeeklyReport() {
     if (weeklyReportLoading || loading) return;
     const { time, dateLabel } = makeTimestamp();
-    setMessages(prev => [...prev, { id: ++msgId, role: 'user', text: '주간 리포트 생성해줘', timestamp: time, dateLabel }]);
+    setMessages((prev) => [
+      ...prev,
+      { id: ++msgId, role: 'user', text: '주간 리포트 생성해줘', timestamp: time, dateLabel },
+    ]);
     setWeeklyReportLoading(true);
     setLoading(true);
     try {
       const { report } = await aiApi.weeklyReport();
-      setMessages(prev => [...prev, { id: ++msgId, role: 'ai', text: report, timestamp: makeTimestamp().time, dateLabel: makeTimestamp().dateLabel }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: ++msgId,
+          role: 'ai',
+          text: report,
+          timestamp: makeTimestamp().time,
+          dateLabel: makeTimestamp().dateLabel,
+        },
+      ]);
     } catch {
-      setMessages(prev => [...prev, { id: ++msgId, role: 'ai', text: '주간 리포트를 가져오지 못했어요. 잠시 후 다시 시도해주세요.' }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: ++msgId,
+          role: 'ai',
+          text: '주간 리포트를 가져오지 못했어요. 잠시 후 다시 시도해주세요.',
+        },
+      ]);
     } finally {
       setWeeklyReportLoading(false);
       setLoading(false);
@@ -469,7 +568,10 @@ export default function AiModal() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   }
 
   return (
@@ -490,7 +592,9 @@ export default function AiModal() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">AI 어시스턴트</p>
-                <p className="text-[10px] text-slate-400">기록·수정·삭제·분석·조언 — 자유롭게 대화해요</p>
+                <p className="text-[10px] text-slate-400">
+                  기록·수정·삭제·분석·조언 — 자유롭게 대화해요
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -500,7 +604,11 @@ export default function AiModal() {
                 className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40"
                 title="주간 리포트"
               >
-                {weeklyReportLoading ? <Loader2 size={12} className="animate-spin" /> : <BarChart2 size={12} />}
+                {weeklyReportLoading ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <BarChart2 size={12} />
+                )}
                 <span className="hidden sm:inline">주간 리포트</span>
               </button>
               {messages.length > 0 && (
@@ -528,139 +636,169 @@ export default function AiModal() {
 
           {/* 메시지 영역 */}
           <div className="relative flex-1 min-h-0">
-          <div ref={scrollAreaRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 py-3 flex flex-col gap-3">
-            {messages.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center py-8 gap-3">
-                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center">
-                  <Bot size={22} className="text-slate-400" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-slate-700">무엇을 도와드릴까요?</p>
-                  <p className="text-xs text-slate-400 mt-1">기록·조회·분석·조언 뭐든지 말해봐요</p>
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center mt-1">
-                  <button
-                    onClick={handleWeeklyReport}
-                    disabled={weeklyReportLoading}
-                    className="text-xs px-3 py-1.5 bg-slate-900 hover:bg-slate-700 text-white rounded-full transition-colors flex items-center gap-1 disabled:opacity-50"
-                  >
-                    {weeklyReportLoading ? <Loader2 size={11} className="animate-spin" /> : <span>📋</span>}
-                    <span>주간 리포트</span>
-                  </button>
-                  {[
-                    { text: '이번 주 어땠어?', icon: '📊' },
-                    { text: '오늘 러닝 40분', icon: '🏃' },
-                    { text: '다음 우선순위 뭐야?', icon: '🎯' },
-                    { text: '요즘 생활 분석해줘', icon: '💡' },
-                    { text: '파친코 완독했어', icon: '📚' },
-                    { text: '어젯밤 수면 7시간 품질 4점', icon: '😴' },
-                  ].map(({ text, icon }) => (
-                    <button
-                      key={text}
-                      onClick={() => sendMessage(text)}
-                      className="text-xs px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-full transition-colors flex items-center gap-1"
-                    >
-                      <span>{icon}</span>
-                      <span>{text}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {messages.map(m => (
-              <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`group relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                  m.role === 'user'
-                    ? 'bg-slate-900 text-white rounded-br-sm whitespace-pre-wrap'
-                    : 'bg-slate-50 text-slate-700 border border-slate-100 rounded-bl-sm'
-                }`}>
-                  {m.role === 'ai' ? <MarkdownText text={m.text} /> : m.text}
-                  {m.role === 'ai' && (
-                    <span className="absolute -top-1 -right-1">
-                      <CopyButton text={m.text} />
-                    </span>
-                  )}
-                </div>
-
-                {m.timestamp && (
-                  <span className="mt-0.5 text-[10px] text-slate-300 px-1">{m.dateLabel}{m.timestamp}</span>
-                )}
-
-                {m.role === 'ai' && m.saved && (
-                  <span className="flex items-center gap-1 mt-0.5 text-[11px] text-slate-400">
-                    <CheckCircle2 size={11} />
-                    {m.savedCount && m.savedCount > 1
-                      ? `${m.savedCount}개 저장됨`
-                      : m.module
-                        ? `${MODULE_LABEL[m.module] ?? m.module}${m.action === 'delete' ? ' 삭제됨' : m.action === 'update' ? ' 수정됨' : ' 저장됨'}`
-                        : '저장됨'
-                    }
-                  </span>
-                )}
-
-                {m.role === 'ai' && m.action === 'delete_pending' && m.pendingFilter && (
-                  <DeleteFilterPreview module={m.module ?? null} filter={m.pendingFilter} />
-                )}
-
-                {m.role === 'ai' && m.action === 'delete_pending' && m.pendingFilter && (
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <button
-                      onClick={() => handleConfirmDelete(m.id, m.module!, m.pendingFilter!)}
-                      disabled={m.confirmLoading}
-                      className="flex items-center gap-1 px-3 py-1 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-50 transition-colors"
-                    >
-                      {m.confirmLoading ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
-                      삭제 확인
-                    </button>
-                    <button
-                      onClick={() => handleCancelDelete(m.id)}
-                      disabled={m.confirmLoading}
-                      className="px-3 py-1 text-slate-400 text-xs rounded-lg hover:text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                    >
-                      취소
-                    </button>
+            <div
+              ref={scrollAreaRef}
+              onScroll={handleScroll}
+              className="h-full overflow-y-auto px-4 py-3 flex flex-col gap-3"
+            >
+              {messages.length === 0 && (
+                <div className="flex-1 flex flex-col items-center justify-center py-8 gap-3">
+                  <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center">
+                    <Bot size={22} className="text-slate-400" />
                   </div>
-                )}
-
-                {m.role === 'ai' && m.suggestions && m.suggestions.length > 0 && !loading && (
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {m.suggestions.slice(0, 3).map((s, i) => (
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-slate-700">무엇을 도와드릴까요?</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      기록·조회·분석·조언 뭐든지 말해봐요
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 justify-center mt-1">
+                    <button
+                      onClick={handleWeeklyReport}
+                      disabled={weeklyReportLoading}
+                      className="text-xs px-3 py-1.5 bg-slate-900 hover:bg-slate-700 text-white rounded-full transition-colors flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {weeklyReportLoading ? (
+                        <Loader2 size={11} className="animate-spin" />
+                      ) : (
+                        <span>📋</span>
+                      )}
+                      <span>주간 리포트</span>
+                    </button>
+                    {[
+                      { text: '이번 주 어땠어?', icon: '📊' },
+                      { text: '오늘 러닝 40분', icon: '🏃' },
+                      { text: '다음 우선순위 뭐야?', icon: '🎯' },
+                      { text: '요즘 생활 분석해줘', icon: '💡' },
+                      { text: '파친코 완독했어', icon: '📚' },
+                      { text: '어젯밤 수면 7시간 품질 4점', icon: '😴' },
+                    ].map(({ text, icon }) => (
                       <button
-                        key={i}
-                        onClick={() => sendMessage(s)}
-                        className="text-[11px] px-2.5 py-1 bg-white border border-slate-200 text-slate-500 rounded-full hover:border-slate-400 hover:text-slate-700 transition-colors"
+                        key={text}
+                        onClick={() => sendMessage(text)}
+                        className="text-xs px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-full transition-colors flex items-center gap-1"
                       >
-                        {s}
+                        <span>{icon}</span>
+                        <span>{text}</span>
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              )}
 
-            {loading && (
-              <div className="flex items-start">
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl rounded-bl-sm px-3.5 py-2.5">
-                  <div className="flex gap-1 items-center">
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}
+                >
+                  <div
+                    className={`group relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                      m.role === 'user'
+                        ? 'bg-slate-900 text-white rounded-br-sm whitespace-pre-wrap'
+                        : 'bg-slate-50 text-slate-700 border border-slate-100 rounded-bl-sm'
+                    }`}
+                  >
+                    {m.role === 'ai' ? <MarkdownText text={m.text} /> : m.text}
+                    {m.role === 'ai' && (
+                      <span className="absolute -top-1 -right-1">
+                        <CopyButton text={m.text} />
+                      </span>
+                    )}
+                  </div>
+
+                  {m.timestamp && (
+                    <span className="mt-0.5 text-[10px] text-slate-300 px-1">
+                      {m.dateLabel}
+                      {m.timestamp}
+                    </span>
+                  )}
+
+                  {m.role === 'ai' && m.saved && (
+                    <span className="flex items-center gap-1 mt-0.5 text-[11px] text-slate-400">
+                      <CheckCircle2 size={11} />
+                      {m.savedCount && m.savedCount > 1
+                        ? `${m.savedCount}개 저장됨`
+                        : m.module
+                          ? `${MODULE_LABEL[m.module] ?? m.module}${m.action === 'delete' ? ' 삭제됨' : m.action === 'update' ? ' 수정됨' : ' 저장됨'}`
+                          : '저장됨'}
+                    </span>
+                  )}
+
+                  {m.role === 'ai' && m.action === 'delete_pending' && m.pendingFilter && (
+                    <DeleteFilterPreview module={m.module ?? null} filter={m.pendingFilter} />
+                  )}
+
+                  {m.role === 'ai' && m.action === 'delete_pending' && m.pendingFilter && (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <button
+                        onClick={() => handleConfirmDelete(m.id, m.module!, m.pendingFilter!)}
+                        disabled={m.confirmLoading}
+                        className="flex items-center gap-1 px-3 py-1 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                      >
+                        {m.confirmLoading ? (
+                          <Loader2 size={10} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={10} />
+                        )}
+                        삭제 확인
+                      </button>
+                      <button
+                        onClick={() => handleCancelDelete(m.id)}
+                        disabled={m.confirmLoading}
+                        className="px-3 py-1 text-slate-400 text-xs rounded-lg hover:text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  )}
+
+                  {m.role === 'ai' && m.suggestions && m.suggestions.length > 0 && !loading && (
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {m.suggestions.slice(0, 3).map((s, i) => (
+                        <button
+                          key={i}
+                          onClick={() => sendMessage(s)}
+                          className="text-[11px] px-2.5 py-1 bg-white border border-slate-200 text-slate-500 rounded-full hover:border-slate-400 hover:text-slate-700 transition-colors"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {loading && (
+                <div className="flex items-start">
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl rounded-bl-sm px-3.5 py-2.5">
+                    <div className="flex gap-1 items-center">
+                      <span
+                        className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '0ms' }}
+                      />
+                      <span
+                        className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '150ms' }}
+                      />
+                      <span
+                        className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '300ms' }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+            {showScrollBtn && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute bottom-3 right-3 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-full shadow-sm text-slate-500 hover:text-slate-700 hover:border-slate-400 transition-all"
+                title="최신 메시지로"
+              >
+                <ChevronsDown size={14} />
+              </button>
             )}
-            <div ref={bottomRef} />
-          </div>
-          {showScrollBtn && (
-            <button
-              onClick={scrollToBottom}
-              className="absolute bottom-3 right-3 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-full shadow-sm text-slate-500 hover:text-slate-700 hover:border-slate-400 transition-all"
-              title="최신 메시지로"
-            >
-              <ChevronsDown size={14} />
-            </button>
-          )}
           </div>
 
           {/* 입력창 */}
@@ -669,7 +807,10 @@ export default function AiModal() {
               <textarea
                 ref={inputRef}
                 value={input}
-                onChange={e => { setInput(e.target.value); autoResize(); }}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  autoResize();
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder="오늘 러닝 40분 했어&#10;요즘 내 생활 어때? 로드맵 진행 현황은?"
                 rows={2}
@@ -685,7 +826,9 @@ export default function AiModal() {
                 {loading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
               </button>
             </div>
-            <p className="text-[10px] text-slate-300 mt-1.5 px-0.5">Enter 전송 · Shift+Enter 줄바꿈</p>
+            <p className="text-[10px] text-slate-300 mt-1.5 px-0.5">
+              Enter 전송 · Shift+Enter 줄바꿈
+            </p>
           </div>
         </div>
       )}
@@ -693,11 +836,9 @@ export default function AiModal() {
       {/* FAB 버튼 */}
       <button
         ref={fabRef}
-        onClick={() => setOpen(prev => !prev)}
+        onClick={() => setOpen((prev) => !prev)}
         className={`fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-2xl shadow-lg flex items-center justify-center transition-all duration-200 ${
-          open
-            ? 'bg-slate-700 hover:bg-slate-600 rotate-0'
-            : 'bg-slate-900 hover:bg-slate-700'
+          open ? 'bg-slate-700 hover:bg-slate-600 rotate-0' : 'bg-slate-900 hover:bg-slate-700'
         }`}
         title="AI 어시스턴트"
         aria-label={open ? 'AI 어시스턴트 닫기' : 'AI 어시스턴트 열기'}

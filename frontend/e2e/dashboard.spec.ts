@@ -30,7 +30,7 @@ test.describe('대시보드 홈', () => {
 
   test('주간 리포트의 HTML 페이로드가 DOM으로 실행되지 않는다', async ({ page }) => {
     // 주간 리포트 응답을 가로채 heading/bullet/bold + HTML 주입 페이로드를 반환
-    await page.route('**/api/v1/ai/weekly-report', route =>
+    await page.route('**/api/v1/ai/weekly-report', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -41,7 +41,7 @@ test.describe('대시보드 홈', () => {
             '<img src=x onerror=window.__xss=1>',
           ].join('\n'),
         }),
-      })
+      }),
     );
 
     await page.goto('/');

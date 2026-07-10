@@ -40,10 +40,10 @@ function FitBounds({ points }: { points: MarkerPoint[] }) {
       map.setView([points[0].lat, points[0].lng], 11);
       return;
     }
-    const bounds = L.latLngBounds(points.map(p => [p.lat, p.lng] as [number, number]));
+    const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng] as [number, number]));
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
-  // 초기 마운트 시 1회만 실행
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // 초기 마운트 시 1회만 실행
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;
 }
@@ -53,8 +53,8 @@ function MapReadySignal({ onReady }: { onReady: (map: L.Map | null) => void }) {
   useEffect(() => {
     onReady(map);
     return () => onReady(null);
-  // map 인스턴스는 마운트 후 불변
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // map 인스턴스는 마운트 후 불변
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;
 }
@@ -96,16 +96,25 @@ export default function TravelMap({
     for (const t of trips) {
       if (t.latitude != null && t.longitude != null) {
         out.push({
-          key: `trip-${t.id}`, lat: t.latitude, lng: t.longitude,
-          title: t.name, subtitle: t.destination, kind: 'trip', tripId: t.id,
+          key: `trip-${t.id}`,
+          lat: t.latitude,
+          lng: t.longitude,
+          title: t.name,
+          subtitle: t.destination,
+          kind: 'trip',
+          tripId: t.id,
         });
       }
       for (const r of t.restaurants ?? []) {
         if (r.latitude != null && r.longitude != null) {
           out.push({
-            key: `rest-${r.id}`, lat: r.latitude, lng: r.longitude,
-            title: r.name, subtitle: `${t.name}${r.cuisine ? ` · ${r.cuisine}` : ''}`,
-            kind: 'restaurant', tripId: t.id,
+            key: `rest-${r.id}`,
+            lat: r.latitude,
+            lng: r.longitude,
+            title: r.name,
+            subtitle: `${t.name}${r.cuisine ? ` · ${r.cuisine}` : ''}`,
+            kind: 'restaurant',
+            tripId: t.id,
           });
         }
       }
@@ -113,16 +122,20 @@ export default function TravelMap({
     return out;
   }, [trips]);
 
-  const center: [number, number] = points.length > 0
-    ? [points[0].lat, points[0].lng]
-    : [36.5, 127.8]; // 대한민국 중심 기본값
+  const center: [number, number] =
+    points.length > 0 ? [points[0].lat, points[0].lng] : [36.5, 127.8]; // 대한민국 중심 기본값
 
   return (
     <div
       className="h-72 w-full rounded-2xl overflow-hidden border border-slate-100"
       style={{ cursor: addRestaurantMode ? 'crosshair' : undefined }}
     >
-      <MapContainer center={center} zoom={6} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+      <MapContainer
+        center={center}
+        zoom={6}
+        scrollWheelZoom={false}
+        style={{ height: '100%', width: '100%' }}
+      >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -130,7 +143,7 @@ export default function TravelMap({
         {points.length > 0 && <FitBounds points={points} />}
         {onMapReady && <MapReadySignal onReady={onMapReady} />}
         <MapEventHandler addMode={addRestaurantMode} onMapClick={onMapClick} />
-        {points.map(p => (
+        {points.map((p) => (
           <Marker
             key={p.key}
             position={[p.lat, p.lng]}
@@ -139,7 +152,9 @@ export default function TravelMap({
           >
             <Popup>
               <div style={{ fontSize: 12 }}>
-                <strong>{p.kind === 'trip' ? '📍' : '🍽️'} {p.title}</strong>
+                <strong>
+                  {p.kind === 'trip' ? '📍' : '🍽️'} {p.title}
+                </strong>
                 <br />
                 <span style={{ color: '#64748b' }}>{p.subtitle}</span>
               </div>

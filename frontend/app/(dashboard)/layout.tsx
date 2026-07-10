@@ -43,11 +43,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* 사이드바 */}
-      <div className={`
+      <div
+        className={`
         fixed inset-y-0 left-0 z-30 transition-transform duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0
-      `}>
+      `}
+      >
         <Sidebar onClose={() => setSidebarOpen(false)} />
       </div>
 
@@ -64,9 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="text-sm font-semibold text-slate-900">Life Dashboard</span>
         </div>
 
-        <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8">
-          {children}
-        </div>
+        <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8">{children}</div>
       </main>
 
       <Toast />

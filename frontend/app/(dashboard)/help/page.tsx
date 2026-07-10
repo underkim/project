@@ -1,15 +1,33 @@
 'use client';
 
 import {
-  Bot, CalendarDays, TrendingUp, Activity, BookOpen, Briefcase,
-  Plane, Lightbulb, MessageSquare, Trash2, PenLine, CheckSquare,
+  Bot,
+  CalendarDays,
+  TrendingUp,
+  Activity,
+  BookOpen,
+  Briefcase,
+  Plane,
+  Lightbulb,
+  MessageSquare,
+  Trash2,
+  PenLine,
+  CheckSquare,
   ChevronRight,
 } from 'lucide-react';
 import { useState } from 'react';
 
 // ─── 재사용 컴포넌트 ──────────────────────────────────────
 
-function SectionHeader({ icon: Icon, title, color }: { icon: React.ElementType; title: string; color: string }) {
+function SectionHeader({
+  icon: Icon,
+  title,
+  color,
+}: {
+  icon: React.ElementType;
+  title: string;
+  color: string;
+}) {
   return (
     <div className="flex items-center gap-3 mb-4">
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
@@ -43,17 +61,16 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
   return (
     <div className="border border-slate-100 rounded-xl overflow-hidden">
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left"
       >
         {title}
-        <ChevronRight size={14} className={`text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`} />
+        <ChevronRight
+          size={14}
+          className={`text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`}
+        />
       </button>
-      {open && (
-        <div className="px-4 pb-4 pt-1 space-y-2 bg-slate-50/50">
-          {children}
-        </div>
-      )}
+      {open && <div className="px-4 pb-4 pt-1 space-y-2 bg-slate-50/50">{children}</div>}
     </div>
   );
 }
@@ -73,13 +90,15 @@ export default function HelpPage() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
         <SectionHeader icon={Bot} title="AI 어시스턴트" color="bg-slate-900" />
         <p className="text-sm text-slate-600 mb-4">
-          우측 하단 <span className="font-semibold text-slate-800">AI 버튼</span>을 클릭하면 채팅창이 열립니다.
-          자연어로 데이터를 기록·수정·삭제할 수 있고, 통계 질문도 가능합니다.
+          우측 하단 <span className="font-semibold text-slate-800">AI 버튼</span>을 클릭하면
+          채팅창이 열립니다. 자연어로 데이터를 기록·수정·삭제할 수 있고, 통계 질문도 가능합니다.
         </p>
 
         <div className="space-y-4">
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">기록 예시</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              기록 예시
+            </p>
             <div className="flex flex-wrap gap-2">
               {[
                 '오늘 러닝 45분 했어',
@@ -89,38 +108,52 @@ export default function HelpPage() {
                 '영어 공부 오늘 30분',
                 '코드포스 레이팅 1500 달성',
                 '제주도 여행 다음 달 15일~18일',
-              ].map(t => <ExampleBubble key={t} text={t} />)}
+              ].map((t) => (
+                <ExampleBubble key={t} text={t} />
+              ))}
             </div>
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">수정 예시</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              수정 예시
+            </p>
             <div className="flex flex-wrap gap-2">
               {[
                 '오늘 운동 시간 60분으로 수정해줘',
                 '어제 수면 품질 3점으로 바꿔줘',
                 '파친코 총 페이지 820으로 수정',
-              ].map(t => <ExampleBubble key={t} text={t} />)}
+              ].map((t) => (
+                <ExampleBubble key={t} text={t} />
+              ))}
             </div>
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">삭제 예시</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              삭제 예시
+            </p>
             <div className="flex flex-wrap gap-2 mb-2">
               {[
                 '오늘 운동 기록 지워줘',
                 '제주도 여행 삭제해줘',
                 '코드포스 레이팅 1500 기록 삭제',
-              ].map(t => <ExampleBubble key={t} text={t} />)}
+              ].map((t) => (
+                <ExampleBubble key={t} text={t} />
+              ))}
             </div>
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
               <Trash2 size={13} className="text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700">삭제 시 AI가 확인 버튼을 표시합니다. 확인을 눌러야 실제로 삭제됩니다.</p>
+              <p className="text-xs text-amber-700">
+                삭제 시 AI가 확인 버튼을 표시합니다. 확인을 눌러야 실제로 삭제됩니다.
+              </p>
             </div>
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">조회 예시</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              조회 예시
+            </p>
             <div className="flex flex-wrap gap-2">
               {[
                 '이번 주 운동 몇 번 했어?',
@@ -128,7 +161,9 @@ export default function HelpPage() {
                 '현재 읽고 있는 책은?',
                 '이번 달 영어 공부 총 몇 분?',
                 '내 자산 목표 진행 상황 알려줘',
-              ].map(t => <ExampleBubble key={t} text={t} />)}
+              ].map((t) => (
+                <ExampleBubble key={t} text={t} />
+              ))}
             </div>
           </div>
         </div>
@@ -159,10 +194,18 @@ export default function HelpPage() {
           <Accordion title="다중 선택 삭제 사용법">
             <div className="flex items-start gap-2">
               <CheckSquare size={13} className="text-slate-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-slate-600">카테고리 목록 우측 상단의 <strong>다중 선택</strong> 버튼을 클릭하면 선택 모드가 활성화됩니다.</p>
+              <p className="text-xs text-slate-600">
+                카테고리 목록 우측 상단의 <strong>다중 선택</strong> 버튼을 클릭하면 선택 모드가
+                활성화됩니다.
+              </p>
             </div>
-            <p className="text-xs text-slate-600 pl-5">카드를 클릭해 선택(체크박스 표시) → <strong>선택 삭제</strong> 버튼 → 확인으로 일괄 삭제됩니다.</p>
-            <p className="text-xs text-slate-500 pl-5">※ 카테고리 안의 모든 항목도 함께 삭제됩니다.</p>
+            <p className="text-xs text-slate-600 pl-5">
+              카드를 클릭해 선택(체크박스 표시) → <strong>선택 삭제</strong> 버튼 → 확인으로 일괄
+              삭제됩니다.
+            </p>
+            <p className="text-xs text-slate-500 pl-5">
+              ※ 카테고리 안의 모든 항목도 함께 삭제됩니다.
+            </p>
           </Accordion>
           <Accordion title="마감일 상태 배지 기준">
             <div className="flex flex-wrap gap-2">
@@ -172,7 +215,12 @@ export default function HelpPage() {
                 { label: '임박 (30일 이내)', cls: 'bg-amber-100 text-amber-700' },
                 { label: '지연 (마감 초과)', cls: 'bg-red-100 text-red-600' },
               ].map(({ label, cls }) => (
-                <span key={label} className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${cls}`}>{label}</span>
+                <span
+                  key={label}
+                  className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${cls}`}
+                >
+                  {label}
+                </span>
               ))}
             </div>
           </Accordion>
@@ -240,7 +288,9 @@ export default function HelpPage() {
                 { label: '완료', cls: 'bg-slate-100 text-slate-600' },
                 { label: '취소', cls: 'bg-red-100 text-red-600' },
               ].map(({ label, cls }) => (
-                <span key={label} className={`text-xs px-2.5 py-1 rounded-full font-medium ${cls}`}>{label}</span>
+                <span key={label} className={`text-xs px-2.5 py-1 rounded-full font-medium ${cls}`}>
+                  {label}
+                </span>
               ))}
             </div>
           </Accordion>

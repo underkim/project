@@ -53,7 +53,10 @@ function LoginForm() {
         </div>
 
         {reasonMessage && (
-          <div className="mb-5 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500" role="status">
+          <div
+            className="mb-5 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500"
+            role="status"
+          >
             {reasonMessage}
           </div>
         )}
@@ -64,7 +67,7 @@ function LoginForm() {
             <input
               type="text"
               value={username}
-              onChange={e => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-shadow"
               placeholder="admin"
               required
@@ -76,16 +79,14 @@ function LoginForm() {
             <input
               type="password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-shadow"
               placeholder="••••••••"
               required
             />
           </div>
 
-          {error && (
-            <p className="text-red-500 text-xs py-1">{error}</p>
-          )}
+          {error && <p className="text-red-500 text-xs py-1">{error}</p>}
 
           <button
             type="submit"

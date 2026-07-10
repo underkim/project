@@ -9,9 +9,15 @@ import { useEffect, useRef } from 'react';
  * onRefresh가 Promise를 반환해도(비동기) 실패가 이벤트 핸들러 밖으로
  * 새어 나가지 않도록 내부에서 catch한다.
  */
-export function useAiRefresh(modules: string[], onRefresh: () => void | Promise<void>, debounceMs = 150) {
+export function useAiRefresh(
+  modules: string[],
+  onRefresh: () => void | Promise<void>,
+  debounceMs = 150,
+) {
   const onRefreshRef = useRef(onRefresh);
-  useEffect(() => { onRefreshRef.current = onRefresh; });
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  });
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -24,7 +30,10 @@ export function useAiRefresh(modules: string[], onRefresh: () => void | Promise<
           (result as Promise<void>).catch((err: unknown) => {
             if (process.env.NODE_ENV !== 'production') {
               // 안전: 저장된 AI 데이터/페이로드는 로깅하지 않고 메시지만 출력
-              console.warn('[useAiRefresh] refresh failed:', err instanceof Error ? err.message : err);
+              console.warn(
+                '[useAiRefresh] refresh failed:',
+                err instanceof Error ? err.message : err,
+              );
             }
           });
         }
@@ -36,10 +45,9 @@ export function useAiRefresh(modules: string[], onRefresh: () => void | Promise<
     }
 
     function handler(e: Event) {
-      const savedModule: string | null = (e as CustomEvent<{ module: string | null }>).detail.module;
-      const matches =
-        modules.length === 0 ||
-        modules.some(m => savedModule?.startsWith(m));
+      const savedModule: string | null = (e as CustomEvent<{ module: string | null }>).detail
+        .module;
+      const matches = modules.length === 0 || modules.some((m) => savedModule?.startsWith(m));
       if (!matches) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(runRefresh, debounceMs);
@@ -50,5 +58,5 @@ export function useAiRefresh(modules: string[], onRefresh: () => void | Promise<
       window.removeEventListener('ai-data-saved', handler);
       if (timer) clearTimeout(timer);
     };
-  }, [modules.join(','), debounceMs]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [modules.join(','), debounceMs]); // eslint-disable-line react-hooks/exhaustive-deps
 }

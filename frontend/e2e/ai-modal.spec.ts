@@ -15,7 +15,7 @@ test.describe('AI 모달', () => {
 
     // 주간 리포트 버튼도 패널 헤더에 노출 (빈 상태 칩·대시보드 버튼과 구분 위해 다이얼로그 + 정확 매칭)
     await expect(
-      page.getByRole('dialog').getByRole('button', { name: '주간 리포트', exact: true })
+      page.getByRole('dialog').getByRole('button', { name: '주간 리포트', exact: true }),
     ).toBeVisible();
   });
 

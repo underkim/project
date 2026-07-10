@@ -8,8 +8,8 @@ type ToastItem = { id: number; message: string; type: ToastType; createdAt: numb
 
 let _id = 0;
 
-const DEDUPE_MS = 2000;   // 같은 메시지+타입이 이 시간 내 반복되면 무시
-const MAX_VISIBLE = 4;    // 동시에 표시할 최대 토스트 수
+const DEDUPE_MS = 2000; // 같은 메시지+타입이 이 시간 내 반복되면 무시
+const MAX_VISIBLE = 4; // 동시에 표시할 최대 토스트 수
 const AUTO_DISMISS_MS = 3500;
 
 export default function Toast() {
@@ -22,16 +22,23 @@ export default function Toast() {
     setToasts(next);
   }, []);
 
-  const dismiss = useCallback((id: number) => {
-    commit(toastsRef.current.filter(t => t.id !== id));
-  }, [commit]);
+  const dismiss = useCallback(
+    (id: number) => {
+      commit(toastsRef.current.filter((t) => t.id !== id));
+    },
+    [commit],
+  );
 
   useEffect(() => {
     function handler(e: Event) {
       const { message, type } = (e as CustomEvent<{ message: string; type: ToastType }>).detail;
       const now = Date.now();
       // 중복 억제: 동일 message+type이 짧은 시간 내 이미 떠 있으면 무시
-      if (toastsRef.current.some(t => t.message === message && t.type === type && now - t.createdAt < DEDUPE_MS)) {
+      if (
+        toastsRef.current.some(
+          (t) => t.message === message && t.type === type && now - t.createdAt < DEDUPE_MS,
+        )
+      ) {
         return;
       }
       const id = ++_id;
@@ -49,7 +56,7 @@ export default function Toast() {
 
   return (
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 items-end pointer-events-none">
-      {toasts.map(t => (
+      {toasts.map((t) => (
         <div
           key={t.id}
           role={t.type === 'error' ? 'alert' : 'status'}
@@ -57,9 +64,13 @@ export default function Toast() {
           aria-atomic="true"
           className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto
             transition-all duration-300 max-w-sm
-            ${t.type === 'success' ? 'bg-slate-900 text-white' :
-              t.type === 'error' ? 'bg-red-600 text-white' :
-              'bg-slate-700 text-white'}`}
+            ${
+              t.type === 'success'
+                ? 'bg-slate-900 text-white'
+                : t.type === 'error'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-slate-700 text-white'
+            }`}
         >
           {t.type === 'success' && <CheckCircle2 size={15} className="shrink-0" />}
           {t.type === 'error' && <XCircle size={15} className="shrink-0" />}

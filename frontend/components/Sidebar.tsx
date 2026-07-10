@@ -3,20 +3,30 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, CalendarDays, TrendingUp,
-  Activity, BookOpen, Briefcase, Plane, LogOut, Map, ChevronLeft, HelpCircle, GitBranch,
+  LayoutDashboard,
+  CalendarDays,
+  TrendingUp,
+  Activity,
+  BookOpen,
+  Briefcase,
+  Plane,
+  LogOut,
+  Map,
+  ChevronLeft,
+  HelpCircle,
+  GitBranch,
 } from 'lucide-react';
 
 const navItems = [
-  { href: '/',          icon: LayoutDashboard, label: '대시보드' },
-  { href: '/planner',   icon: CalendarDays,    label: '플래너'   },
-  { href: '/finance',   icon: TrendingUp,      label: '재테크'   },
-  { href: '/health',    icon: Activity,        label: '건강'     },
-  { href: '/growth',    icon: BookOpen,        label: '자기계발' },
-  { href: '/career',    icon: Briefcase,       label: '커리어'   },
-  { href: '/travel',    icon: Plane,           label: '여행'     },
-  { href: '/devstatus', icon: GitBranch,       label: '개발 현황' },
-  { href: '/help',      icon: HelpCircle,      label: '가이드'   },
+  { href: '/', icon: LayoutDashboard, label: '대시보드' },
+  { href: '/planner', icon: CalendarDays, label: '플래너' },
+  { href: '/finance', icon: TrendingUp, label: '재테크' },
+  { href: '/health', icon: Activity, label: '건강' },
+  { href: '/growth', icon: BookOpen, label: '자기계발' },
+  { href: '/career', icon: Briefcase, label: '커리어' },
+  { href: '/travel', icon: Plane, label: '여행' },
+  { href: '/devstatus', icon: GitBranch, label: '개발 현황' },
+  { href: '/help', icon: HelpCircle, label: '가이드' },
 ];
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -38,7 +48,9 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             <div className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center shrink-0">
               <Map size={13} className="text-white" />
             </div>
-            <span className="text-sm font-semibold text-slate-900 tracking-tight">Life Dashboard</span>
+            <span className="text-sm font-semibold text-slate-900 tracking-tight">
+              Life Dashboard
+            </span>
           </div>
           {onClose && (
             <button

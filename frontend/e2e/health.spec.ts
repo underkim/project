@@ -10,7 +10,7 @@ async function getAuthHeaders(request: import('@playwright/test').APIRequestCont
       password: process.env.E2E_PASSWORD ?? 'admin',
     },
   });
-  const { access_token } = await res.json() as { access_token: string };
+  const { access_token } = (await res.json()) as { access_token: string };
   return { Authorization: `Bearer ${access_token}` };
 }
 
@@ -18,7 +18,7 @@ async function cleanupExercise(request: import('@playwright/test').APIRequestCon
   const headers = await getAuthHeaders(request);
   const res = await request.get(`${API}/api/v1/health/exercise`, { headers });
   if (!res.ok()) return;
-  const logs = await res.json() as Array<{ id: number; log_date: string }>;
+  const logs = (await res.json()) as Array<{ id: number; log_date: string }>;
   for (const l of logs) {
     if (l.log_date === TEST_DATE) {
       await request.delete(`${API}/api/v1/health/exercise/${l.id}`, { headers });
@@ -51,7 +51,8 @@ test.describe('건강 페이지', () => {
     await page.click('button[type="submit"]:has-text("저장")');
 
     await expect(page.getByText('운동 기록 저장됨')).toBeVisible();
-    const item = page.getByText('E2E 테스트 운동', { exact: true })
+    const item = page
+      .getByText('E2E 테스트 운동', { exact: true })
       .locator('xpath=ancestor::div[contains(@class,"group")][1]');
     await expect(item.getByText('E2E 테스트 운동', { exact: true })).toBeVisible();
     await expect(item.getByText('45분', { exact: true })).toBeVisible();
@@ -69,7 +70,8 @@ test.describe('건강 페이지', () => {
     await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 10000 });
     await expect(page.getByText('E2E 삭제 테스트', { exact: true })).toBeVisible();
 
-    const item = page.getByText('E2E 삭제 테스트', { exact: true })
+    const item = page
+      .getByText('E2E 삭제 테스트', { exact: true })
       .locator('xpath=ancestor::div[contains(@class,"group")][1]');
     await item.hover();
     await item.locator('button').click();
