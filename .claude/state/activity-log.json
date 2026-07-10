@@ -1,12 +1,11 @@
 {
-  "task": "PostToolUse ESLint 훅 추가 (프론트엔드 편집 즉시 린트)",
-  "started_at": "2026-07-10T08:20:00Z",
-  "updated_at": "2026-07-10T09:05:00Z",
+  "task": "하네스 나머지 3개 진행: Prettier 포맷터, git push 시점 e2e 검사, 프로젝트 전용 subagent",
+  "started_at": "2026-07-10T10:30:00Z",
+  "updated_at": "2026-07-10T10:30:00Z",
   "steps": [
-    { "label": "post-edit-eslint.sh 작성 및 단독 테스트 (정상/위반 케이스)", "status": "done" },
-    { "label": "경고만 있을 때 종료코드 0인 문제 발견 및 수정 (출력 유무로 판단)", "status": "done" },
-    { "label": ".claude/settings.json에 PostToolUse hook 등록 (사용자 확인 후)", "status": "done" },
-    { "label": "실제 세션에서 Edit 호출로 라이브 발동 확인", "status": "done" },
-    { "label": "harness 문서 갱신 + 전체 검증(pytest/tsc/eslint) + 커밋·푸시", "status": "done" }
+    { "label": "Prettier 도입: 설정 + 1회 전체 포맷팅 커밋 + post-edit 훅에 통합", "status": "in_progress" },
+    { "label": "git push 시점 e2e(Playwright) 검사 훅 추가", "status": "pending" },
+    { "label": "프로젝트 전용 subagent 작성 (.claude/agents/)", "status": "pending" },
+    { "label": "전체 검증 + harness 문서 갱신 + 최종 커밋·푸시", "status": "pending" }
   ]
 }
