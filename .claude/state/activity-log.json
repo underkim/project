@@ -3,8 +3,8 @@
   "started_at": "2026-07-10T15:00:00Z",
   "updated_at": "2026-07-10T15:00:00Z",
   "steps": [
-    { "label": "TASK-051: Backend 사용자 친화적 404 응답", "status": "pending" },
-    { "label": "TASK-052: 프론트엔드 삭제 확인 audit", "status": "pending" },
+    { "label": "TASK-051: Backend 사용자 친화적 404 응답", "status": "done" },
+    { "label": "TASK-052: 프론트엔드 삭제 확인 audit (여행 삭제에 확인 단계 추가)", "status": "done" },
     { "label": "TASK-053: 플래너 카테고리 삭제 안전성", "status": "pending" },
     { "label": "TASK-054: 여행 맛집 중복 감지", "status": "pending" },
     { "label": "TASK-055: 여행 체크리스트 진행률 피드백", "status": "pending" },
