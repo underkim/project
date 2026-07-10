@@ -1,13 +1,13 @@
 {
-  "task": "실시간 작업 로그 스트리밍 기능 추가",
-  "started_at": "2026-07-10T03:00:00Z",
-  "updated_at": "2026-07-10T03:35:00Z",
+  "task": "Windows 데스크톱 상태 모니터 프로그램 개발 (GitHub 직접 폴링)",
+  "started_at": "2026-07-10T04:00:00Z",
+  "updated_at": "2026-07-10T04:00:00Z",
   "steps": [
-    { "label": "설계: 로그 파일 스키마 + pre-commit 훅 예외 처리 방식 결정", "status": "done" },
-    { "label": "pre-commit-check.sh: 로그 파일만 변경된 커밋은 테스트 생략", "status": "done" },
-    { "label": "devstatus 백엔드: activity 엔드포인트 추가", "status": "done" },
-    { "label": "devstatus 프론트엔드: 실시간 폴링 카드 추가", "status": "done" },
-    { "label": "AGENTS.md에 로그 유지 컨벤션 문서화", "status": "done" },
-    { "label": "검증 (pytest/tsc) 및 최종 커밋·푸시", "status": "done" }
+    { "label": "GitHub REST API 폴링 + 파싱 로직 작성 (github_source.py)", "status": "in_progress" },
+    { "label": "파싱 로직 단위 테스트 (샘플 데이터)", "status": "pending" },
+    { "label": "tkinter GUI 작성 (devstatus_desktop.py)", "status": "pending" },
+    { "label": "Xvfb로 GUI 렌더링 검증 (샘플 데이터)", "status": "pending" },
+    { "label": "README (설정·실행·PyInstaller 빌드 안내) 작성", "status": "pending" },
+    { "label": "최종 커밋·푸시", "status": "pending" }
   ]
 }
