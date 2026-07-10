@@ -11,7 +11,7 @@
     { "label": "TASK-056: 재테크 요약 stale/empty 상태 (latest_record_date 추가)", "status": "done" },
     { "label": "TASK-057: 건강 수면 미래 날짜 거부", "status": "done" },
     { "label": "TASK-058: 자기계발 독서 기록 미래 날짜 거부", "status": "done" },
-    { "label": "TASK-059: 커리어 평점 추이 empty/error 상태", "status": "pending" },
+    { "label": "TASK-059: 커리어 CF 레이팅 추이 empty 상태 안내 (+ e2e 신규)", "status": "done" },
     { "label": "TASK-060: 대시보드 모듈 카드 딥링크 안정성", "status": "pending" }
   ]
 }
