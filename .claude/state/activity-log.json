@@ -1,13 +1,13 @@
 {
   "task": "Windows 데스크톱 상태 모니터 프로그램 개발 (GitHub 직접 폴링)",
   "started_at": "2026-07-10T04:00:00Z",
-  "updated_at": "2026-07-10T04:00:00Z",
+  "updated_at": "2026-07-10T04:40:00Z",
   "steps": [
-    { "label": "GitHub REST API 폴링 + 파싱 로직 작성 (github_source.py)", "status": "in_progress" },
-    { "label": "파싱 로직 단위 테스트 (샘플 데이터)", "status": "pending" },
-    { "label": "tkinter GUI 작성 (devstatus_desktop.py)", "status": "pending" },
-    { "label": "Xvfb로 GUI 렌더링 검증 (샘플 데이터)", "status": "pending" },
-    { "label": "README (설정·실행·PyInstaller 빌드 안내) 작성", "status": "pending" },
-    { "label": "최종 커밋·푸시", "status": "pending" }
+    { "label": "GitHub REST API 폴링 + 파싱 로직 작성 (github_source.py)", "status": "done" },
+    { "label": "파싱 로직 단위 테스트 (샘플 데이터)", "status": "done" },
+    { "label": "tkinter GUI 작성 (devstatus_desktop.py)", "status": "done" },
+    { "label": "Xvfb로 GUI 렌더링 검증 (샘플 데이터)", "status": "done" },
+    { "label": "README (설정·실행·PyInstaller 빌드 안내) 작성", "status": "done" },
+    { "label": "최종 커밋·푸시", "status": "done" }
   ]
 }
