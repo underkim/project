@@ -13,6 +13,7 @@ from app.modules.health.router import router as health_module_router
 from app.modules.planner.router import router as planner_router
 from app.modules.ai.router import router as ai_router
 from app.modules.export.router import router as export_router
+from app.modules.devstatus.router import router as devstatus_router
 
 
 def create_app() -> FastAPI:
@@ -37,6 +38,10 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(ai_router)
     app.include_router(export_router)
+
+    # 탈부착 가능한 모듈: ENABLE_DEVSTATUS_MODULE=false 로 비활성화 가능 (코드 변경 불필요)
+    if settings.enable_devstatus_module:
+        app.include_router(devstatus_router)
 
     return app
 

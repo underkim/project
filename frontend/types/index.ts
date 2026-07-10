@@ -259,6 +259,64 @@ export interface RestaurantResponse {
   order_index: number;
 }
 
+// Dev Status (harness / task engineering status)
+export interface TaskCounts {
+  draft: number;
+  approved: number;
+  working: number;
+  blocked: number;
+  implemented: number;
+  reviewed: number;
+  done: number;
+}
+
+export interface TaskSummary {
+  id: string;
+  title: string;
+  status: string;
+  priority: string | null;
+  task_type: string | null;
+  updated_at: string | null;
+}
+
+export interface HookInfo {
+  file: string;
+  events: string[];
+}
+
+export interface SkillInfo {
+  name: string;
+  description: string;
+}
+
+export interface HarnessStatus {
+  permission_rule_count: number;
+  hooks: HookInfo[];
+  skills: SkillInfo[];
+  claudeignore_present: boolean;
+}
+
+export interface DevLogEntry {
+  date: string;
+  summary: string;
+}
+
+export interface GitStatus {
+  branch: string | null;
+  last_commit_hash: string | null;
+  last_commit_message: string | null;
+  last_commit_date: string | null;
+}
+
+export interface DevStatusOverview {
+  task_counts: TaskCounts;
+  active_tasks: TaskSummary[];
+  recent_done: TaskSummary[];
+  harness: HarnessStatus;
+  recent_dev_log: DevLogEntry[];
+  git: GitStatus;
+}
+
 export interface TripResponse {
   id: number;
   name: string;

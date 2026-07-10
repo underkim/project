@@ -123,3 +123,24 @@ main.py 등록) → 마이그레이션(dialect 가드, RLS 포함) → 테스트
 - **subagent 정의(.claude/agents/)** — 이 프로젝트 규모(단일 사용자 포트폴리오)에서는
   범용 Explore/Plan 등 기본 subagent로 충분하다고 판단, 프로젝트 전용 subagent는 아직
   만들지 않음.
+
+## 업데이트: 라이브 개발 현황 대시보드 (`devstatus` 모듈)
+
+이 문서(정적 스냅샷)와 별개로, `docs/tasks/`(태스크 상태)와 `.claude/`(하네스 설정 그
+자체)를 **실시간으로 읽어 보여주는** 모듈을 추가했다:
+
+- 백엔드: `app/modules/devstatus/` — DB를 쓰지 않고 파일시스템(`docs/tasks/active|done`,
+  `.claude/settings.json`, `.claude/hooks/`, `.claude/skills/`, `docs/dev-log/`)과 `git log`를
+  직접 읽어 `GET /api/v1/devstatus/overview`로 반환.
+- 프론트엔드: `/devstatus` 페이지 — 태스크 상태별 카운트, 활성/완료 태스크 목록, 하네스
+  상태(권한 allowlist 개수, 등록된 hooks, skills 목록), git 브랜치/최근 커밋, 최근
+  dev-log를 한 화면에서 확인.
+- **탈부착**: `app/core/config.py`의 `enable_devstatus_module` (env: `ENABLE_DEVSTATUS_MODULE`,
+  기본 `true`)로 제어. `false`로 설정하면 `main.py`가 라우터 자체를 등록하지 않아
+  `/api/v1/devstatus/*`가 404가 되고, 프론트엔드는 이를 감지해 "비활성화됨" 상태를
+  보여준다 — 코드 수정 없이 환경변수 하나로 켜고 끌 수 있다.
+- `docs/tasks/count-tasks.ps1`(PowerShell)과 동일한 카운트를 제공하지만 플랫폼 제약이 없다.
+
+**주의**: 이 문서(`harness-current-state.md`)는 특정 시점의 스냅샷이라 시간이 지나면
+내용이 낡을 수 있다. 하네스의 **실제 현재 상태**(권한 개수, hooks, skills 목록)는
+`/devstatus` 페이지나 `GET /api/v1/devstatus/overview`가 항상 최신값을 보여준다.

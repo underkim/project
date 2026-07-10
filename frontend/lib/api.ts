@@ -7,6 +7,7 @@ import type {
   CareerSettingsResponse, CFRatingLogResponse,
   OverviewResponse,
   TripResponse, ChecklistItemResponse, TravelSummaryResponse, TripPlanItemResponse, RestaurantResponse,
+  DevStatusOverview,
 } from '@/types';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -314,4 +315,9 @@ export const exportApi = {
   english: () => _downloadCsv('/api/v1/export/growth/english', _stamped('english')),
   career: () => _downloadCsv('/api/v1/export/career', _stamped('career')),
   travel: () => _downloadCsv('/api/v1/export/travel', _stamped('travel')),
+};
+
+export const devstatusApi = {
+  getOverview: async (): Promise<DevStatusOverview> =>
+    (await client.get('/api/v1/devstatus/overview')).data,
 };

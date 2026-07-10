@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # AI
     gemini_api_key: str = ""
 
+    # 개발 현황(devstatus) 모듈 — 언제든 탈부착 가능하도록 플래그로 제어
+    enable_devstatus_module: bool = True
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

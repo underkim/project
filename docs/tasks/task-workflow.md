@@ -4,7 +4,7 @@
 
 | Status | Who sets it | Meaning |
 |--------|-------------|---------|
-| `draft` | Codex / user | Being drafted, not ready for implementation |
+| `draft` | Claude Code / user | Being drafted, not ready for implementation |
 | `approved` | User | Ready for Claude Code to implement |
 | `working` | Claude Code | Currently being implemented |
 | `blocked` | Claude Code | Cannot proceed, waiting on external input |
@@ -16,7 +16,7 @@
 
 **Unfinished = `draft` + `approved` + `working`**
 
-Active task files may exceed 10. This is allowed. Claude Code should limit each implementation batch to at most 10 eligible tasks instead of requiring Codex to stop creating tasks at 10 active files.
+Active task files may exceed 10. This is allowed. Claude Code should limit each implementation batch to at most 10 eligible tasks, rather than stopping task creation at 10 active files.
 
 Do NOT count by:
 - Number of files in `docs/tasks/active/`
@@ -25,7 +25,9 @@ Do NOT count by:
 
 Many files in `docs/tasks/active/` have `status: implemented` and are waiting for user review before being moved to `docs/tasks/done/`. These are NOT available for new implementation.
 
-Run `docs/tasks/count-tasks.ps1` to get a reliable status breakdown.
+Run `docs/tasks/count-tasks.ps1` to get a reliable status breakdown, or open the `/devstatus`
+page in the app (backed by `app/modules/devstatus/`) for a live, cross-platform view of the same
+counts plus the current harness (hooks/skills/permissions) state.
 
 ## Agent Rules
 
