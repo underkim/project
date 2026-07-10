@@ -317,6 +317,18 @@ export interface DevStatusOverview {
   git: GitStatus;
 }
 
+export interface ActivityStep {
+  label: string;
+  status: 'pending' | 'in_progress' | 'done';
+}
+
+export interface ActivityLog {
+  task: string | null;
+  started_at: string | null;
+  updated_at: string | null;
+  steps: ActivityStep[];
+}
+
 export interface TripResponse {
   id: number;
   name: string;

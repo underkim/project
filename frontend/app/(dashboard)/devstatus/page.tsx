@@ -1,11 +1,57 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { devstatusApi } from '@/lib/api';
-import type { DevStatusOverview, TaskSummary } from '@/types';
+import type { ActivityLog, DevStatusOverview, TaskSummary } from '@/types';
 import {
   GitBranch, GitCommit, ShieldCheck, Sparkles, RefreshCw, AlertCircle, PowerOff,
+  CheckCircle2, Circle, Loader2, Radio,
 } from 'lucide-react';
+
+const ACTIVITY_POLL_MS = 8000;
+
+function StepIcon({ status }: { status: string }) {
+  if (status === 'done') return <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />;
+  if (status === 'in_progress') return <Loader2 size={14} className="text-blue-500 shrink-0 animate-spin" />;
+  return <Circle size={14} className="text-slate-300 shrink-0" />;
+}
+
+function ActivityCard({ activity }: { activity: ActivityLog | null }) {
+  if (!activity || activity.steps.length === 0) {
+    return (
+      <div className="border border-slate-100 rounded-xl p-5 flex items-center gap-2 text-sm text-slate-400">
+        <Radio size={14} className="text-slate-300" />
+        지금 진행 중인 작업이 없습니다
+      </div>
+    );
+  }
+  const done = activity.steps.filter(s => s.status === 'done').length;
+  return (
+    <div className="border border-blue-100 bg-blue-50/30 rounded-xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Radio size={13} className="text-blue-500 animate-pulse" />
+          <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">지금 작업 중</p>
+        </div>
+        <span className="text-[10px] text-slate-400">{done} / {activity.steps.length}</span>
+      </div>
+      <p className="text-sm font-medium text-slate-800 mb-3">{activity.task ?? '(제목 없음)'}</p>
+      <div className="space-y-1.5">
+        {activity.steps.map((step, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <StepIcon status={step.status} />
+            <span className={`text-xs ${step.status === 'done' ? 'text-slate-400 line-through' : step.status === 'in_progress' ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+              {step.label}
+            </span>
+          </div>
+        ))}
+      </div>
+      {activity.updated_at && (
+        <p className="text-[10px] text-slate-400 mt-3">마지막 갱신: {activity.updated_at}</p>
+      )}
+    </div>
+  );
+}
 
 const STATUS_ORDER = ['draft', 'approved', 'working', 'blocked', 'implemented', 'reviewed', 'done'] as const;
 
@@ -54,9 +100,11 @@ function TaskRow({ task }: { task: TaskSummary }) {
 
 export default function DevStatusPage() {
   const [data, setData] = useState<DevStatusOverview | null>(null);
+  const [activity, setActivity] = useState<ActivityLog | null>(null);
   const [loading, setLoading] = useState(true);
   const [disabled, setDisabled] = useState(false);
   const [error, setError] = useState(false);
+  const disabledRef = useRef(false);
 
   async function load() {
     setError(false);
@@ -64,10 +112,12 @@ export default function DevStatusPage() {
     try {
       const overview = await devstatusApi.getOverview();
       setData(overview);
+      disabledRef.current = false;
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
         setDisabled(true);
+        disabledRef.current = true;
       } else {
         setError(true);
       }
@@ -76,8 +126,24 @@ export default function DevStatusPage() {
     }
   }
 
+  async function loadActivity() {
+    if (disabledRef.current) return;
+    try {
+      setActivity(await devstatusApi.getActivity());
+    } catch {
+      // 활동 로그는 부가 정보라 실패해도 조용히 무시 (기존 값 유지)
+    }
+  }
+
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadActivity(); }, []);
+
+  // 지금 작업 중인 내용을 폴링으로 갱신 — 커밋 단위로 업데이트되는 activity-log.json을
+  // 새로고침 없이도 몇 초 안에 반영한다.
+  useEffect(() => {
+    const id = setInterval(loadActivity, ACTIVITY_POLL_MS);
+    return () => clearInterval(id);
+  }, []);
 
   if (loading) return (
     <div className="flex items-center justify-center py-24">
@@ -123,6 +189,9 @@ export default function DevStatusPage() {
           <RefreshCw size={14} />
         </button>
       </div>
+
+      {/* 실시간 작업 로그 */}
+      <ActivityCard activity={activity} />
 
       {/* 태스크 상태 요약 */}
       <div className="border border-slate-100 rounded-xl p-5">

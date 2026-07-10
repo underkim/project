@@ -144,3 +144,15 @@ main.py 등록) → 마이그레이션(dialect 가드, RLS 포함) → 테스트
 **주의**: 이 문서(`harness-current-state.md`)는 특정 시점의 스냅샷이라 시간이 지나면
 내용이 낡을 수 있다. 하네스의 **실제 현재 상태**(권한 개수, hooks, skills 목록)는
 `/devstatus` 페이지나 `GET /api/v1/devstatus/overview`가 항상 최신값을 보여준다.
+
+## 업데이트: 실시간 작업 로그 (`GET /api/v1/devstatus/activity`)
+
+`overview`가 커밋된 결과(태스크 상태, git log 등)만 보여주는 것과 달리, `activity` 엔드포인트는
+`.claude/state/activity-log.json`을 읽어 **진행 중인 작업의 체크포인트 진행 상황**을 보여준다.
+Claude Code는 규모 있는 작업을 시작하기 전에 이 파일에 단계 목록을 적어두고, 각 단계를 마칠
+때마다 다시 써서 갱신한다 (컨벤션은 `AGENTS.md`의 "Live Activity Log" 절 참고).
+
+배포 지연(커밋→push→Render/Vercel 재배포)이 있는 구조이므로 완전한 실시간은 아니지만,
+로그 파일만 변경된 커밋은 `pre-commit-check.sh`가 pytest/tsc를 생략하고 즉시 통과시키므로
+(수십 초가 아니라 수십 밀리초) 체크포인트마다 커밋·push해도 부담이 없다. `/devstatus`
+페이지는 이 엔드포인트를 8초 주기로 폴링해 자동 갱신한다.
