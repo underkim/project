@@ -62,6 +62,7 @@ function DeleteConfirm({
 const PAGE = 20;
 const BUDGET_KEY = 'monthly_expense_budget';
 const SAVINGS_RATE_GOAL_KEY = 'savings_rate_goal';
+const STALE_DAYS_THRESHOLD = 45;
 
 export default function FinancePage() {
   const [records, setRecords] = useState<AssetRecordResponse[]>([]);
@@ -69,7 +70,13 @@ export default function FinancePage() {
     latest_total_assets: number | null;
     avg_savings_rate: number | null;
     asset_change: number | null;
-  }>({ latest_total_assets: null, avg_savings_rate: null, asset_change: null });
+    latest_record_date: string | null;
+  }>({
+    latest_total_assets: null,
+    avg_savings_rate: null,
+    asset_change: null,
+    latest_record_date: null,
+  });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -158,6 +165,7 @@ export default function FinancePage() {
         latest_total_assets: data.latest_total_assets,
         avg_savings_rate: data.avg_savings_rate,
         asset_change: data.asset_change,
+        latest_record_date: data.latest_record_date,
       });
       setGoal(goalData);
     } catch {
@@ -329,6 +337,14 @@ export default function FinancePage() {
   const prev = sorted[sorted.length - 2];
   const assetDelta = latest && prev ? latest.total_assets - prev.total_assets : null;
 
+  // 최신 기록이 얼마나 오래됐는지 (stale 여부 판단용)
+  const daysSinceLatestRecord = summary.latest_record_date
+    ? Math.floor(
+        (new Date().getTime() - new Date(summary.latest_record_date).getTime()) /
+          (1000 * 60 * 60 * 24),
+      )
+    : null;
+
   // 월별 수입/지출 바 차트 (최근 6개)
   const incomeExpenseData = sorted.slice(-6).map((r) => ({
     date: r.record_date.slice(0, 7),
@@ -495,6 +511,19 @@ export default function FinancePage() {
               ? `${summary.latest_total_assets.toLocaleString()}만원`
               : '—'}
           </p>
+          {summary.latest_total_assets == null ? (
+            <p className="text-xs text-slate-400 mt-1">
+              아직 자산 기록이 없어요. 기록을 추가해보세요.
+            </p>
+          ) : (
+            daysSinceLatestRecord != null &&
+            daysSinceLatestRecord >= STALE_DAYS_THRESHOLD && (
+              <p className="flex items-center gap-1 text-xs text-amber-600 mt-1">
+                <AlertCircle size={12} />
+                최근 기록이 {daysSinceLatestRecord}일 전이에요. 최신 자산을 반영해보세요.
+              </p>
+            )
+          )}
           {assetDelta != null && (
             <div
               className={`flex items-center gap-1 mt-1 text-xs font-medium ${assetDelta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}

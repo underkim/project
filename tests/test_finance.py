@@ -204,6 +204,20 @@ async def test_finance_summary_accuracy(auth_client):
     assert data["latest_total_assets"] == 2000
     # 두 기록 모두 저축률 50% → 평균 50.0
     assert data["avg_savings_rate"] == 50.0
+    # 최신 기록의 날짜도 함께 반환되어야 함 (프론트에서 stale 여부 판단용)
+    assert data["latest_record_date"] == "2026-04-01"
+
+
+@pytest.mark.asyncio
+async def test_finance_summary_no_records_has_null_fields(auth_client):
+    """기록이 하나도 없으면 summary의 모든 통계 필드가 null이어야 한다."""
+    resp = await auth_client.get("/api/v1/finance/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["latest_total_assets"] is None
+    assert data["avg_savings_rate"] is None
+    assert data["latest_record_date"] is None
+    assert data["records"] == []
 
 
 @pytest.mark.asyncio

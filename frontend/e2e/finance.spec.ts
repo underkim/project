@@ -93,6 +93,33 @@ test.describe('재테크 페이지', () => {
     await expect(page.getByText(TEST_DATE)).toBeVisible();
   });
 
+  test('오래된 최신 기록이 있으면 stale 경고가 표시된다', async ({ page, request }) => {
+    const headers = await getAuthHeaders(request);
+    const staleDate = new Date();
+    staleDate.setDate(staleDate.getDate() - 60);
+    const staleDateStr = staleDate.toISOString().slice(0, 10);
+
+    const createRes = await request.post(`${API}/api/v1/finance/records`, {
+      headers,
+      data: {
+        record_date: staleDateStr,
+        total_assets: 5000,
+        monthly_income: 300,
+        monthly_expense: 150,
+      },
+    });
+    expect(createRes.ok()).toBeTruthy();
+    const created = (await createRes.json()) as { id: number };
+
+    try {
+      await page.goto('/finance');
+      await expect(page.getByText('총 자산 (최신)')).toBeVisible();
+      await expect(page.getByText(/최근 기록이 \d+일 전이에요/)).toBeVisible();
+    } finally {
+      await request.delete(`${API}/api/v1/finance/records/${created.id}`, { headers });
+    }
+  });
+
   test('기록 삭제 → 목록에서 제거된다', async ({ page, request }) => {
     const headers = await getAuthHeaders(request);
     const createRes = await request.post(`${API}/api/v1/finance/records`, {

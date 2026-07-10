@@ -49,6 +49,7 @@ class FinanceSummaryResponse(BaseModel):
     latest_total_assets: int | None
     avg_savings_rate: float | None  # 최근 3개월 평균
     asset_change: int | None = None  # 직전 기록 대비 자산 증감
+    latest_record_date: date | None = None  # 최신 기록의 날짜 (stale 여부 판단용)
     records: list[AssetRecordResponse]
 
 

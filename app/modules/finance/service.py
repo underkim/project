@@ -84,6 +84,7 @@ async def get_summary(
     )
     stat_records = stat_result.scalars().all()
     latest_assets = stat_records[0].total_assets if stat_records else None
+    latest_record_date = stat_records[0].record_date if stat_records else None
     asset_change = (stat_records[0].total_assets - stat_records[1].total_assets) if len(stat_records) >= 2 else None
     stat_responses = [_to_response(r) for r in stat_records]
     recent_rates = [r.savings_rate for r in stat_responses if r.savings_rate is not None]
@@ -95,6 +96,7 @@ async def get_summary(
             latest_total_assets=latest_assets,
             avg_savings_rate=avg_rate,
             asset_change=asset_change,
+            latest_record_date=latest_record_date,
             records=[],
         )
     list_result = await session.execute(
@@ -106,6 +108,7 @@ async def get_summary(
         latest_total_assets=latest_assets,
         avg_savings_rate=avg_rate,
         asset_change=asset_change,
+        latest_record_date=latest_record_date,
         records=responses,
     )
 

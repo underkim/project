@@ -54,6 +54,7 @@ export interface FinanceSummaryResponse {
   latest_total_assets: number | null;
   avg_savings_rate: number | null;
   asset_change: number | null;
+  latest_record_date: string | null;
   records: AssetRecordResponse[];
 }
 
