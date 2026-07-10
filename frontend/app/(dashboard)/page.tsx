@@ -325,25 +325,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-  if (error)
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <AlertTriangle size={24} className="text-amber-400" />
-        <div className="text-center">
-          <p className="text-sm font-medium text-slate-700">{error}</p>
-          <p className="text-xs text-slate-400 mt-1">잠시 후 다시 시도해 보세요</p>
-        </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm rounded-xl hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          다시 시도
-        </button>
-      </div>
-    );
-
   const { planner, finance, health, growth, career, travel } = data ?? {};
 
   const completionRate =
@@ -378,6 +359,22 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {showReport && <WeeklyReportModal onClose={() => setShowReport(false)} />}
+
+      {/* 전체 로드 실패 안내 — 카드는 계속 렌더링해 모듈 이동은 항상 가능하게 유지 */}
+      {error && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+          <AlertTriangle size={13} className="shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-1 px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
+            다시 시도
+          </button>
+        </div>
+      )}
 
       {/* 부분 실패 안내 */}
       {data?.meta?.partial_failure && (

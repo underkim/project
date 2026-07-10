@@ -28,6 +28,22 @@ test.describe('대시보드 홈', () => {
     await expect(page.getByRole('heading', { name: '오늘의 현황' })).toBeVisible();
   });
 
+  test('개요 로딩에 실패해도 모듈 카드는 계속 표시되고 이동할 수 있다', async ({ page }) => {
+    await page.route('**/api/v1/dashboard/overview', (route) =>
+      route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"error"}' }),
+    );
+
+    await page.goto('/');
+    await expect(page.getByText('데이터를 불러오지 못했습니다.')).toBeVisible();
+    await expect(page.getByRole('button', { name: '다시 시도' })).toBeVisible();
+
+    // 개요 실패와 무관하게 모듈 카드 링크는 항상 클릭 가능해야 한다
+    const financeLink = page.getByRole('link', { name: /재테크/i }).first();
+    await expect(financeLink).toBeVisible();
+    await financeLink.click();
+    await expect(page).toHaveURL(/\/finance/);
+  });
+
   test('주간 리포트의 HTML 페이로드가 DOM으로 실행되지 않는다', async ({ page }) => {
     // 주간 리포트 응답을 가로채 heading/bullet/bold + HTML 주입 페이로드를 반환
     await page.route('**/api/v1/ai/weekly-report', (route) =>
