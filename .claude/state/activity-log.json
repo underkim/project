@@ -5,7 +5,7 @@
   "steps": [
     { "label": "TASK-061: 로그인 오류/rate-limit 메시지 개선", "status": "done" },
     { "label": "TASK-062: API 응답 형태 일관성 audit (weekly-report 스키마, planner status 상수화)", "status": "done" },
-    { "label": "TASK-063: CSV 내보내기 날짜 범위 필터", "status": "pending" },
+    { "label": "TASK-063: CSV 내보내기 날짜 범위 필터 (+ 기존 필터 UI 연동)", "status": "done" },
     { "label": "TASK-064: AI 주간 리포트 로딩/캐시 상태", "status": "pending" },
     { "label": "TASK-065: AI 실행 액션 idempotency", "status": "pending" },
     { "label": "TASK-066: 프론트엔드 API 타임아웃 정책", "status": "pending" },
