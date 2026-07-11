@@ -24,6 +24,26 @@ test.describe('로그인 페이지', () => {
     await expect(page.getByText('아이디 또는 비밀번호가 올바르지 않습니다.')).toBeVisible();
   });
 
+  test('429 응답 시 rate-limit 안내 문구가 표시된다', async ({ page }) => {
+    await page.route('**/api/v1/auth/token', (route) =>
+      route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Too Many Requests' }),
+      }),
+    );
+    await page.goto('/login');
+    await page.fill('input[placeholder="admin"]', E2E_USER);
+    await page.fill('input[type="password"]', E2E_PASS);
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes('/auth/token')),
+      page.click('button[type="submit"]'),
+    ]);
+    await expect(
+      page.getByText('로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.'),
+    ).toBeVisible();
+  });
+
   test('인증 없이 / 접근 시 /login 으로 리다이렉트', async ({ page }) => {
     await page.goto('/');
     await page.waitForURL(/\/login/);

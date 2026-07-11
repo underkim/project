@@ -34,8 +34,14 @@ function LoginForm() {
       const data = await authApi.login(username, password);
       localStorage.setItem('token', data.access_token);
       router.replace(nextPath);
-    } catch {
-      setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 429) {
+        setError('로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        const message = (err as { message?: string })?.message;
+        setError(message || '아이디 또는 비밀번호가 올바르지 않습니다.');
+      }
     } finally {
       setLoading(false);
     }
