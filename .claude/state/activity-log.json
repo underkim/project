@@ -8,7 +8,7 @@
     { "label": "TASK-063: CSV 내보내기 날짜 범위 필터 (+ 기존 필터 UI 연동)", "status": "done" },
     { "label": "TASK-064: AI 주간 리포트 캐시+재시도 (+ 이중 fetch 버그 수정)", "status": "done" },
     { "label": "TASK-065: AI 실행 액션 idempotency (락으로 TOCTOU 레이스 수정)", "status": "done" },
-    { "label": "TASK-066: 프론트엔드 API 타임아웃 정책", "status": "pending" },
+    { "label": "TASK-066: GET 요청 자동 재시도 (5xx/네트워크 오류, 최대 2회)", "status": "done" },
     { "label": "TASK-067: 전역 토스트 액션 링크", "status": "pending" },
     { "label": "TASK-068: 모바일 사이드바 내비게이션 상태", "status": "pending" },
     { "label": "TASK-069: 가이드 페이지 컨텍스트 단축키", "status": "pending" },
