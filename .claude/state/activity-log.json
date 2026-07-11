@@ -1,17 +1,17 @@
 {
-  "task": "승인된 백로그 배치 진행 (TASK-051 ~ TASK-060, 10개, task-workflow.md 배치 상한 준수)",
-  "started_at": "2026-07-10T15:00:00Z",
-  "updated_at": "2026-07-10T17:00:00Z",
+  "task": "승인된 백로그 배치 2 진행 (TASK-061 ~ TASK-070, 10개, task-workflow.md 배치 상한 준수)",
+  "started_at": "2026-07-10T17:30:00Z",
+  "updated_at": "2026-07-10T17:30:00Z",
   "steps": [
-    { "label": "TASK-051: Backend 사용자 친화적 404 응답", "status": "done" },
-    { "label": "TASK-052: 프론트엔드 삭제 확인 audit (여행 삭제에 확인 단계 추가)", "status": "done" },
-    { "label": "TASK-053: 플래너 카테고리 삭제 안전성", "status": "done" },
-    { "label": "TASK-054: 여행 맛집 중복 감지 (+ SQLite FK cascade 버그 발견·수정)", "status": "done" },
-    { "label": "TASK-055: 여행 체크리스트 완료 시 강조 표시", "status": "done" },
-    { "label": "TASK-056: 재테크 요약 stale/empty 상태 (latest_record_date 추가)", "status": "done" },
-    { "label": "TASK-057: 건강 수면 미래 날짜 거부", "status": "done" },
-    { "label": "TASK-058: 자기계발 독서 기록 미래 날짜 거부", "status": "done" },
-    { "label": "TASK-059: 커리어 CF 레이팅 추이 empty 상태 안내 (+ e2e 신규)", "status": "done" },
-    { "label": "TASK-060: 대시보드 개요 전체 실패 시에도 모듈 카드 유지", "status": "done" }
+    { "label": "TASK-061: 로그인 오류/rate-limit 메시지 개선", "status": "pending" },
+    { "label": "TASK-062: API 응답 형태 일관성 audit", "status": "pending" },
+    { "label": "TASK-063: CSV 내보내기 날짜 범위 필터", "status": "pending" },
+    { "label": "TASK-064: AI 주간 리포트 로딩/캐시 상태", "status": "pending" },
+    { "label": "TASK-065: AI 실행 액션 idempotency", "status": "pending" },
+    { "label": "TASK-066: 프론트엔드 API 타임아웃 정책", "status": "pending" },
+    { "label": "TASK-067: 전역 토스트 액션 링크", "status": "pending" },
+    { "label": "TASK-068: 모바일 사이드바 내비게이션 상태", "status": "pending" },
+    { "label": "TASK-069: 가이드 페이지 컨텍스트 단축키", "status": "pending" },
+    { "label": "TASK-070: Backend 페이지네이션 쿼리 검증", "status": "pending" }
   ]
 }
