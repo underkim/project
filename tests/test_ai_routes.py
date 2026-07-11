@@ -99,6 +99,63 @@ async def test_execute_delete(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_execute_delete_duplicate_request_is_idempotent(auth_client):
+    """더블클릭 등으로 동일한 (module, filter) 삭제 요청이 짧은 시간 안에
+    두 번 도착해도, 두 번째 요청은 실제로 재실행되지 않고 최초 결과(saved: True)를
+    그대로 반환해야 한다 (재실행되면 이미 지워진 뒤라 saved: False가 나와야 정상)."""
+    await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-06-16", "exercise_type": "요가", "duration_minutes": 20,
+    })
+    payload = {
+        "module": "health_exercise",
+        "filter": {"log_date": "2026-06-16", "exercise_type": "요가"},
+    }
+
+    first = await auth_client.post("/api/v1/ai/execute", json=payload)
+    assert first.status_code == 200
+    assert first.json()["saved"] is True
+
+    second = await auth_client.post("/api/v1/ai/execute", json=payload)
+    assert second.status_code == 200
+    assert second.json()["saved"] is True
+    assert second.json() == first.json()
+
+
+@pytest.mark.asyncio
+async def test_execute_delete_concurrent_duplicate_requests_only_delete_once(auth_client):
+    """진짜 동시(await 없이 나란히 dispatch된) 요청 두 개가 같은 (module, filter)를
+    가리키면, 락으로 직렬화되어 실제 삭제는 한 번만 일어나야 한다 — 두 응답 모두
+    saved: True(첫 실행 결과 재사용)이거나 saved: True/False 조합이 아니라
+    반드시 동일해야 한다. 락이 없으면 둘 다 saved: True가 나올 수 있는 레이스가 생긴다."""
+    import asyncio
+
+    await auth_client.post("/api/v1/health/exercise", json={
+        "log_date": "2026-06-17", "exercise_type": "필라테스", "duration_minutes": 25,
+    })
+    payload = {
+        "module": "health_exercise",
+        "filter": {"log_date": "2026-06-17", "exercise_type": "필라테스"},
+    }
+
+    r1, r2 = await asyncio.gather(
+        auth_client.post("/api/v1/ai/execute", json=payload),
+        auth_client.post("/api/v1/ai/execute", json=payload),
+    )
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.json() == r2.json()
+    assert r1.json()["saved"] is True
+
+    # 실제로 딱 한 번만 삭제됐는지 백엔드 상태로도 확인 (레이스가 있었다면
+    # 두 번째 실행이 "찾지 못함"으로 끝나거나, 존재하지 않을 레코드를 또 지우려 했을 것)
+    remaining = await auth_client.get("/api/v1/health/exercise")
+    assert not any(
+        r["log_date"] == "2026-06-17" and r["exercise_type"] == "필라테스"
+        for r in remaining.json()
+    )
+
+
+@pytest.mark.asyncio
 async def test_execute_delete_not_found(auth_client):
     resp = await auth_client.post("/api/v1/ai/execute", json={
         "module": "health_exercise",

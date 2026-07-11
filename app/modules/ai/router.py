@@ -1,4 +1,8 @@
+import asyncio
+import hashlib
+import json
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -26,6 +30,42 @@ def _map_ai_exception(e: Exception, generic_detail: str) -> HTTPException:
         return HTTPException(status_code=401, detail="Gemini API 키가 올바르지 않습니다.")
     logger.exception("AI router unexpected error: %s", generic_detail)
     return HTTPException(status_code=500, detail=generic_detail)
+
+
+# 동일한 (module, filter) 삭제 실행 요청이 짧은 시간 안에 중복 전송돼도(더블클릭,
+# 네트워크 재시도 등) 실제 삭제를 두 번 실행하지 않고 최초 결과를 그대로 반환한다.
+# 단일 프로세스 in-memory 캐시로 충분 — 이 앱은 단일 사용자, 단일 인스턴스로 배포된다.
+# key별 asyncio.Lock으로 check-then-act 구간 전체를 직렬화한다 — 락 없이 "캐시 확인 →
+# execute_delete await → 캐시 기록" 순서만 쓰면, execute_delete가 대기하는 동안 두 번째
+# 동시 요청이 캐시 미스를 그대로 통과해 삭제가 두 번 실행되는 TOCTOU 레이스가 생긴다.
+# _execution_locks는 만료 시켜 정리하지 않는다 — 단일 사용자 기준 distinct (module,
+# filter) 조합 수가 작고, 락이 걸려 있는 도중 삭제하면 새 요청이 새 Lock을 만들어
+# 대기 중인 락을 우회하는 또 다른 레이스가 생기기 때문이다.
+_recent_executions: dict[str, tuple[float, dict]] = {}
+_execution_locks: dict[str, asyncio.Lock] = {}
+_EXECUTE_IDEMPOTENCY_WINDOW_SECONDS = 5.0
+
+
+def _execution_key(module: str, filter_: dict) -> str:
+    normalized = json.dumps({"module": module, "filter": filter_}, sort_keys=True, default=str)
+    return hashlib.sha256(normalized.encode()).hexdigest()
+
+
+def _get_execution_lock(key: str) -> asyncio.Lock:
+    lock = _execution_locks.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _execution_locks[key] = lock
+    return lock
+
+
+def _prune_expired_executions(now: float) -> None:
+    expired = [
+        k for k, (ts, _) in _recent_executions.items()
+        if now - ts > _EXECUTE_IDEMPOTENCY_WINDOW_SECONDS
+    ]
+    for k in expired:
+        del _recent_executions[k]
 
 
 class HistoryMessage(BaseModel):
@@ -95,11 +135,29 @@ async def execute(
     session: AsyncSession = Depends(get_db),
     _: str = Depends(get_current_user),
 ):
-    """삭제 확인 후 실제 실행 (프론트에서 확인 버튼 클릭 시 호출)"""
-    try:
-        deleted = await execute_delete(session, body.module, body.filter)
-        if deleted:
-            return ChatResponse(reply="삭제했어요.", saved=True, module=body.module, action="delete")
-        return ChatResponse(reply="삭제할 기록을 찾지 못했어요.", saved=False)
-    except Exception as e:
-        raise _map_ai_exception(e, "삭제 실행에 실패했습니다. 잠시 후 다시 시도해주세요.")
+    """삭제 확인 후 실제 실행 (프론트에서 확인 버튼 클릭 시 호출)
+
+    더블클릭이나 네트워크 재시도로 동일한 (module, filter) 요청이 짧은 시간 안에
+    중복 도착해도 실제 삭제는 한 번만 실행하고 최초 결과를 그대로 반환한다.
+    """
+    key = _execution_key(body.module, body.filter)
+    lock = _get_execution_lock(key)
+    async with lock:
+        now = time.monotonic()
+        _prune_expired_executions(now)
+        cached = _recent_executions.get(key)
+        if cached is not None:
+            return ChatResponse(**cached[1])
+
+        try:
+            deleted = await execute_delete(session, body.module, body.filter)
+            if deleted:
+                result = ChatResponse(
+                    reply="삭제했어요.", saved=True, module=body.module, action="delete"
+                )
+            else:
+                result = ChatResponse(reply="삭제할 기록을 찾지 못했어요.", saved=False)
+            _recent_executions[key] = (now, result.model_dump())
+            return result
+        except Exception as e:
+            raise _map_ai_exception(e, "삭제 실행에 실패했습니다. 잠시 후 다시 시도해주세요.")

@@ -17,6 +17,17 @@ import app.modules.travel.models  # noqa: F401
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 
+@pytest.fixture(autouse=True)
+def _clear_ai_execute_idempotency_cache():
+    """ai/router.py의 in-memory 삭제 idempotency 캐시는 프로세스 전역이라
+    테스트 간에 공유된다 — 서로 다른 테스트가 우연히 같은 (module, filter)를
+    5초 이내에 재사용하면 오탐(false cache hit)이 날 수 있으므로 매 테스트 전에 비운다."""
+    from app.modules.ai.router import _recent_executions
+    _recent_executions.clear()
+    yield
+    _recent_executions.clear()
+
+
 @pytest.fixture
 async def db_engine():
     engine = create_async_engine(TEST_DB_URL, echo=False)
