@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Toast from '@/components/Toast';
 import AiModal from '@/components/AiModal';
@@ -9,8 +9,16 @@ import { Menu } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // 사이드바 링크 클릭 외의 경로 변경(브라우저 뒤로/앞으로 가기 등)에서도
+  // 모바일 사이드바가 열린 채로 남아있지 않도록, 경로가 바뀌면 항상 닫는다.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSidebarOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
