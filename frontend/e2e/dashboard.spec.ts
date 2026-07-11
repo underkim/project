@@ -44,6 +44,60 @@ test.describe('대시보드 홈', () => {
     await expect(page).toHaveURL(/\/finance/);
   });
 
+  test('주간 리포트 생성 실패 시 다시 시도 버튼으로 재요청할 수 있다', async ({ page }) => {
+    let callCount = 0;
+    await page.route('**/api/v1/ai/weekly-report', (route) => {
+      callCount += 1;
+      if (callCount === 1) {
+        return route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: '서버 오류' }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ report: '이번 주는 순조로웠습니다.' }),
+      });
+    });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: '주간 리포트' }).click();
+    await expect(page.getByRole('button', { name: '다시 시도' })).toBeVisible();
+
+    await page.getByRole('button', { name: '다시 시도' }).click();
+    await expect(page.getByText('이번 주는 순조로웠습니다.')).toBeVisible();
+    expect(callCount).toBe(2);
+  });
+
+  test('같은 날 주간 리포트를 다시 열면 캐시된 결과를 재사용한다', async ({ page }) => {
+    let callCount = 0;
+    await page.route('**/api/v1/ai/weekly-report', (route) => {
+      callCount += 1;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ report: '캐시 테스트 리포트' }),
+      });
+    });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: '주간 리포트' }).click();
+    await expect(page.getByText('캐시 테스트 리포트')).toBeVisible();
+    await page.getByRole('button', { name: '주간 리포트 닫기' }).click();
+
+    await page.getByRole('button', { name: '주간 리포트' }).click();
+    await expect(page.getByText('캐시 테스트 리포트')).toBeVisible();
+    await expect(page.getByText('캐시됨')).toBeVisible();
+    expect(callCount).toBe(1);
+
+    // 새로고침 버튼은 캐시를 무시하고 재요청해야 한다
+    await page.getByRole('button', { name: '주간 리포트 새로고침' }).click();
+    await expect(page.getByText('캐시됨')).not.toBeVisible();
+    expect(callCount).toBe(2);
+  });
+
   test('주간 리포트의 HTML 페이로드가 DOM으로 실행되지 않는다', async ({ page }) => {
     // 주간 리포트 응답을 가로채 heading/bullet/bold + HTML 주입 페이로드를 반환
     await page.route('**/api/v1/ai/weekly-report', (route) =>

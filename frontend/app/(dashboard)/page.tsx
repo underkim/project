@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Fragment } from 'react';
+import { useEffect, useRef, useState, Fragment } from 'react';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import Link from 'next/link';
 import {
@@ -214,17 +214,67 @@ function ReportMarkdown({ text }: { text: string }) {
   );
 }
 
+const WEEKLY_REPORT_CACHE_KEY = 'weekly_report_cache';
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function readCachedReport(): string | null {
+  try {
+    const raw = sessionStorage.getItem(WEEKLY_REPORT_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as { date: string; report: string };
+    return cached.date === todayKey() ? cached.report : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedReport(report: string) {
+  try {
+    sessionStorage.setItem(WEEKLY_REPORT_CACHE_KEY, JSON.stringify({ date: todayKey(), report }));
+  } catch {
+    // sessionStorage 접근 불가(프라이빗 모드 등) 시 캐시 없이 계속 진행
+  }
+}
+
 function WeeklyReportModal({ onClose }: { onClose: () => void }) {
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [fromCache, setFromCache] = useState(false);
+  const hasLoadedRef = useRef(false);
 
-  useEffect(() => {
+  function load(forceRefresh: boolean) {
+    if (!forceRefresh) {
+      const cached = readCachedReport();
+      if (cached != null) {
+        setReport(cached);
+        setFromCache(true);
+        setLoading(false);
+        setError('');
+        return;
+      }
+    }
+    setLoading(true);
+    setError('');
+    setFromCache(false);
     aiApi
       .weeklyReport()
-      .then((res) => setReport(res.report))
+      .then((res) => {
+        setReport(res.report);
+        writeCachedReport(res.report);
+      })
       .catch((err: Error) => setError(err.message || '리포트 생성에 실패했습니다.'))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
+    load(false);
   }, []);
 
   // 접근성: Escape로 닫기
@@ -252,14 +302,30 @@ function WeeklyReportModal({ onClose }: { onClose: () => void }) {
           <div className="flex items-center gap-2">
             <FileText size={16} className="text-slate-500" />
             <span className="font-semibold text-slate-800 text-sm">AI 주간 리포트</span>
+            {fromCache && !loading && !error && (
+              <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-full">
+                캐시됨
+              </span>
+            )}
           </div>
-          <button
-            onClick={onClose}
-            aria-label="주간 리포트 닫기"
-            className="text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => load(true)}
+              disabled={loading}
+              aria-label="주간 리포트 새로고침"
+              title="새로 생성"
+              className="text-slate-400 hover:text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={onClose}
+              aria-label="주간 리포트 닫기"
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {loading ? (
@@ -268,7 +334,16 @@ function WeeklyReportModal({ onClose }: { onClose: () => void }) {
               <p className="text-xs text-slate-400">Gemini가 분석 중입니다...</p>
             </div>
           ) : error ? (
-            <p className="text-sm text-red-500">{error}</p>
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <p className="text-sm text-red-500 text-center">{error}</p>
+              <button
+                onClick={() => load(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg hover:bg-slate-700 transition-colors"
+              >
+                <RefreshCw size={12} />
+                다시 시도
+              </button>
+            </div>
           ) : (
             <ReportMarkdown text={report} />
           )}
