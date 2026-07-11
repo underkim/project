@@ -11,7 +11,7 @@
     { "label": "TASK-066: GET 요청 자동 재시도 (5xx/네트워크 오류, 최대 2회)", "status": "done" },
     { "label": "TASK-067: 토스트 액션 링크 (+ AI 저장 시 바로가기 연동)", "status": "done" },
     { "label": "TASK-068: 모바일 사이드바 뒤로가기 시 자동 닫힘 버그 수정", "status": "done" },
-    { "label": "TASK-069: 가이드 페이지 컨텍스트 단축키", "status": "pending" },
+    { "label": "TASK-069: 가이드 페이지 섹션 anchor + 각 도메인 페이지 도움말 링크", "status": "done" },
     { "label": "TASK-070: Backend 페이지네이션 쿼리 검증", "status": "pending" }
   ]
 }
