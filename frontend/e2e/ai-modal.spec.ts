@@ -31,6 +31,36 @@ test.describe('AI 모달', () => {
     await expect(input).toBeHidden();
   });
 
+  test('AI가 기록을 저장하면 토스트에 해당 모듈로 이동하는 액션 링크가 붙는다', async ({
+    page,
+  }) => {
+    await page.route('**/api/v1/ai/chat', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          reply: '러닝 40분 기록했어요!',
+          saved: true,
+          saved_count: 1,
+          module: 'health_exercise',
+          action: 'create',
+        }),
+      }),
+    );
+
+    await page.goto('/');
+    await page.getByTitle('AI 어시스턴트').click();
+    const input = page.getByPlaceholder(/오늘 러닝 40분 했어/);
+    await input.fill('오늘 러닝 40분 했어');
+    await input.press('Enter');
+
+    await expect(page.getByText('건강에 저장했어요.')).toBeVisible();
+    const actionLink = page.getByRole('link', { name: '바로가기' });
+    await expect(actionLink).toBeVisible();
+    await actionLink.click();
+    await expect(page).toHaveURL(/\/health/);
+  });
+
   test('Escape 키로 패널을 닫고 FAB로 포커스가 돌아온다', async ({ page }) => {
     await page.goto('/');
     const fab = page.getByRole('button', { name: 'AI 어시스턴트 열기' });

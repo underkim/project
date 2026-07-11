@@ -303,6 +303,31 @@ export function dispatchAiSaved(module: string | null) {
   }
 }
 
+const MODULE_PATHS: Record<string, { path: string; name: string }> = {
+  planner_item: { path: '/planner', name: '플래너' },
+  finance_record: { path: '/finance', name: '재테크' },
+  health_exercise: { path: '/health', name: '건강' },
+  health_sleep: { path: '/health', name: '건강' },
+  growth_book: { path: '/growth', name: '자기계발' },
+  growth_english: { path: '/growth', name: '자기계발' },
+  career_cf_rating: { path: '/career', name: '커리어' },
+  travel_trip: { path: '/travel', name: '여행' },
+  travel_plan: { path: '/travel', name: '여행' },
+  travel_checklist: { path: '/travel', name: '여행' },
+};
+
+// 채팅은 어느 페이지에서든 열 수 있는 FAB이므로, 저장이 실제로 반영된 모듈 페이지로
+// 바로 이동할 수 있는 액션 링크를 토스트에 붙인다. 현재 보고 있는 페이지와 같아도
+// 해가 되지 않으므로 매핑이 있으면 항상 붙인다.
+// 메시지에 모듈명을 포함시켜, 서로 다른 모듈에 대한 저장이 토스트 중복 억제(동일
+// message+type 무시)로 뭉개져 두 번째 액션 링크가 사라지는 일이 없도록 한다.
+function notifySaved(module: string | null) {
+  if (!module) return;
+  const target = MODULE_PATHS[module];
+  if (!target) return;
+  showToast(`${target.name}에 저장했어요.`, 'success', { label: '바로가기', href: target.path });
+}
+
 export default function AiModal() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -438,7 +463,10 @@ export default function AiModal() {
     setMessages((prev) => [...prev, aiMsg]);
     if (res.saved) {
       const mods = res.modules ?? (res.module ? [res.module] : []);
-      mods.forEach((m) => dispatchAiSaved(m));
+      mods.forEach((m) => {
+        dispatchAiSaved(m);
+        notifySaved(m);
+      });
     }
   }
 

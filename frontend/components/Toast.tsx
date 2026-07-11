@@ -1,10 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { CheckCircle2, XCircle, Info, X } from 'lucide-react';
-import type { ToastType } from '@/lib/toast';
+import type { ToastAction, ToastType } from '@/lib/toast';
 
-type ToastItem = { id: number; message: string; type: ToastType; createdAt: number };
+type ToastItem = {
+  id: number;
+  message: string;
+  type: ToastType;
+  action?: ToastAction;
+  createdAt: number;
+};
 
 let _id = 0;
 
@@ -31,7 +38,9 @@ export default function Toast() {
 
   useEffect(() => {
     function handler(e: Event) {
-      const { message, type } = (e as CustomEvent<{ message: string; type: ToastType }>).detail;
+      const { message, type, action } = (
+        e as CustomEvent<{ message: string; type: ToastType; action?: ToastAction }>
+      ).detail;
       const now = Date.now();
       // 중복 억제: 동일 message+type이 짧은 시간 내 이미 떠 있으면 무시
       if (
@@ -42,7 +51,7 @@ export default function Toast() {
         return;
       }
       const id = ++_id;
-      let next = [...toastsRef.current, { id, message, type, createdAt: now }];
+      let next = [...toastsRef.current, { id, message, type, action, createdAt: now }];
       // 최대 개수 초과 시 가장 오래된 것부터 제거
       if (next.length > MAX_VISIBLE) next = next.slice(next.length - MAX_VISIBLE);
       commit(next);
@@ -76,6 +85,15 @@ export default function Toast() {
           {t.type === 'error' && <XCircle size={15} className="shrink-0" />}
           {t.type === 'info' && <Info size={15} className="shrink-0" />}
           <span>{t.message}</span>
+          {t.action && (
+            <Link
+              href={t.action.href}
+              onClick={() => dismiss(t.id)}
+              className="underline underline-offset-2 shrink-0 opacity-90 hover:opacity-100 transition-opacity"
+            >
+              {t.action.label}
+            </Link>
+          )}
           <button
             onClick={() => dismiss(t.id)}
             aria-label="알림 닫기"
