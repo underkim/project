@@ -55,6 +55,10 @@ class ChatResponse(BaseModel):
     suggestions: list[str] | None = None
 
 
+class WeeklyReportResponse(BaseModel):
+    report: str
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     body: ChatRequest,
@@ -70,7 +74,7 @@ async def chat(
         raise _map_ai_exception(e, "AI 처리에 실패했습니다. 잠시 후 다시 시도해주세요.")
 
 
-@router.get("/weekly-report")
+@router.get("/weekly-report", response_model=WeeklyReportResponse)
 async def weekly_report(
     _: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),

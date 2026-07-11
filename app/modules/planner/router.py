@@ -47,7 +47,7 @@ async def toggle_item(item_id: int, session: AsyncSession = Depends(get_db), _: 
     return result
 
 
-@router.post("/items", response_model=RoadmapItemResponse, status_code=201)
+@router.post("/items", response_model=RoadmapItemResponse, status_code=status.HTTP_201_CREATED)
 async def create_item(data: RoadmapItemCreate, session: AsyncSession = Depends(get_db), _: str = Auth):
     result = await service.create_item(session, data)
     if result is None:
@@ -63,7 +63,7 @@ async def update_item(item_id: int, data: RoadmapItemUpdate, session: AsyncSessi
     return result
 
 
-@router.delete("/items/{item_id}", status_code=204)
+@router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_item(item_id: int, session: AsyncSession = Depends(get_db), _: str = Auth):
     if not await service.delete_item(session, item_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="항목을 찾을 수 없습니다.")
@@ -77,7 +77,7 @@ async def update_phase(phase_id: int, data: PhaseUpdate, session: AsyncSession =
     return result
 
 
-@router.post("/categories", response_model=CategoryResponse, status_code=201)
+@router.post("/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_category(data: CategoryCreate, session: AsyncSession = Depends(get_db), _: str = Auth):
     result = await service.create_category(session, data)
     if result is None:
@@ -85,7 +85,7 @@ async def create_category(data: CategoryCreate, session: AsyncSession = Depends(
     return result
 
 
-@router.delete("/categories/{cat_id}", status_code=204)
+@router.delete("/categories/{cat_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_category(cat_id: int, session: AsyncSession = Depends(get_db), _: str = Auth):
     if not await service.delete_category(session, cat_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="카테고리를 찾을 수 없습니다.")
