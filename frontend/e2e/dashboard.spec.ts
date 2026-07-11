@@ -28,6 +28,27 @@ test.describe('대시보드 홈', () => {
     await expect(page.getByRole('heading', { name: '오늘의 현황' })).toBeVisible();
   });
 
+  test('일시적인 5xx 오류는 자동 재시도로 조용히 복구된다', async ({ page }) => {
+    let callCount = 0;
+    await page.route('**/api/v1/dashboard/overview', (route) => {
+      callCount += 1;
+      if (callCount === 1) {
+        return route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: '{"detail":"일시적 오류"}',
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto('/');
+    // 재시도가 실제로 일어날 때까지 기다린 뒤(사이드바 텍스트는 개요 로딩과 무관하게
+    // 항상 보이므로 신호로 쓰지 않는다), 에러 배너 없이 정상 로드됐는지 확인한다.
+    await expect.poll(() => callCount).toBeGreaterThanOrEqual(2);
+    await expect(page.getByText('데이터를 불러오지 못했습니다.')).not.toBeVisible();
+  });
+
   test('개요 로딩에 실패해도 모듈 카드는 계속 표시되고 이동할 수 있다', async ({ page }) => {
     await page.route('**/api/v1/dashboard/overview', (route) =>
       route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"error"}' }),
@@ -45,10 +66,13 @@ test.describe('대시보드 홈', () => {
   });
 
   test('주간 리포트 생성 실패 시 다시 시도 버튼으로 재요청할 수 있다', async ({ page }) => {
+    // GET 요청은 axios 인터셉터가 5xx를 최대 2회 자동 재시도하므로, 모달 자체의
+    // "다시 시도" 버튼까지 도달하려면 자동 재시도 횟수(최초 1회 + 재시도 2회)를
+    // 모두 실패시켜야 한다.
     let callCount = 0;
     await page.route('**/api/v1/ai/weekly-report', (route) => {
       callCount += 1;
-      if (callCount === 1) {
+      if (callCount <= 3) {
         return route.fulfill({
           status: 500,
           contentType: 'application/json',
@@ -65,10 +89,10 @@ test.describe('대시보드 홈', () => {
     await page.goto('/');
     await page.getByRole('button', { name: '주간 리포트' }).click();
     await expect(page.getByRole('button', { name: '다시 시도' })).toBeVisible();
+    expect(callCount).toBe(3);
 
     await page.getByRole('button', { name: '다시 시도' }).click();
     await expect(page.getByText('이번 주는 순조로웠습니다.')).toBeVisible();
-    expect(callCount).toBe(2);
   });
 
   test('같은 날 주간 리포트를 다시 열면 캐시된 결과를 재사용한다', async ({ page }) => {

@@ -37,9 +37,37 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+// 네트워크 오류·5xx는 GET 요청에 한해 자동 재시도한다 (최대 2회, 짧은 backoff).
+// POST/PUT/DELETE 등 쓰기 요청은 재시도 시 중복 부작용(예: 중복 생성) 위험이 있어
+// 제외한다 — GET은 멱등이므로 안전하게 재시도할 수 있다.
+const MAX_GET_RETRIES = 2;
+const RETRY_DELAY_MS = [500, 1000];
+
+function isRetryableError(err: {
+  config?: { method?: string; _retryCount?: number };
+  response?: { status?: number };
+}): boolean {
+  const method = err.config?.method?.toLowerCase();
+  if (method !== 'get') return false;
+  const retryCount = err.config?._retryCount ?? 0;
+  if (retryCount >= MAX_GET_RETRIES) return false;
+  if (!err.response) return true; // 네트워크 오류(응답 자체가 없음)
+  return (err.response.status ?? 0) >= 500;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 client.interceptors.response.use(
   (res) => res,
-  (err) => {
+  async (err) => {
+    if (isRetryableError(err)) {
+      const retryCount = (err.config._retryCount ?? 0) + 1;
+      err.config._retryCount = retryCount;
+      await delay(RETRY_DELAY_MS[retryCount - 1] ?? RETRY_DELAY_MS[RETRY_DELAY_MS.length - 1]);
+      return client(err.config);
+    }
     // 로그인 엔드포인트의 401은 "비밀번호 오류"이지 세션 만료가 아니므로
     // 만료 리다이렉트 대상에서 제외한다 (stale 토큰이 남아 있어도 호출자가 처리).
     const reqUrl: string = err.config?.url ?? '';
