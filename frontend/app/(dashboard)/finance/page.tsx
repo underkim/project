@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import { showToast } from '@/lib/toast';
 import { emitGoalChange } from '@/lib/goals';
@@ -28,6 +29,7 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  HelpCircle,
 } from 'lucide-react';
 
 function DeleteConfirm({
@@ -415,6 +417,13 @@ export default function FinancePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-slate-900">재테크</h1>
         <div className="flex items-center gap-2">
+          <Link
+            href="/help#finance"
+            title="재테크 도움말"
+            className="text-slate-400 hover:text-slate-600 transition-colors p-1.5"
+          >
+            <HelpCircle size={16} />
+          </Link>
           <button
             onClick={() => handleExport('finance', exportApi.finance)}
             disabled={exporting.has('finance')}

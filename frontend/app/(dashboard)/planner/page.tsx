@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
   Plus,
@@ -14,6 +15,7 @@ import {
   CalendarClock,
   CheckSquare,
   Eye,
+  HelpCircle,
 } from 'lucide-react';
 import { plannerApi } from '@/lib/api';
 import type { PhaseResponse, RoadmapItemResponse, ItemStatus } from '@/types';
@@ -1303,7 +1305,16 @@ export default function PlannerPage() {
       {/* 헤더 */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">플래너</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900">플래너</h1>
+            <Link
+              href="/help#planner"
+              title="플래너 도움말"
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+            >
+              <HelpCircle size={16} />
+            </Link>
+          </div>
           <p className="text-slate-400 text-sm mt-1">
             5년 로드맵 · 전체 {completionPct}% 달성 ({doneItems}/{totalItems})
           </p>

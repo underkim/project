@@ -87,7 +87,10 @@ export default function HelpPage() {
       </div>
 
       {/* ── AI 어시스턴트 ─────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div
+        id="ai"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 scroll-mt-20"
+      >
         <SectionHeader icon={Bot} title="AI 어시스턴트" color="bg-slate-900" />
         <p className="text-sm text-slate-600 mb-4">
           우측 하단 <span className="font-semibold text-slate-800">AI 버튼</span>을 클릭하면
@@ -177,7 +180,10 @@ export default function HelpPage() {
       </div>
 
       {/* ── 플래너 ───────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div
+        id="planner"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 scroll-mt-20"
+      >
         <SectionHeader icon={CalendarDays} title="플래너" color="bg-indigo-500" />
         <p className="text-sm text-slate-600 mb-4">
           5년 로드맵을 Phase → Category → Item 계층으로 관리합니다.
@@ -228,7 +234,10 @@ export default function HelpPage() {
       </div>
 
       {/* ── 재테크 ───────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div
+        id="finance"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 scroll-mt-20"
+      >
         <SectionHeader icon={TrendingUp} title="재테크" color="bg-emerald-500" />
         <ul className="space-y-2">
           <FeatureItem text="자산 기록을 날짜별로 추가·수정·삭제할 수 있습니다." />
@@ -240,7 +249,10 @@ export default function HelpPage() {
       </div>
 
       {/* ── 건강 ─────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div
+        id="health"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 scroll-mt-20"
+      >
         <SectionHeader icon={Activity} title="건강" color="bg-rose-500" />
         <ul className="space-y-2">
           <FeatureItem text="운동: 날짜·종류·시간(분)·칼로리를 기록합니다." />
@@ -251,7 +263,10 @@ export default function HelpPage() {
       </div>
 
       {/* ── 자기계발 ─────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div
+        id="growth"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 scroll-mt-20"
+      >
         <SectionHeader icon={BookOpen} title="자기계발" color="bg-violet-500" />
         <ul className="space-y-2">
           <FeatureItem text="독서: 제목·저자·시작일·완독일·총 페이지를 기록합니다." />
@@ -261,7 +276,10 @@ export default function HelpPage() {
       </div>
 
       {/* ── 커리어 ───────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div
+        id="career"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 scroll-mt-20"
+      >
         <SectionHeader icon={Briefcase} title="커리어" color="bg-sky-500" />
         <ul className="space-y-2">
           <FeatureItem text="목표 레이팅과 현재 레이팅을 설정에서 관리합니다." />
@@ -272,7 +290,10 @@ export default function HelpPage() {
       </div>
 
       {/* ── 여행 ─────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div
+        id="travel"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 scroll-mt-20"
+      >
         <SectionHeader icon={Plane} title="여행" color="bg-orange-500" />
         <ul className="space-y-2 mb-4">
           <FeatureItem text="여행 카드를 추가하고 목적지·날짜·상태·메모를 기록합니다." />
@@ -298,7 +319,10 @@ export default function HelpPage() {
       </div>
 
       {/* ── 팁 모음 ──────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div
+        id="tips"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 scroll-mt-20"
+      >
         <SectionHeader icon={Lightbulb} title="주요 팁" color="bg-amber-400" />
         <ul className="space-y-2">
           <FeatureItem text="AI로 기록 후 해당 페이지가 자동으로 새로고침됩니다." />

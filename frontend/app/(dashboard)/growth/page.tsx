@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import { showToast } from '@/lib/toast';
 import { emitGoalChange } from '@/lib/goals';
@@ -12,7 +13,16 @@ import type {
   GrowthSummaryResponse,
   BookStatus,
 } from '@/types';
-import { Trash2, Download, Star, Target, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import {
+  Trash2,
+  Download,
+  Star,
+  Target,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+  HelpCircle,
+} from 'lucide-react';
 
 const statusConfig: Record<BookStatus, { label: string; color: string }> = {
   planned: { label: '예정', color: 'bg-slate-100 text-slate-600' },
@@ -598,7 +608,16 @@ export default function GrowthPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-semibold text-slate-900">자기계발</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="text-lg font-semibold text-slate-900">자기계발</h1>
+        <Link
+          href="/help#growth"
+          title="자기계발 도움말"
+          className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+        >
+          <HelpCircle size={15} />
+        </Link>
+      </div>
 
       {loadError && (
         <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 text-red-700 text-sm">

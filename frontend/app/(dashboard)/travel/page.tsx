@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import type { Map as LeafletMap } from 'leaflet';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useAiRefresh } from '@/hooks/useAiRefresh';
 import {
   Plane,
@@ -25,6 +26,7 @@ import {
   Utensils,
   Map as MapIcon,
   RefreshCw,
+  HelpCircle,
 } from 'lucide-react';
 import { travelApi, exportApi } from '@/lib/api';
 import { showToast } from '@/lib/toast';
@@ -1647,7 +1649,16 @@ export default function TravelPage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">여행 계획</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">여행 계획</h1>
+            <Link
+              href="/help#travel"
+              title="여행 도움말"
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+            >
+              <HelpCircle size={16} />
+            </Link>
+          </div>
           <p className="text-slate-400 text-sm mt-1 truncate">나만의 여행을 계획하고 관리하세요</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
