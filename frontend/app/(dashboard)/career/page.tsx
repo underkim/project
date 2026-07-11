@@ -141,6 +141,13 @@ export default function CareerPage() {
     }
   }
 
+  function yearFilterToRange(
+    yearFilter: string,
+  ): { start_date: string; end_date: string } | undefined {
+    if (yearFilter === 'all') return undefined;
+    return { start_date: `${yearFilter}-01-01`, end_date: `${yearFilter}-12-31` };
+  }
+
   async function handleExport(key: string, fn: () => Promise<void>) {
     if (exporting.has(key)) return;
     setExporting((prev) => new Set(prev).add(key));
@@ -656,7 +663,9 @@ export default function CareerPage() {
           <p className="text-sm font-medium text-slate-800">CF 레이팅 기록</p>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleExport('career', exportApi.career)}
+              onClick={() =>
+                handleExport('career', () => exportApi.career(yearFilterToRange(chartYear)))
+              }
               disabled={exporting.has('career')}
               title="CSV 내보내기"
               className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"

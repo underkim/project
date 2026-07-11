@@ -412,9 +412,18 @@ export const aiApi = {
     (await client.get('/api/v1/ai/weekly-report')).data,
 };
 
-async function _downloadCsv(url: string, filename: string): Promise<void> {
+interface DateRangeParams {
+  start_date?: string;
+  end_date?: string;
+}
+
+async function _downloadCsv(
+  url: string,
+  filename: string,
+  params?: DateRangeParams,
+): Promise<void> {
   try {
-    const res = await client.get(url, { responseType: 'blob' });
+    const res = await client.get(url, { responseType: 'blob', params });
     const href = URL.createObjectURL(res.data);
     const a = document.createElement('a');
     a.href = href;
@@ -437,13 +446,20 @@ function _stamped(base: string): string {
 }
 
 export const exportApi = {
-  finance: () => _downloadCsv('/api/v1/export/finance', _stamped('finance')),
-  exercise: () => _downloadCsv('/api/v1/export/health/exercise', _stamped('exercise')),
-  sleep: () => _downloadCsv('/api/v1/export/health/sleep', _stamped('sleep')),
-  books: () => _downloadCsv('/api/v1/export/growth/books', _stamped('books')),
-  english: () => _downloadCsv('/api/v1/export/growth/english', _stamped('english')),
-  career: () => _downloadCsv('/api/v1/export/career', _stamped('career')),
-  travel: () => _downloadCsv('/api/v1/export/travel', _stamped('travel')),
+  finance: (params?: DateRangeParams) =>
+    _downloadCsv('/api/v1/export/finance', _stamped('finance'), params),
+  exercise: (params?: DateRangeParams) =>
+    _downloadCsv('/api/v1/export/health/exercise', _stamped('exercise'), params),
+  sleep: (params?: DateRangeParams) =>
+    _downloadCsv('/api/v1/export/health/sleep', _stamped('sleep'), params),
+  books: (params?: DateRangeParams) =>
+    _downloadCsv('/api/v1/export/growth/books', _stamped('books'), params),
+  english: (params?: DateRangeParams) =>
+    _downloadCsv('/api/v1/export/growth/english', _stamped('english'), params),
+  career: (params?: DateRangeParams) =>
+    _downloadCsv('/api/v1/export/career', _stamped('career'), params),
+  travel: (params?: DateRangeParams) =>
+    _downloadCsv('/api/v1/export/travel', _stamped('travel'), params),
 };
 
 export const devstatusApi = {

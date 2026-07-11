@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from datetime import date
+
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,55 +21,69 @@ def _csv(content: bytes, filename: str) -> Response:
 
 @router.get("/finance")
 async def export_finance(
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     _: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    return _csv(await service.export_finance(session), "finance.csv")
+    return _csv(await service.export_finance(session, start_date, end_date), "finance.csv")
 
 
 @router.get("/health/exercise")
 async def export_exercise(
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     _: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    return _csv(await service.export_exercise(session), "exercise.csv")
+    return _csv(await service.export_exercise(session, start_date, end_date), "exercise.csv")
 
 
 @router.get("/health/sleep")
 async def export_sleep(
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     _: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    return _csv(await service.export_sleep(session), "sleep.csv")
+    return _csv(await service.export_sleep(session, start_date, end_date), "sleep.csv")
 
 
 @router.get("/growth/books")
 async def export_books(
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     _: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    return _csv(await service.export_books(session), "books.csv")
+    return _csv(await service.export_books(session, start_date, end_date), "books.csv")
 
 
 @router.get("/growth/english")
 async def export_english(
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     _: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    return _csv(await service.export_english(session), "english.csv")
+    return _csv(await service.export_english(session, start_date, end_date), "english.csv")
 
 
 @router.get("/career")
 async def export_career(
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     _: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    return _csv(await service.export_career(session), "career.csv")
+    return _csv(await service.export_career(session, start_date, end_date), "career.csv")
 
 
 @router.get("/travel")
 async def export_travel(
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     _: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
-    return _csv(await service.export_travel(session), "travel.csv")
+    return _csv(await service.export_travel(session, start_date, end_date), "travel.csv")

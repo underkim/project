@@ -152,6 +152,25 @@ export default function GrowthPage() {
   const [engGoalInput, setEngGoalInput] = useState('');
   const [exporting, setExporting] = useState<Set<string>>(new Set());
 
+  function yearFilterToRange(
+    yearFilter: string,
+  ): { start_date: string; end_date: string } | undefined {
+    if (yearFilter === 'all') return undefined;
+    return { start_date: `${yearFilter}-01-01`, end_date: `${yearFilter}-12-31` };
+  }
+
+  function monthFilterToRange(
+    monthFilter: string,
+  ): { start_date: string; end_date: string } | undefined {
+    if (monthFilter === 'all') return undefined;
+    const [y, m] = monthFilter.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    return {
+      start_date: `${monthFilter}-01`,
+      end_date: `${monthFilter}-${String(lastDay).padStart(2, '0')}`,
+    };
+  }
+
   async function handleExport(key: string, fn: () => Promise<void>) {
     if (exporting.has(key)) return;
     setExporting((prev) => new Set(prev).add(key));
@@ -915,7 +934,9 @@ export default function GrowthPage() {
           <p className="text-sm font-medium text-slate-800">독서 목록</p>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleExport('books', exportApi.books)}
+              onClick={() =>
+                handleExport('books', () => exportApi.books(yearFilterToRange(bookYearFilter)))
+              }
               disabled={exporting.has('books')}
               title="CSV 내보내기"
               className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1267,7 +1288,9 @@ export default function GrowthPage() {
           <p className="text-sm font-medium text-slate-800">영어 학습 기록</p>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleExport('english', exportApi.english)}
+              onClick={() =>
+                handleExport('english', () => exportApi.english(monthFilterToRange(engMonthFilter)))
+              }
               disabled={exporting.has('english')}
               title="CSV 내보내기"
               className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"

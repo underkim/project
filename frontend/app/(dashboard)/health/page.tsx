@@ -122,6 +122,19 @@ export default function HealthPage() {
   const [slGoalInput, setSlGoalInput] = useState('');
   const [exporting, setExporting] = useState<Set<string>>(new Set());
 
+  // "YYYY-MM" 필터 값을 CSV 내보내기용 날짜 범위로 변환 ('all'이면 전체 범위)
+  function monthFilterToRange(
+    monthFilter: string,
+  ): { start_date: string; end_date: string } | undefined {
+    if (monthFilter === 'all') return undefined;
+    const [y, m] = monthFilter.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    return {
+      start_date: `${monthFilter}-01`,
+      end_date: `${monthFilter}-${String(lastDay).padStart(2, '0')}`,
+    };
+  }
+
   async function handleExport(key: string, fn: () => Promise<void>) {
     if (exporting.has(key)) return;
     setExporting((prev) => new Set(prev).add(key));
@@ -1145,7 +1158,11 @@ export default function HealthPage() {
           <p className="text-sm font-medium text-slate-800">운동 기록</p>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleExport('exercise', exportApi.exercise)}
+              onClick={() =>
+                handleExport('exercise', () =>
+                  exportApi.exercise(monthFilterToRange(exMonthFilter)),
+                )
+              }
               disabled={exporting.has('exercise')}
               title="CSV 내보내기"
               className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1369,7 +1386,9 @@ export default function HealthPage() {
           <p className="text-sm font-medium text-slate-800">수면 기록</p>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleExport('sleep', exportApi.sleep)}
+              onClick={() =>
+                handleExport('sleep', () => exportApi.sleep(monthFilterToRange(slMonthFilter)))
+              }
               disabled={exporting.has('sleep')}
               title="CSV 내보내기"
               className="text-slate-400 hover:text-slate-600 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"

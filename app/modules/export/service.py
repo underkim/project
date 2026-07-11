@@ -1,5 +1,6 @@
 import csv
 import io
+from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,17 @@ CAREER_FIELDS = ["날짜", "레이팅", "랭크"]
 TRAVEL_FIELDS = ["여행명", "목적지", "시작일", "종료일", "상태", "체크리스트", "일정", "맛집", "메모"]
 
 
+def _in_range(d: date | None, start_date: date | None, end_date: date | None) -> bool:
+    """d가 None이면(예: 미완료 도서의 완료일) 날짜 필터와 무관하게 포함시킨다."""
+    if d is None:
+        return True
+    if start_date is not None and d < start_date:
+        return False
+    if end_date is not None and d > end_date:
+        return False
+    return True
+
+
 def _to_csv(rows: list[dict], fieldnames: list[str]) -> bytes:
     """딕셔너리 리스트 → UTF-8 BOM CSV 바이트 (Excel 호환).
 
@@ -31,7 +43,9 @@ def _to_csv(rows: list[dict], fieldnames: list[str]) -> bytes:
     return ("﻿" + buf.getvalue()).encode("utf-8")
 
 
-async def export_finance(session: AsyncSession) -> bytes:
+async def export_finance(
+    session: AsyncSession, start_date: date | None = None, end_date: date | None = None
+) -> bytes:
     records = await finance_svc.list_records(session, limit=10000)
     rows = [
         {
@@ -44,11 +58,14 @@ async def export_finance(session: AsyncSession) -> bytes:
             "메모": r.note or "",
         }
         for r in records
+        if _in_range(r.record_date, start_date, end_date)
     ]
     return _to_csv(rows, FINANCE_FIELDS)
 
 
-async def export_exercise(session: AsyncSession) -> bytes:
+async def export_exercise(
+    session: AsyncSession, start_date: date | None = None, end_date: date | None = None
+) -> bytes:
     logs = await health_svc.list_exercise(session, limit=10000)
     rows = [
         {
@@ -58,11 +75,14 @@ async def export_exercise(session: AsyncSession) -> bytes:
             "메모": r.note or "",
         }
         for r in logs
+        if _in_range(r.log_date, start_date, end_date)
     ]
     return _to_csv(rows, EXERCISE_FIELDS)
 
 
-async def export_sleep(session: AsyncSession) -> bytes:
+async def export_sleep(
+    session: AsyncSession, start_date: date | None = None, end_date: date | None = None
+) -> bytes:
     logs = await health_svc.list_sleep(session, limit=10000)
     rows = [
         {
@@ -72,11 +92,14 @@ async def export_sleep(session: AsyncSession) -> bytes:
             "메모": r.note or "",
         }
         for r in logs
+        if _in_range(r.log_date, start_date, end_date)
     ]
     return _to_csv(rows, SLEEP_FIELDS)
 
 
-async def export_books(session: AsyncSession) -> bytes:
+async def export_books(
+    session: AsyncSession, start_date: date | None = None, end_date: date | None = None
+) -> bytes:
     books = await growth_svc.list_books(session, limit=10000)
     rows = [
         {
@@ -89,11 +112,14 @@ async def export_books(session: AsyncSession) -> bytes:
             "메모": r.note or "",
         }
         for r in books
+        if _in_range(r.end_date or r.start_date, start_date, end_date)
     ]
     return _to_csv(rows, BOOK_FIELDS)
 
 
-async def export_english(session: AsyncSession) -> bytes:
+async def export_english(
+    session: AsyncSession, start_date: date | None = None, end_date: date | None = None
+) -> bytes:
     logs = await growth_svc.list_english(session, limit=10000)
     rows = [
         {
@@ -103,21 +129,28 @@ async def export_english(session: AsyncSession) -> bytes:
             "메모": r.note or "",
         }
         for r in logs
+        if _in_range(r.log_date, start_date, end_date)
     ]
     return _to_csv(rows, ENGLISH_FIELDS)
 
 
-async def export_career(session: AsyncSession) -> bytes:
+async def export_career(
+    session: AsyncSession, start_date: date | None = None, end_date: date | None = None
+) -> bytes:
     ratings = await career_svc.list_cf_ratings(session, limit=10000)
     rows = [
         {"날짜": str(r.log_date), "레이팅": r.rating, "랭크": r.rank_name}
         for r in ratings
+        if _in_range(r.log_date, start_date, end_date)
     ]
     return _to_csv(rows, CAREER_FIELDS)
 
 
-async def export_travel(session: AsyncSession) -> bytes:
+async def export_travel(
+    session: AsyncSession, start_date: date | None = None, end_date: date | None = None
+) -> bytes:
     trips = await travel_svc.list_trips(session)
+    trips = [t for t in trips if _in_range(t.start_date, start_date, end_date)]
     rows = []
     for t in trips:
         checklist = "; ".join(

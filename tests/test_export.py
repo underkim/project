@@ -198,6 +198,76 @@ async def test_export_travel_with_data(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_export_finance_date_range_filters_rows(auth_client):
+    for d in ["2026-01-01", "2026-06-01", "2026-12-01"]:
+        await auth_client.post("/api/v1/finance/records", json={
+            "record_date": d, "total_assets": 1000, "monthly_income": 100, "monthly_expense": 50,
+        })
+
+    resp = await auth_client.get(
+        "/api/v1/export/finance", params={"start_date": "2026-05-01", "end_date": "2026-07-01"}
+    )
+    assert resp.status_code == 200
+    content = resp.content.decode("utf-8-sig")
+    assert "2026-06-01" in content
+    assert "2026-01-01" not in content
+    assert "2026-12-01" not in content
+
+
+@pytest.mark.asyncio
+async def test_export_career_date_range_filters_rows(auth_client):
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-01-01", "rating": 1200, "rank_name": "pupil",
+    })
+    await auth_client.post("/api/v1/career/cf-ratings", json={
+        "log_date": "2026-06-01", "rating": 1500, "rank_name": "specialist",
+    })
+
+    resp = await auth_client.get(
+        "/api/v1/export/career", params={"start_date": "2026-05-01"}
+    )
+    assert resp.status_code == 200
+    content = resp.content.decode("utf-8-sig")
+    assert "specialist" in content
+    assert "pupil" not in content
+
+
+@pytest.mark.asyncio
+async def test_export_books_date_range_filters_by_end_date_or_start_date_fallback(auth_client):
+    await auth_client.post("/api/v1/growth/books", json={"title": "날짜 미정 책", "status": "wishlist"})
+    await auth_client.post("/api/v1/growth/books", json={
+        "title": "완독한 책 (범위 안)", "status": "completed",
+        "start_date": "2026-05-01", "end_date": "2026-06-01",
+    })
+    await auth_client.post("/api/v1/growth/books", json={
+        "title": "완독한 책 (범위 밖)", "status": "completed",
+        "start_date": "2025-01-01", "end_date": "2025-02-01",
+    })
+    await auth_client.post("/api/v1/growth/books", json={
+        "title": "읽는 중인 책 (시작일 범위 안)", "status": "reading",
+        "start_date": "2026-07-01",
+    })
+    await auth_client.post("/api/v1/growth/books", json={
+        "title": "읽는 중인 책 (시작일 범위 밖)", "status": "reading",
+        "start_date": "2025-01-01",
+    })
+
+    resp = await auth_client.get(
+        "/api/v1/export/growth/books", params={"start_date": "2026-01-01", "end_date": "2026-12-31"}
+    )
+    assert resp.status_code == 200
+    content = resp.content.decode("utf-8-sig")
+    # 날짜가 아예 없는 책은 필터와 무관하게 포함된다
+    assert "날짜 미정 책" in content
+    # 완료일이 있으면 완료일 기준으로 필터링한다
+    assert "완독한 책 (범위 안)" in content
+    assert "완독한 책 (범위 밖)" not in content
+    # 완료일이 없으면 시작일로 대체해 필터링한다 (읽는 중인 책이 무조건 통과하지 않도록)
+    assert "읽는 중인 책 (시작일 범위 안)" in content
+    assert "읽는 중인 책 (시작일 범위 밖)" not in content
+
+
+@pytest.mark.asyncio
 async def test_export_content_disposition_filename(auth_client):
     resp = await auth_client.get("/api/v1/export/finance")
     disposition = resp.headers["content-disposition"]
