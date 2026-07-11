@@ -235,6 +235,20 @@ async def test_finance_list_pagination(auth_client):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["limit=0", "limit=201", "offset=-1"])
+async def test_finance_list_pagination_out_of_range_returns_422(auth_client, query):
+    resp = await auth_client.get(f"/api/v1/finance/records?{query}")
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["records_limit=0", "records_limit=201", "records_offset=-1"])
+async def test_finance_summary_pagination_out_of_range_returns_422(auth_client, query):
+    resp = await auth_client.get(f"/api/v1/finance/summary?{query}")
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_finance_summary_zero_income_savings_rate_none(auth_client):
     """수입이 0이면 저축률은 None이어야 한다."""
     await auth_client.post("/api/v1/finance/records", json={

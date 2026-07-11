@@ -396,3 +396,17 @@ async def test_growth_summary_books_wishlist_count(auth_client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["books_wishlist"] == before_wishlist + 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["limit=0", "limit=201", "offset=-1"])
+async def test_books_list_pagination_out_of_range_returns_422(auth_client, query):
+    resp = await auth_client.get(f"/api/v1/growth/books?{query}")
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["limit=0", "limit=201", "offset=-1"])
+async def test_english_list_pagination_out_of_range_returns_422(auth_client, query):
+    resp = await auth_client.get(f"/api/v1/growth/english?{query}")
+    assert resp.status_code == 422

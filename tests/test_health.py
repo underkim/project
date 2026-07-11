@@ -243,6 +243,20 @@ async def test_create_sleep_today_date_is_allowed(auth_client):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["limit=0", "limit=201", "offset=-1"])
+async def test_exercise_list_pagination_out_of_range_returns_422(auth_client, query):
+    resp = await auth_client.get(f"/api/v1/health/exercise?{query}")
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["limit=0", "limit=201", "offset=-1"])
+async def test_sleep_list_pagination_out_of_range_returns_422(auth_client, query):
+    resp = await auth_client.get(f"/api/v1/health/sleep?{query}")
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_update_sleep_invalid_hours_returns_422(auth_client):
     """수면 시간을 0 또는 25로 수정하면 422여야 한다."""
     create = await auth_client.post("/api/v1/health/sleep", json={

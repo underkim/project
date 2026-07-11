@@ -339,3 +339,10 @@ async def test_cf_rating_list_pagination(auth_client):
     resp = await auth_client.get("/api/v1/career/cf-ratings?limit=3")
     assert resp.status_code == 200
     assert len(resp.json()) == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", ["limit=0", "limit=201", "offset=-1"])
+async def test_cf_rating_list_pagination_out_of_range_returns_422(auth_client, query):
+    resp = await auth_client.get(f"/api/v1/career/cf-ratings?{query}")
+    assert resp.status_code == 422
