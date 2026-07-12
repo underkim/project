@@ -1,6 +1,6 @@
 # TASK-085: Self-Hosted Single-User Distribution
 
-status: working
+status: implemented
 created_by: claude-code
 created_at: 2026-07-12
 updated_at: 2026-07-12
@@ -65,3 +65,13 @@ requiring knowledge of the repository's former managed-cloud deployment.
 - Confirm backup commands target the named Compose volume/database.
 - Confirm migration execution remains part of API startup.
 - Confirm managed-cloud docs are not presented as the only supported deployment.
+
+## 9. Implementation Result
+
+- Added a dedicated personal single-user installation, update, backup, restore, security, and
+  troubleshooting guide.
+- Removed the known PostgreSQL fallback password and added Compose restart policies.
+- Added a Docker startup preflight that rejects placeholder/short secrets and invalid public URLs
+  without printing secret values.
+- Implementation commit: `9fe091d`.
+- Validation: 397 backend tests and direct self-host preflight execution passed.
