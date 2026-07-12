@@ -679,6 +679,67 @@ async def test_chat_create_growth_book(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_ai_tracker_entry_create_update_and_delete(auth_client):
+    import json
+    tracker = (await auth_client.post("/api/v1/trackers", json={
+        "name": "Focus time", "value_type": "number", "unit": "min"
+    })).json()
+
+    create_payload = {
+        "reply": "기록했어요", "action": "create", "module": "tracker_entry",
+        "data": {"tracker_name": "Focus time", "entry_date": "2026-07-12", "value": "30"},
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock(); mock.text = json.dumps(create_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+        response = await auth_client.post("/api/v1/ai/chat", json={"message": "Focus time 30 minutes"})
+    assert response.json()["saved"] is True, response.json()
+    assert response.json()["module"] == "tracker_entry"
+
+    update_payload = {
+        "reply": "수정했어요", "action": "update", "module": "tracker_entry",
+        "filter": {"tracker_name": "Focus time", "entry_date": "2026-07-12"},
+        "data": {"value": "45"},
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock(); mock.text = json.dumps(update_payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+        response = await auth_client.post("/api/v1/ai/chat", json={"message": "change it to 45"})
+    assert response.json()["saved"] is True, response.text
+    detail = (await auth_client.get(f"/api/v1/trackers/{tracker['id']}")).json()
+    assert detail["entries"][0]["value"] == "45"
+
+    deleted = await auth_client.post("/api/v1/ai/execute", json={
+        "module": "tracker_entry",
+        "filter": {"tracker_name": "Focus time", "entry_date": "2026-07-12"},
+    })
+    assert deleted.json()["saved"] is True
+    assert (await auth_client.get(f"/api/v1/trackers/{tracker['id']}")).json()["entries"] == []
+
+
+@pytest.mark.asyncio
+async def test_ai_tracker_entry_rejects_invalid_typed_value(auth_client):
+    import json
+    tracker = (await auth_client.post("/api/v1/trackers", json={
+        "name": "Numeric only", "value_type": "number"
+    })).json()
+    payload = {
+        "reply": "기록할게요", "action": "create", "module": "tracker_entry",
+        "data": {"tracker_name": "Numeric only", "entry_date": "2026-07-12", "value": "not-a-number"},
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock(); mock.text = json.dumps(payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+        response = await auth_client.post("/api/v1/ai/chat", json={"message": "save invalid value"})
+    assert response.status_code == 200
+    assert response.json()["saved"] is False
+    assert (await auth_client.get(f"/api/v1/trackers/{tracker['id']}")).json()["entries"] == []
+
+
+@pytest.mark.asyncio
 async def test_chat_multi_actions_create_and_update(auth_client):
     """actions 배열 — create + update 혼합 처리 시 saved_count가 정확해야 한다."""
     import json

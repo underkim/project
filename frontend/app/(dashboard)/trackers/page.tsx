@@ -5,6 +5,7 @@ import { Archive, Check, ChevronRight, Download, ListChecks, Pencil, Plus, Trash
 import { exportApi, trackersApi } from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import Dialog from '@/components/Dialog';
+import { useAiRefresh } from '@/hooks/useAiRefresh';
 import type { TrackerDetail, TrackerResponse, TrackerValueType } from '@/types';
 
 const COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -60,6 +61,7 @@ export default function TrackersPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadTrackers();
   }, [loadTrackers]);
+  useAiRefresh(['tracker_entry'], loadTrackers);
 
   async function openTracker(id: number) {
     try { setSelected(await trackersApi.get(id)); }

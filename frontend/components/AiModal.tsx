@@ -223,6 +223,7 @@ const MODULE_LABEL: Record<string, string> = {
   travel_plan: '여행 일정',
   planner_item: '플래너 항목',
   planner_category: '플래너 카테고리',
+  tracker_entry: '나의 기록',
 };
 
 // 삭제 필터 키 → 사용자 친화 라벨
@@ -239,6 +240,8 @@ const FILTER_KEY_LABEL: Record<string, string> = {
   rank_name: '랭크',
   destination: '목적지',
   trip_name: '여행명',
+  tracker_name: 'Tracker',
+  entry_date: '날짜',
   category: '카테고리',
   status: '상태',
 };
@@ -316,6 +319,7 @@ const MODULE_PATHS: Record<string, { path: string; name: string }> = {
   travel_trip: { path: '/travel', name: '여행' },
   travel_plan: { path: '/travel', name: '여행' },
   travel_checklist: { path: '/travel', name: '여행' },
+  tracker_entry: { path: '/trackers', name: '나의 기록' },
 };
 
 // 채팅은 어느 페이지에서든 열 수 있는 FAB이므로, 저장이 실제로 반영된 모듈 페이지로

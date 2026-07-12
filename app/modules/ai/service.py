@@ -104,6 +104,7 @@ travel_trip      : name(string), destination(string), start_date(YYYY-MM-DD), en
 travel_checklist : trip_name(string, 여행 이름으로 특정), text(string)
 travel_plan      : trip_name(string, 여행 이름으로 특정), day(int, 1부터), title(string), time(HH:MM 선택), description(선택), sort_order(int 선택)
 planner_item     : category_id(int, 위 카테고리 목록에서 선택), text(string), offset(float, 기본 0)
+tracker_entry    : tracker_name(string, 기존 활성 Tracker 이름), entry_date(YYYY-MM-DD, 기본 오늘), value(string), note(선택)
 
 === update 모듈·필드 ===
 filter로 대상 특정, data에 변경할 값만 포함
@@ -118,6 +119,7 @@ travel_checklist : filter(trip_name, text), data(text, is_checked)
 travel_plan      : filter(trip_name, title), data(title, time, description, day, sort_order)
 planner_item     : filter(text), data(text, offset, is_completed)
 planner_category : filter(title), data(icon, title, subtitle)
+tracker_entry    : filter(tracker_name, entry_date), data(value, note, entry_date)
 
 === delete 필터 ===
 health_exercise  : log_date, exercise_type
@@ -132,6 +134,7 @@ travel_plan      : trip_name, title
 planner_item     : text
 planner_category      : title (⚠️ 카테고리 삭제 시 하위 아이템 전체 삭제됨 — reply에 반드시 경고 포함)
 planner_items_by_phase: phase_name (⚠️ Phase 전체 아이템 일괄 삭제 — reply에 반드시 경고 포함, 카테고리 구조는 유지됨)
+tracker_entry         : tracker_name, entry_date
 
 === 자주 쓰는 패턴 ===
 - "책 완독했어" → growth_book update, data: {{"status":"completed","end_date":"{today}"}}
@@ -152,6 +155,7 @@ planner_items_by_phase: phase_name (⚠️ Phase 전체 아이템 일괄 삭제 
 - "이번 달 자산 기록해줘 (수입 500, 지출 300, 총자산 5000)" → finance_record create, reply에 저축률 계산 포함 ((수입-지출)/수입 * 100 = 40%)
 - "어떤 운동 꾸준히 했어?" → 이번 달 ex_rows의 exercise_type 분포 분석 후 답변
 - "영어 얼마나 했어?" → 이번 달 + 이번 주 영어 요약 (activity_type별 분류)
+- "집중 시간에 오늘 30분 기록해줘" → tracker_entry create, data: {{"tracker_name":"집중 시간","entry_date":"{today}","value":"30"}}
 
 === 예시 ===
 사용자: "오늘 러닝 45분 했어"
@@ -557,6 +561,22 @@ async def _load_user_context(session: AsyncSession) -> str:
     else:
         lines.append("- 플래너: 항목 없음")
 
+    from app.modules.trackers.models import Tracker
+    tracker_rows = (await session.execute(
+        select(Tracker)
+        .options(selectinload(Tracker.entries))
+        .where(Tracker.is_archived.is_(False))
+        .order_by(Tracker.created_at)
+    )).scalars().all()
+    if tracker_rows:
+        parts = []
+        for tracker in tracker_rows[:20]:
+            recent = sorted(tracker.entries, key=lambda item: (item.entry_date, item.id), reverse=True)[:3]
+            values = ", ".join(f"{item.entry_date}:{item.value}" for item in recent) or "기록 없음"
+            unit = f", 단위={tracker.unit}" if tracker.unit else ""
+            parts.append(f"{tracker.name}(type={tracker.value_type}{unit}, 최근={values})")
+        lines.append("- 사용자 Tracker: " + " / ".join(parts))
+
     return "\n".join(lines)
 
 
@@ -893,6 +913,7 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
     from app.modules.growth.models import BookRecord, EnglishLog
     from app.modules.career.models import CFRatingLog
     from app.modules.travel.models import Trip
+    from app.modules.trackers.models import Tracker, TrackerEntry
 
     if module == "health_exercise":
         log_date = _safe_date(filter_.get("log_date", ""))
@@ -1016,6 +1037,20 @@ async def _find_record(session: AsyncSession, module: str, filter_: dict):
         )
         return (await session.execute(q.order_by(Category.id.desc()).limit(1))).scalars().first()
 
+    if module == "tracker_entry":
+        tracker_name = filter_.get("tracker_name", "")
+        entry_date = _safe_date(filter_.get("entry_date", ""))
+        if not tracker_name or not entry_date:
+            return None
+        q = (
+            select(TrackerEntry)
+            .join(Tracker, TrackerEntry.tracker_id == Tracker.id)
+            .where(Tracker.name.ilike(f"%{_escape_like(tracker_name)}%", escape="\\"))
+            .where(TrackerEntry.entry_date == entry_date)
+            .order_by(TrackerEntry.id.desc())
+        )
+        return (await session.execute(q.limit(1))).scalars().first()
+
     return None
 
 
@@ -1028,6 +1063,21 @@ async def _update(session: AsyncSession, module: str, filter_: dict, data: dict)
     record = await _find_record(session, module, filter_)
     if record is None:
         return False
+    if module == "tracker_entry":
+        from app.modules.trackers.models import Tracker
+        from app.modules.trackers.schemas import normalize_value
+        tracker = await session.get(Tracker, record.tracker_id)
+        if tracker is None or tracker.is_archived:
+            return False
+        if "value" in data:
+            record.value = normalize_value(tracker.value_type, str(data["value"]))
+        if "note" in data:
+            record.note = str(data["note"]).strip() or None if data["note"] is not None else None
+        if "entry_date" in data:
+            parsed_date = _safe_date(data["entry_date"])
+            if parsed_date:
+                record.entry_date = parsed_date
+        return True
     for field, value in data.items():
         if field in _PK_FIELDS or not hasattr(record, field):
             continue
@@ -1051,6 +1101,8 @@ async def _create(session: AsyncSession, module: str, data: dict) -> None:
     from app.modules.travel.schemas import TripCreate, ChecklistItemCreate
     from app.core.models import RoadmapItem, Category
     from app.modules.planner.schemas import RoadmapItemCreate
+    from app.modules.trackers.models import Tracker, TrackerEntry
+    from app.modules.trackers.schemas import normalize_value
 
     data = dict(data)  # 호출자 dict 변경 방지
 
@@ -1115,6 +1167,27 @@ async def _create(session: AsyncSession, module: str, data: dict) -> None:
             text=item_data.text,
             offset=item_data.offset,
             is_completed=False,
+        ))
+
+    elif module == "tracker_entry":
+        tracker_name = str(data.pop("tracker_name", "")).strip()
+        entry_date = _safe_date(data.pop("entry_date", date.today().isoformat()))
+        if not tracker_name or not entry_date or "value" not in data:
+            raise ValueError("tracker_name, entry_date, value가 필요합니다")
+        tracker = (await session.execute(
+            select(Tracker)
+            .where(Tracker.name.ilike(f"%{_escape_like(tracker_name)}%", escape="\\"))
+            .where(Tracker.is_archived.is_(False))
+            .order_by(Tracker.id.desc())
+            .limit(1)
+        )).scalars().first()
+        if tracker is None:
+            raise ValueError(f"활성 Tracker '{tracker_name}'을 찾을 수 없습니다")
+        session.add(TrackerEntry(
+            tracker_id=tracker.id,
+            entry_date=entry_date,
+            value=normalize_value(tracker.value_type, str(data["value"])),
+            note=str(data.get("note", "")).strip() or None,
         ))
 
 
