@@ -336,15 +336,14 @@ async def test_execute_delete_finance_record(auth_client):
 
 @pytest.mark.asyncio
 async def test_execute_delete_growth_book(auth_client):
-    """execute — growth_book 삭제 시 saved: True."""
+    """Legacy growth deletion is rejected and data is preserved."""
     await auth_client.post("/api/v1/growth/books", json={"title": "삭제될 책", "status": "planned"})
     resp = await auth_client.post("/api/v1/ai/execute", json={
         "module": "growth_book",
         "filter": {"title": "삭제될 책"},
     })
-    assert resp.status_code == 200
-    assert resp.json()["saved"] is True
-    assert resp.json()["action"] == "delete"
+    assert resp.status_code == 409
+    assert any(item["title"] == "삭제될 책" for item in (await auth_client.get("/api/v1/growth/books")).json())
 
 
 @pytest.mark.asyncio
@@ -655,7 +654,7 @@ async def test_weekly_report_includes_finance_goal(auth_client):
 
 @pytest.mark.asyncio
 async def test_chat_create_growth_book(auth_client):
-    """create 액션 — growth_book 모듈 저장 시 saved: True."""
+    """Legacy growth creation is rejected."""
     import json
     mock_payload = {
         "reply": "독서 목록에 추가했어요!",
@@ -674,8 +673,8 @@ async def test_chat_create_growth_book(auth_client):
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["saved"] is True
-    assert data["module"] == "growth_book"
+    assert data["saved"] is False
+    assert data["module"] is None
 
 
 @pytest.mark.asyncio
@@ -779,7 +778,7 @@ async def test_chat_multi_actions_create_and_update(auth_client):
 
 @pytest.mark.asyncio
 async def test_chat_create_growth_english(auth_client):
-    """create 액션 — growth_english 저장 시 saved: True."""
+    """Legacy English creation is rejected."""
     import json
     mock_payload = {
         "reply": "영어 학습 기록했어요!",
@@ -798,13 +797,13 @@ async def test_chat_create_growth_english(auth_client):
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["saved"] is True
-    assert data["module"] == "growth_english"
+    assert data["saved"] is False
+    assert data["module"] is None
 
 
 @pytest.mark.asyncio
 async def test_chat_create_career_cf_rating(auth_client):
-    """create 액션 — career_cf_rating 저장 시 saved: True."""
+    """Legacy Career creation is rejected."""
     import json
     mock_payload = {
         "reply": "CF 레이팅 기록했어요!",
@@ -823,8 +822,8 @@ async def test_chat_create_career_cf_rating(auth_client):
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["saved"] is True
-    assert data["module"] == "career_cf_rating"
+    assert data["saved"] is False
+    assert data["module"] is None
 
 
 @pytest.mark.asyncio
@@ -888,7 +887,7 @@ async def test_chat_invalid_key_returns_401(auth_client):
 
 @pytest.mark.asyncio
 async def test_chat_update_record_not_found(auth_client):
-    """update 액션 — 대상 기록이 없으면 saved: False."""
+    """Legacy update is rejected before lookup."""
     import json
     mock_payload = {
         "reply": "수정할게요!",
@@ -910,7 +909,30 @@ async def test_chat_update_record_not_found(auth_client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["saved"] is False
-    assert data["action"] == "update"
+    assert data["action"] is None
+
+
+@pytest.mark.asyncio
+async def test_multi_action_skips_legacy_write_but_saves_current_module(auth_client):
+    import json
+    payload = {
+        "reply": "처리했어요",
+        "actions": [
+            {"action": "create", "module": "growth_book", "data": {"title": "Legacy book"}},
+            {"action": "create", "module": "health_exercise", "data": {
+                "log_date": "2026-07-12", "exercise_type": "walk", "duration_minutes": 20,
+            }},
+        ],
+    }
+    with patch("app.modules.ai.service.settings") as mock_settings, patch("app.modules.ai.service.genai") as mock_genai:
+        mock_settings.gemini_api_key = "test-key"
+        mock = MagicMock(); mock.text = json.dumps(payload)
+        mock_genai.Client.return_value.models.generate_content.return_value = mock
+        response = await auth_client.post("/api/v1/ai/chat", json={"message": "save current records"})
+    assert response.status_code == 200
+    assert response.json()["saved"] is True
+    assert response.json()["saved_count"] == 1
+    assert response.json()["modules"] == ["health_exercise"]
 
 
 # ── TASK-044: AI 액션 확인 커버리지 매트릭스 보강 ──────────────────────
@@ -944,7 +966,7 @@ async def test_chat_create_health_sleep(auth_client):
 
 @pytest.mark.asyncio
 async def test_execute_delete_career_cf_rating(auth_client):
-    """execute — career_cf_rating 삭제 시 saved: True."""
+    """Legacy Career deletion is rejected."""
     await auth_client.post("/api/v1/career/cf-ratings", json={
         "log_date": "2026-04-15", "rating": 1500, "rank_name": "specialist",
     })
@@ -952,9 +974,7 @@ async def test_execute_delete_career_cf_rating(auth_client):
         "module": "career_cf_rating",
         "filter": {"log_date": "2026-04-15"},
     })
-    assert resp.status_code == 200
-    assert resp.json()["saved"] is True
-    assert resp.json()["action"] == "delete"
+    assert resp.status_code == 409
 
 
 @pytest.mark.asyncio

@@ -97,9 +97,6 @@ _SYSTEM_PROMPT = """\
 health_exercise  : log_date(YYYY-MM-DD, 기본 오늘), exercise_type(string), duration_minutes(int), note(선택)
 health_sleep     : log_date(YYYY-MM-DD, 기본 오늘), sleep_hours(float), quality(1~5 int, 기본 3), note(선택)
 finance_record   : record_date(YYYY-MM-DD), total_assets(int 만원), monthly_income(int), monthly_expense(int), note(선택)
-growth_book      : title(string), author(선택), status("planned"|"reading"|"completed", 기본 "planned")
-growth_english   : log_date(YYYY-MM-DD, 기본 오늘), activity_type("reading"|"listening"|"speaking"|"writing"|"vocab"), duration_minutes(int), note(선택)
-career_cf_rating : log_date(YYYY-MM-DD), rating(int), rank_name(string)
 travel_trip      : name(string), destination(string), start_date(YYYY-MM-DD), end_date(YYYY-MM-DD), status("planned"|"ongoing"|"completed", 기본 "planned"), note(선택)
 travel_checklist : trip_name(string, 여행 이름으로 특정), text(string)
 travel_plan      : trip_name(string, 여행 이름으로 특정), day(int, 1부터), title(string), time(HH:MM 선택), description(선택), sort_order(int 선택)
@@ -111,9 +108,6 @@ filter로 대상 특정, data에 변경할 값만 포함
 health_exercise  : filter(log_date, exercise_type), data(duration_minutes, exercise_type, note)
 health_sleep     : filter(log_date), data(sleep_hours, quality, note)
 finance_record   : filter(record_date), data(total_assets, monthly_income, monthly_expense, note)
-growth_book      : filter(title), data(status, rating, note, author, start_date, end_date)
-growth_english   : filter(log_date, activity_type), data(duration_minutes, note)
-career_cf_rating : filter(log_date), data(rating, rank_name)
 travel_trip      : filter(name 또는 destination), data(status, name, destination, note, start_date, end_date)
 travel_checklist : filter(trip_name, text), data(text, is_checked)
 travel_plan      : filter(trip_name, title), data(title, time, description, day, sort_order)
@@ -125,9 +119,6 @@ tracker_entry    : filter(tracker_name, entry_date), data(value, note, entry_dat
 health_exercise  : log_date, exercise_type
 health_sleep     : log_date
 finance_record   : record_date
-growth_book      : title
-growth_english   : log_date, activity_type
-career_cf_rating : log_date
 travel_trip      : name 또는 destination
 travel_checklist : trip_name, text
 travel_plan      : trip_name, title
@@ -137,13 +128,6 @@ planner_items_by_phase: phase_name (⚠️ Phase 전체 아이템 일괄 삭제 
 tracker_entry         : tracker_name, entry_date
 
 === 자주 쓰는 패턴 ===
-- "책 완독했어" → growth_book update, data: {{"status":"completed","end_date":"{today}"}}
-- "책 읽기 시작했어" → growth_book update/create, data: {{"status":"reading","start_date":"{today}"}}
-- "독서 평점 줄게" → growth_book update, data: {{"rating":N}}
-- "영어 독해 30분" → growth_english create, activity_type: "reading"
-- "영어 듣기 1시간" → growth_english create, activity_type: "listening"
-- "영어 말하기/쉐도잉" → growth_english create, activity_type: "speaking"
-- "영어 단어 공부" → growth_english create, activity_type: "vocab"
 - "플래너 항목 완료했어" → planner_item update, data: {{"is_completed":true}}
 - "커리어 카테고리 아이콘 💻로 바꿔줘" → planner_category update, filter: {{"title":"커리어"}}, data: {{"icon":"💻"}}
 - "Phase 1 아이템 전부 초기화해줘" → planner_items_by_phase delete, filter: {{"phase_name":"Phase 1"}} (⚠️ 경고 포함)
@@ -154,15 +138,11 @@ tracker_entry         : tracker_name, entry_date
 - "이번 달 목표" → action: null, 월간 진행률 평가 + 남은 기간 전략 제안
 - "이번 달 자산 기록해줘 (수입 500, 지출 300, 총자산 5000)" → finance_record create, reply에 저축률 계산 포함 ((수입-지출)/수입 * 100 = 40%)
 - "어떤 운동 꾸준히 했어?" → 이번 달 ex_rows의 exercise_type 분포 분석 후 답변
-- "영어 얼마나 했어?" → 이번 달 + 이번 주 영어 요약 (activity_type별 분류)
 - "집중 시간에 오늘 30분 기록해줘" → tracker_entry create, data: {{"tracker_name":"집중 시간","entry_date":"{today}","value":"30"}}
 
 === 예시 ===
 사용자: "오늘 러닝 45분 했어"
 → {{"reply":"러닝 45분 기록했어요! 💪", "action":"create", "module":"health_exercise", "data":{{"log_date":"{today}", "exercise_type":"러닝", "duration_minutes":45}}, "filter":null}}
-
-사용자: "파친코 다 읽었어"
-→ {{"reply":"파친코 완독 축하해요! 완료로 바꿀게요 🎉", "action":"update", "module":"growth_book", "filter":{{"title":"파친코"}}, "data":{{"status":"completed","end_date":"{today}"}}}}
 
 사용자: "영어 스터디 항목 완료했어"
 → {{"reply":"완료 처리했어요!", "action":"update", "module":"planner_item", "filter":{{"text":"영어 스터디"}}, "data":{{"is_completed":true}}}}
@@ -592,6 +572,7 @@ def _build_history_context(history: list) -> str:
 
 # 여행 모듈은 상담형 저장 — AI가 되묻거나 확인을 구하는 응답이면 생성/수정을 막는다
 _TRAVEL_MODULES = {"travel_trip", "travel_checklist", "travel_plan"}
+LEGACY_AI_MODULES = {"growth_book", "growth_english", "career_cf_rating"}
 _CONFIRM_SEEK_RE = re.compile(
     r"[?？]|할까요|할까\b|하시겠|드릴까|알려주|정해|며칠|언제|얼마나|어떤|어떠|어떨|"
     r"원하시|선택|골라|결정|맞나요|괜찮으|진행할까|제안해|추천해"
@@ -650,6 +631,10 @@ async def _process_multi_actions(session: AsyncSession, reply: str, actions: lis
         filter_ = act.get("filter") or {}
 
         if not action or not module:
+            continue
+
+        if module in LEGACY_AI_MODULES:
+            error_parts.append("이전 자기계발/커리어 기록은 읽기 전용이에요. 나의 기록 Tracker를 사용해 주세요")
             continue
 
         if action == "delete":
@@ -805,6 +790,12 @@ async def parse_and_save(
 
     if not action or not module:
         return {"reply": reply, "saved": False, "saved_count": 0, "module": module, "action": action, "suggestions": suggestions}
+
+    if module in LEGACY_AI_MODULES:
+        return {
+            "reply": "이전 자기계발/커리어 영역은 읽기 전용이에요. '나의 기록'에서 Tracker를 만들어 사용해 주세요.",
+            "saved": False, "saved_count": 0, "module": None, "action": None, "suggestions": None,
+        }
 
     # 후속 질문(이전 저장 조회)일 때 create/update 재실행 차단 (전 모듈 공통)
     if action in ("create", "update") and followup:

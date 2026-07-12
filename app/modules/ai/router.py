@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.modules.ai.service import execute_delete, generate_weekly_report, parse_and_save
+from app.modules.ai.service import LEGACY_AI_MODULES, execute_delete, generate_weekly_report, parse_and_save
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
@@ -143,6 +143,11 @@ async def execute(
     더블클릭이나 네트워크 재시도로 동일한 (module, filter) 요청이 짧은 시간 안에
     중복 도착해도 실제 삭제는 한 번만 실행하고 최초 결과를 그대로 반환한다.
     """
+    if body.module in LEGACY_AI_MODULES:
+        raise HTTPException(
+            status_code=409,
+            detail="이전 자기계발/커리어 기록은 AI에서 변경할 수 없습니다. 나의 기록 Tracker를 사용해 주세요.",
+        )
     key = _execution_key(body.module, body.filter)
     lock = _get_execution_lock(key)
     async with lock:
