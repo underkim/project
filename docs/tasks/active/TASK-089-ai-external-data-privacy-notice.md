@@ -1,6 +1,6 @@
 # TASK-089: AI External Data Privacy Notice
 
-status: working
+status: implemented
 created_by: claude-code
 created_at: 2026-07-12
 updated_at: 2026-07-12
@@ -54,3 +54,11 @@ external Gemini service before they use chat or weekly reports.
 - Confirm wording is accurate and not alarmist.
 - Confirm no secret or provider key is displayed.
 - Confirm notice does not prevent ordinary AI use.
+
+## 9. Implementation Result
+
+- Added a persistent notice explaining external Gemini transfer of chat and relevant dashboard data.
+- Added an explicit warning against entering passwords, API keys, or other sensitive information.
+- Replaced the legacy book-specific suggestion with a current health-record example.
+- Implementation commit: `781c3f5`.
+- Validation: frontend ESLint, TypeScript, and production build passed.
