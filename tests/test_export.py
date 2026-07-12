@@ -320,3 +320,31 @@ async def test_export_travel_includes_restaurants_excludes_coords(auth_client):
     # 좌표(지도 표시용 내부 필드)는 CSV에 노출되지 않아야 한다.
     assert "34.6687" not in content
     assert "135.5012" not in content
+
+
+@pytest.mark.asyncio
+async def test_export_trackers_includes_entries_empty_and_archived(auth_client):
+    active = (await auth_client.post("/api/v1/trackers", json={
+        "name": "Export focus", "value_type": "number", "unit": "min"
+    })).json()
+    empty = (await auth_client.post("/api/v1/trackers", json={
+        "name": "Export empty", "value_type": "text"
+    })).json()
+    await auth_client.post(f"/api/v1/trackers/{active['id']}/entries", json={
+        "entry_date": "2026-07-12", "value": "30", "note": "deep work"
+    })
+    await auth_client.put(f"/api/v1/trackers/{empty['id']}", json={"is_archived": True})
+
+    response = await auth_client.get("/api/v1/export/trackers")
+    assert response.status_code == 200
+    content = response.content.decode("utf-8-sig")
+    assert "tracker_name" in content
+    assert "Export focus" in content
+    assert "deep work" in content
+    assert "Export empty" in content
+    assert "True" in content
+
+
+@pytest.mark.asyncio
+async def test_export_trackers_requires_auth(client):
+    assert (await client.get("/api/v1/export/trackers")).status_code == 401

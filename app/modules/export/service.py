@@ -2,13 +2,18 @@ import csv
 import io
 from datetime import date
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.modules.career import service as career_svc
 from app.modules.finance import service as finance_svc
 from app.modules.growth import service as growth_svc
 from app.modules.health import service as health_svc
 from app.modules.travel import service as travel_svc
+from app.modules.trackers.models import Tracker
+
+TRACKER_FIELDS = ["tracker_id", "tracker_name", "value_type", "unit", "archived", "entry_date", "value", "note"]
 
 # 모듈별 CSV 헤더 (빈 데이터셋에도 동일한 헤더 행을 출력하기 위해 명시)
 FINANCE_FIELDS = ["날짜", "총자산(만원)", "월수입(만원)", "월지출(만원)", "저축액(만원)", "저축률(%)", "메모"]
@@ -181,3 +186,28 @@ async def export_travel(
             }
         )
     return _to_csv(rows, TRAVEL_FIELDS)
+
+
+async def export_trackers(
+    session: AsyncSession, start_date: date | None = None, end_date: date | None = None
+) -> bytes:
+    result = await session.execute(
+        select(Tracker).options(selectinload(Tracker.entries)).order_by(Tracker.created_at, Tracker.id)
+    )
+    rows: list[dict] = []
+    for tracker in result.scalars().all():
+        entries = sorted(tracker.entries, key=lambda item: (item.entry_date, item.id))
+        matching = [item for item in entries if _in_range(item.entry_date, start_date, end_date)]
+        if not matching:
+            rows.append({
+                "tracker_id": tracker.id, "tracker_name": tracker.name, "value_type": tracker.value_type,
+                "unit": tracker.unit or "", "archived": tracker.is_archived,
+                "entry_date": "", "value": "", "note": "",
+            })
+        for entry in matching:
+            rows.append({
+                "tracker_id": tracker.id, "tracker_name": tracker.name, "value_type": tracker.value_type,
+                "unit": tracker.unit or "", "archived": tracker.is_archived,
+                "entry_date": str(entry.entry_date), "value": entry.value, "note": entry.note or "",
+            })
+    return _to_csv(rows, TRACKER_FIELDS)

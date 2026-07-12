@@ -491,6 +491,8 @@ export const exportApi = {
     _downloadCsv('/api/v1/export/career', _stamped('career'), params),
   travel: (params?: DateRangeParams) =>
     _downloadCsv('/api/v1/export/travel', _stamped('travel'), params),
+  trackers: (params?: DateRangeParams) =>
+    _downloadCsv('/api/v1/export/trackers', _stamped('trackers'), params),
 };
 
 export const trackersApi = {

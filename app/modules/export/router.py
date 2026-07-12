@@ -87,3 +87,13 @@ async def export_travel(
     session: AsyncSession = Depends(get_db),
 ):
     return _csv(await service.export_travel(session, start_date, end_date), "travel.csv")
+
+
+@router.get("/trackers")
+async def export_trackers(
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
+    _: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    return _csv(await service.export_trackers(session, start_date, end_date), "trackers.csv")

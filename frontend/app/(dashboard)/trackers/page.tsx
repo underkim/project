@@ -1,8 +1,8 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Archive, Check, ChevronRight, ListChecks, Pencil, Plus, Trash2, X } from 'lucide-react';
-import { trackersApi } from '@/lib/api';
+import { Archive, Check, ChevronRight, Download, ListChecks, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { exportApi, trackersApi } from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import Dialog from '@/components/Dialog';
 import type { TrackerDetail, TrackerResponse, TrackerValueType } from '@/types';
@@ -162,6 +162,15 @@ export default function TrackersPage() {
     finally { setSaving(false); }
   }
 
+  const numericValues = selected?.value_type === 'number'
+    ? selected.entries.map((entry) => Number(entry.value)).filter(Number.isFinite)
+    : [];
+  const numericAverage = numericValues.length
+    ? numericValues.reduce((sum, value) => sum + value, 0) / numericValues.length
+    : null;
+  const recentChange = numericValues.length >= 2 ? numericValues[0] - numericValues[1] : null;
+  const formatNumber = (value: number) => Number.isInteger(value) ? String(value) : value.toFixed(1);
+
   return (
     <div className="space-y-6">
       {editingTracker && selected && <Dialog title="추적 항목 설정" description="이름과 설명, 숫자 단위를 수정할 수 있어요." onClose={()=>setEditingTracker(false)}><form onSubmit={saveTrackerEdit} className="space-y-4"><label className="block text-sm text-slate-600">이름<input autoFocus value={editName} onChange={(e)=>setEditName(e.target.value)} maxLength={60} required className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-900"/></label><label className="block text-sm text-slate-600">설명<input value={editDescription} onChange={(e)=>setEditDescription(e.target.value)} maxLength={240} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5"/></label>{selected.value_type==='number'&&<label className="block text-sm text-slate-600">단위<input value={editUnit} onChange={(e)=>setEditUnit(e.target.value)} maxLength={20} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5"/></label>}<div className="flex justify-end gap-2"><button type="button" onClick={()=>setEditingTracker(false)} className="rounded-xl px-4 py-2 text-sm text-slate-500 hover:bg-slate-50">취소</button><button disabled={saving} className="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50">{saving?'저장 중...':'저장'}</button></div></form></Dialog>}
@@ -172,7 +181,7 @@ export default function TrackersPage() {
 
       <header className="flex items-start justify-between gap-4">
         <div><h1 className="text-2xl font-bold text-slate-900">나의 기록</h1><p className="mt-1 text-sm text-slate-500">원하는 것을 직접 정하고, 부담 없이 꾸준히 기록하세요.</p></div>
-        <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white"><Plus size={16}/>추적 항목 만들기</button>
+        <div className="flex gap-2"><button onClick={()=>exportApi.trackers()} title="모든 기록 CSV 내보내기" className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"><Download size={16}/><span className="hidden sm:inline">CSV</span></button><button onClick={() => setShowCreate(true)} className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white"><Plus size={16}/>추적 항목 만들기</button></div>
       </header>
 
       <section className="rounded-2xl bg-slate-50 p-4">
@@ -203,6 +212,7 @@ export default function TrackersPage() {
           <div className="space-y-2">{trackers.filter((item)=>item.is_archived===showArchived).map((tracker)=><button key={tracker.id} onClick={()=>openTracker(tracker.id)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left ${selected?.id===tracker.id?'border-slate-400 bg-slate-50':'border-slate-100 hover:border-slate-300'}`}><span className="h-3 w-3 rounded-full" style={{backgroundColor:tracker.color}}/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-slate-800">{tracker.name}</span><span className="text-xs text-slate-400">{valueLabel(tracker.value_type)}{tracker.unit?` · ${tracker.unit}`:''}</span></span><ChevronRight size={15} className="text-slate-300"/></button>)}</div>
           {!selected ? <div className="rounded-2xl bg-slate-50 py-16 text-center text-sm text-slate-500">왼쪽에서 기록할 항목을 선택하세요.</div> : <section className="rounded-2xl border border-slate-200 p-5">
             <div className="flex items-start justify-between"><div><h2 className="text-lg font-semibold text-slate-900">{selected.name}</h2>{selected.description&&<p className="mt-1 text-sm text-slate-500">{selected.description}</p>}</div><div className="flex">{selected.is_archived?<button onClick={restoreSelected} className="rounded-lg px-3 py-2 text-xs font-medium text-emerald-600 hover:bg-emerald-50">복원</button>:<><button onClick={openTrackerEditor} title="설정 수정" className="rounded-lg p-2 text-slate-400 hover:bg-slate-50"><Pencil size={17}/></button><button onClick={()=>setConfirmAction({type:'archive'})} title="보관" className="rounded-lg p-2 text-slate-400 hover:bg-slate-50"><Archive size={17}/></button></>}<button onClick={()=>setConfirmAction({type:'deleteTracker'})} title="완전히 삭제" className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 size={17}/></button></div></div>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">전체 기록</p><p className="mt-1 text-lg font-semibold text-slate-800">{selected.entries.length}회</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">최근 값</p><p className="mt-1 truncate text-lg font-semibold text-slate-800">{selected.entries[0]?selected.value_type==='checkbox'?(selected.entries[0].value==='true'?'완료':'미완료'):`${selected.entries[0].value}${selected.unit?` ${selected.unit}`:''}`:'—'}</p></div>{selected.value_type==='number'&&<><div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">평균 · 범위</p><p className="mt-1 text-sm font-semibold text-slate-800">{numericAverage===null?'—':formatNumber(numericAverage)}{selected.unit?` ${selected.unit}`:''}</p>{numericValues.length>0&&<p className="mt-0.5 text-[10px] text-slate-400">{formatNumber(Math.min(...numericValues))}–{formatNumber(Math.max(...numericValues))}</p>}</div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">최근 변화</p><p className={`mt-1 text-lg font-semibold ${recentChange===null?'text-slate-400':recentChange>0?'text-emerald-600':recentChange<0?'text-red-500':'text-slate-700'}`}>{recentChange===null?'—':`${recentChange>0?'+':''}${formatNumber(recentChange)}`}</p></div></>}</div>
             {!selected.is_archived && <form onSubmit={addEntry} className="mt-5 grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
               <label className="text-xs text-slate-500">날짜<input type="date" value={entryDate} max={today()} onChange={(e)=>setEntryDate(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" required/></label>
               {selected.value_type==='checkbox' ? <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={entryValue==='true'} onChange={(e)=>setEntryValue(String(e.target.checked))}/><Check size={16}/>오늘 완료했어요</label> : <label className="text-xs text-slate-500">값{selected.unit?` (${selected.unit})`:''}<input type={selected.value_type==='number'?'number':'text'} step="any" value={entryValue} onChange={(e)=>setEntryValue(e.target.value)} maxLength={500} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" required/></label>}
