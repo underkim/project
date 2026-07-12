@@ -39,6 +39,7 @@ type Message = {
 // ── localStorage safe helpers ──────────────────────────────────
 
 const HISTORY_KEY = 'ai-chat-history';
+const CONTEXT_KEY = 'ai-context-sharing';
 const HISTORY_LIMIT = 40;
 
 type StoredMessage = Omit<Message, 'confirmLoading' | 'pendingFilter'> & {
@@ -335,6 +336,9 @@ export default function AiModal() {
   const [loading, setLoading] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [weeklyReportLoading, setWeeklyReportLoading] = useState(false);
+  const [contextEnabled, setContextEnabled] = useState(() =>
+    typeof window === 'undefined' ? true : localStorage.getItem(CONTEXT_KEY) !== 'false',
+  );
   const quotaWarnedRef = useRef(false);
   const [messages, setMessages] = useState<Message[]>(() => {
     const msgs = safeLoadHistory();
@@ -480,7 +484,7 @@ export default function AiModal() {
     ]);
     setLoading(true);
     try {
-      const res = await aiApi.chat(text, getHistory());
+      const res = await aiApi.chat(text, getHistory(), contextEnabled);
       applyAiResponse(res);
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status;
@@ -562,6 +566,10 @@ export default function AiModal() {
 
   async function handleWeeklyReport() {
     if (weeklyReportLoading || loading) return;
+    if (!contextEnabled) {
+      showToast('주간 리포트를 만들려면 Dashboard context 공유를 켜주세요.', 'info');
+      return;
+    }
     const { time, dateLabel } = makeTimestamp();
     setMessages((prev) => [
       ...prev,
@@ -665,7 +673,7 @@ export default function AiModal() {
 
           <div className="flex items-start gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2.5 text-[11px] leading-relaxed text-amber-800" role="note">
             <ShieldAlert size={14} className="mt-0.5 shrink-0" />
-            <p>AI 대화와 관련 Dashboard 정보가 외부 Gemini 서비스로 전송될 수 있습니다. 비밀번호, API key 등 민감정보는 입력하지 마세요.</p>
+            <div className="flex-1"><p>AI 대화와 관련 Dashboard 정보가 외부 Gemini 서비스로 전송될 수 있습니다. 비밀번호, API key 등 민감정보는 입력하지 마세요.</p><label className="mt-1.5 flex items-center gap-2 font-medium"><input type="checkbox" checked={contextEnabled} onChange={(event)=>{const enabled=event.target.checked;setContextEnabled(enabled);localStorage.setItem(CONTEXT_KEY,String(enabled));}}/>저장된 Dashboard context 함께 보내기</label></div>
           </div>
 
           {/* 메시지 영역 */}

@@ -434,7 +434,9 @@ export const aiApi = {
   chat: async (
     message: string,
     history: { role: string; text: string }[] = [],
-  ): Promise<AiChatResponse> => (await client.post('/api/v1/ai/chat', { message, history })).data,
+    contextEnabled = true,
+  ): Promise<AiChatResponse> =>
+    (await client.post('/api/v1/ai/chat', { message, history, context_enabled: contextEnabled })).data,
 
   execute: async (module: string, filter: Record<string, unknown>): Promise<AiChatResponse> =>
     (await client.post('/api/v1/ai/execute', { module, filter })).data,

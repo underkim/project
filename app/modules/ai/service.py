@@ -693,13 +693,17 @@ async def _process_multi_actions(session: AsyncSession, reply: str, actions: lis
 
 
 async def parse_and_save(
-    session: AsyncSession, user_input: str, history: list | None = None
+    session: AsyncSession, user_input: str, history: list | None = None, context_enabled: bool = True
 ) -> dict:
     if not settings.gemini_api_key:
         return {"reply": "Gemini API 키가 설정되지 않았습니다. .env 파일에 GEMINI_API_KEY를 추가해주세요.", "saved": False}
 
-    categories_context = await _load_categories_context(session)
-    user_context = await _load_user_context(session)
+    if context_enabled:
+        categories_context = await _load_categories_context(session)
+        user_context = await _load_user_context(session)
+    else:
+        categories_context = "  (사용자가 저장된 Planner context 공유를 비활성화함)"
+        user_context = "- 사용자가 저장된 Dashboard context 공유를 비활성화함"
 
     gemini = genai.Client(api_key=settings.gemini_api_key)
     _today = date.today()

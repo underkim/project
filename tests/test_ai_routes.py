@@ -1,5 +1,5 @@
 """AI 라우터 통합 테스트 (Gemini 호출 모킹)."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -23,6 +23,18 @@ def test_ai_routes_registered(app):
 async def test_chat_requires_auth(client):
     resp = await client.post("/api/v1/ai/chat", json={"message": "안녕"})
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_chat_forwards_disabled_context_to_service(auth_client):
+    mocked = AsyncMock(return_value={"reply": "ok", "saved": False})
+    with patch("app.modules.ai.router.parse_and_save", mocked):
+        response = await auth_client.post(
+            "/api/v1/ai/chat",
+            json={"message": "hello", "context_enabled": False},
+        )
+    assert response.status_code == 200
+    assert mocked.await_args.kwargs["context_enabled"] is False
 
 
 @pytest.mark.asyncio

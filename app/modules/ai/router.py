@@ -76,6 +76,7 @@ class HistoryMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[HistoryMessage] = []
+    context_enabled: bool = True
 
 
 class ExecuteRequest(BaseModel):
@@ -108,7 +109,9 @@ async def chat(
     if not body.message.strip():
         raise HTTPException(status_code=400, detail="메시지를 입력해주세요.")
     try:
-        result = await parse_and_save(session, body.message.strip(), body.history)
+        result = await parse_and_save(
+            session, body.message.strip(), body.history, context_enabled=body.context_enabled
+        )
         return result
     except Exception as e:
         raise _map_ai_exception(e, "AI 처리에 실패했습니다. 잠시 후 다시 시도해주세요.")
