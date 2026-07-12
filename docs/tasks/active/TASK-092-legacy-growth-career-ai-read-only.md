@@ -1,6 +1,6 @@
 # TASK-092: Legacy Growth and Career AI Read-Only Mode
 
-status: working
+status: implemented
 created_by: claude-code
 created_at: 2026-07-12
 updated_at: 2026-07-12
@@ -52,3 +52,11 @@ authenticated APIs, and exports for compatibility and migration.
 - Confirm denylist is enforced server-side on every AI mutation path.
 - Confirm legacy records are not deleted.
 - Confirm current modules remain unaffected.
+
+## 9. Implementation Result
+
+- Added a central legacy AI denylist for single, multi, and confirmed execute mutation paths.
+- Removed legacy Growth/Career mutation instructions and examples from the Gemini prompt.
+- Preserved direct authenticated APIs, exports, and stored records.
+- Implementation commit: `b618af6`.
+- Validation: full backend suite passed with 403 tests.
