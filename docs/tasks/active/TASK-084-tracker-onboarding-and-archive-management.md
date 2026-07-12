@@ -1,6 +1,6 @@
 # TASK-084: Tracker Onboarding and Archive Management
 
-status: working
+status: implemented
 created_by: claude-code
 created_at: 2026-07-12
 updated_at: 2026-07-12
@@ -60,3 +60,11 @@ trackers can be reviewed, restored, or permanently deleted without technical kno
 - Confirm archived entries are preserved.
 - Confirm restore returns the tracker to the active list.
 - Confirm deletion confirmation names the affected tracker.
+
+## 9. Implementation Result
+
+- Added optional health, learning, mood, and habit starter templates.
+- Added active/archive counts, archived-item discovery, restore, and permanent deletion.
+- Archived trackers retain entries and are read-only until restored.
+- Implementation commit: `95de1ba`.
+- Validation: frontend lint, typecheck, and production build passed.
