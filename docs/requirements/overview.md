@@ -12,8 +12,7 @@
 | 플래너 | `planner` | Phase·Category·Item 계층 로드맵, 마감일 추적 |
 | 재테크 | `finance` | 자산 기록 CRUD, 저축률 요약, CSV 내보내기 |
 | 건강 | `health` | 운동·수면 기록 CRUD, 주간 요약, CSV 내보내기 |
-| 자기계발 | `growth` | 독서·영어 기록 CRUD, 월간 요약, CSV 내보내기 |
-| 커리어 | `career` | Codeforces 레이팅 추적, 핸들 설정, CSV 내보내기 |
+| 나의 기록 | `trackers` | 사용자 정의 숫자·텍스트·완료 여부 추적 항목과 날짜별 기록 |
 | 여행 | `travel` | 여행 CRUD, 체크리스트, 일정(Day별 plan) 탭 |
 | AI | `ai` | Gemini 자연어 기록·수정·삭제, 주간 리포트 생성 |
 

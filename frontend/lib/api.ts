@@ -21,8 +21,11 @@ import type {
   TravelSummaryResponse,
   TripPlanItemResponse,
   RestaurantResponse,
-  DevStatusOverview,
-  ActivityLog,
+  TrackerResponse,
+  TrackerDetail,
+  TrackerSummary,
+  TrackerEntryResponse,
+  TrackerValueType,
 } from '@/types';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -490,9 +493,27 @@ export const exportApi = {
     _downloadCsv('/api/v1/export/travel', _stamped('travel'), params),
 };
 
-export const devstatusApi = {
-  getOverview: async (): Promise<DevStatusOverview> =>
-    (await client.get('/api/v1/devstatus/overview')).data,
-  getActivity: async (): Promise<ActivityLog | null> =>
-    (await client.get('/api/v1/devstatus/activity')).data,
+export const trackersApi = {
+  list: async (includeArchived = false): Promise<TrackerResponse[]> =>
+    (await client.get('/api/v1/trackers', { params: { include_archived: includeArchived } })).data,
+  get: async (id: number): Promise<TrackerDetail> =>
+    (await client.get(`/api/v1/trackers/${id}`)).data,
+  summary: async (): Promise<TrackerSummary> =>
+    (await client.get('/api/v1/trackers/summary')).data,
+  create: async (data: {
+    name: string;
+    description?: string;
+    value_type: TrackerValueType;
+    unit?: string;
+    color: string;
+  }): Promise<TrackerResponse> => (await client.post('/api/v1/trackers', data)).data,
+  update: async (id: number, data: Partial<Pick<TrackerResponse, 'name' | 'description' | 'unit' | 'color' | 'is_archived'>>): Promise<TrackerResponse> =>
+    (await client.put(`/api/v1/trackers/${id}`, data)).data,
+  remove: async (id: number) => client.delete(`/api/v1/trackers/${id}`),
+  addEntry: async (id: number, data: { entry_date: string; value: string; note?: string }): Promise<TrackerEntryResponse> =>
+    (await client.post(`/api/v1/trackers/${id}/entries`, data)).data,
+  updateEntry: async (id: number, data: { entry_date?: string; value?: string; note?: string | null }): Promise<TrackerEntryResponse> =>
+    (await client.put(`/api/v1/trackers/entries/${id}`, data)).data,
+  removeEntry: async (id: number) => client.delete(`/api/v1/trackers/entries/${id}`),
 };
+

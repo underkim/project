@@ -13,6 +13,7 @@ import app.modules.health.models  # noqa: F401
 import app.modules.growth.models  # noqa: F401
 import app.modules.career.models  # noqa: F401
 import app.modules.travel.models  # noqa: F401
+import app.modules.trackers.models  # noqa: F401
 
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 

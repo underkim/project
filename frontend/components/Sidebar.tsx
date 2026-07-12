@@ -7,14 +7,12 @@ import {
   CalendarDays,
   TrendingUp,
   Activity,
-  BookOpen,
-  Briefcase,
+  ListChecks,
   Plane,
   LogOut,
   Map,
   ChevronLeft,
   HelpCircle,
-  GitBranch,
 } from 'lucide-react';
 
 const navItems = [
@@ -22,10 +20,8 @@ const navItems = [
   { href: '/planner', icon: CalendarDays, label: '플래너' },
   { href: '/finance', icon: TrendingUp, label: '재테크' },
   { href: '/health', icon: Activity, label: '건강' },
-  { href: '/growth', icon: BookOpen, label: '자기계발' },
-  { href: '/career', icon: Briefcase, label: '커리어' },
+  { href: '/trackers', icon: ListChecks, label: '나의 기록' },
   { href: '/travel', icon: Plane, label: '여행' },
-  { href: '/devstatus', icon: GitBranch, label: '개발 현황' },
   { href: '/help', icon: HelpCircle, label: '가이드' },
 ];
 

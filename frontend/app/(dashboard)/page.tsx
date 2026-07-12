@@ -8,7 +8,7 @@ import {
   TrendingUp,
   Activity,
   BookOpen,
-  Briefcase,
+  ListChecks,
   AlertTriangle,
   ChevronRight,
   Plane,
@@ -360,7 +360,7 @@ export default function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [goals, setGoals] = useState(readLocalGoals);
-  const { book: bookGoal, eng: engGoal, cf: cfGoal } = goals;
+  const { book: bookGoal, eng: engGoal } = goals;
 
   // 모듈 페이지에서 목표를 바꾸면(focus 복귀 또는 커스텀 이벤트) 로컬 목표만 다시 읽는다.
   // overview API는 재호출하지 않는다 (로컬 값만 변경되었으므로).
@@ -400,7 +400,7 @@ export default function DashboardPage() {
       </div>
     );
   }
-  const { planner, finance, health, growth, career, travel } = data ?? {};
+  const { planner, finance, health, growth, travel, trackers } = data ?? {};
 
   const completionRate =
     planner && planner.total_items > 0
@@ -429,6 +429,7 @@ export default function DashboardPage() {
     growth: '자기계발',
     career: '커리어',
     travel: '여행',
+    trackers: '나의 기록',
   };
 
   return (
@@ -545,17 +546,10 @@ export default function DashboardPage() {
                     : '수면 미입력',
             },
             {
-              href: '/growth',
-              label: '올해 완독',
-              value: `${booksThisYear}권`,
-              sub: (() => {
-                const days = growth?.english_days_this_month ?? 0;
-                const mins = growth?.english_minutes_this_month ?? 0;
-                const h = Math.floor(mins / 60);
-                const m = mins % 60;
-                const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
-                return days > 0 ? `영어 ${days}일 · ${timeStr}` : '영어 기록 없음';
-              })(),
+              href: '/trackers',
+              label: '나의 기록',
+              value: `${trackers?.active_trackers ?? 0}개`,
+              sub: `이번 주 ${trackers?.entries_this_week ?? 0}회 기록`,
             },
             {
               href: '/travel',
@@ -795,8 +789,17 @@ export default function DashboardPage() {
           </div>
         </ModuleCard>
 
-        {/* 자기계발 */}
-        <ModuleCard
+        <ModuleCard title="나의 기록" icon={<ListChecks size={14} />} href="/trackers" accent="bg-violet-50">
+          <div className="space-y-2">
+            <p className="text-3xl font-bold text-slate-900">{trackers?.active_trackers ?? 0}</p>
+            <p className="text-xs text-slate-500">활성 추적 항목</p>
+            <p className="text-sm font-medium text-violet-600">이번 주 {trackers?.entries_this_week ?? 0}회 기록</p>
+            <p className="text-xs text-slate-400">운동, 독서, 기분, 습관 등 원하는 항목을 직접 만들 수 있어요.</p>
+          </div>
+        </ModuleCard>
+
+        {/* Legacy growth data remains available through its API during migration. */}
+        {growth && false && <ModuleCard
           title="자기계발"
           icon={<BookOpen size={14} />}
           href="/growth"
@@ -871,7 +874,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        </ModuleCard>
+        </ModuleCard>}
 
         {/* 여행 */}
         <ModuleCard title="여행" icon={<Plane size={14} />} href="/travel" accent="bg-sky-50">
@@ -948,61 +951,6 @@ export default function DashboardPage() {
           </div>
         </ModuleCard>
 
-        {/* 커리어 */}
-        <ModuleCard
-          title="커리어"
-          icon={<Briefcase size={14} />}
-          href="/career"
-          accent="bg-orange-50"
-        >
-          <div className="space-y-2">
-            <div>
-              <p className="text-xs text-slate-400 mb-1">Codeforces</p>
-              <p className="text-lg font-bold text-slate-900">
-                {career?.cf_handle ?? <span className="text-slate-300 text-sm">미설정</span>}
-              </p>
-            </div>
-            {career?.latest_cf_rating != null && (
-              <div className="flex items-center justify-between px-3 py-2 bg-orange-50 rounded-xl">
-                <span className="text-xs text-slate-500">최근 레이팅</span>
-                <div className="text-right">
-                  <div className="flex items-center gap-1.5 justify-end">
-                    <span className="text-sm font-bold text-slate-900">
-                      {career.latest_cf_rating}
-                    </span>
-                    {career.rating_delta != null && career.rating_delta !== 0 && (
-                      <span
-                        className={`text-[10px] font-semibold ${career.rating_delta > 0 ? 'text-emerald-600' : 'text-red-500'}`}
-                      >
-                        {career.rating_delta > 0 ? '+' : ''}
-                        {career.rating_delta}
-                      </span>
-                    )}
-                  </div>
-                  {career.latest_cf_rank && (
-                    <p className="text-[10px] text-slate-400">{career.latest_cf_rank}</p>
-                  )}
-                </div>
-              </div>
-            )}
-            {cfGoal > 0 && career?.latest_cf_rating != null && (
-              <div>
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>목표 레이팅</span>
-                  <span className="font-medium text-slate-600">
-                    {career.latest_cf_rating} / {cfGoal}
-                    {career.latest_cf_rating >= cfGoal && ' 🎉'}
-                  </span>
-                </div>
-                <ProgressBar
-                  value={career.latest_cf_rating}
-                  max={cfGoal}
-                  color={career.latest_cf_rating >= cfGoal ? 'bg-emerald-500' : 'bg-orange-400'}
-                />
-              </div>
-            )}
-          </div>
-        </ModuleCard>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ from app.modules.dashboard.schemas import (
     PhaseProgress,
     PlannerSnapshot,
     TravelSnapshot,
+    TrackerSnapshot,
 )
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ from app.modules.health import service as health_svc
 from app.modules.planner import service as planner_svc
 from app.modules.planner.schemas import ItemStatus
 from app.modules.travel import service as travel_svc
+from app.modules.trackers import service as trackers_svc
 
 
 async def _planner_snapshot(session: AsyncSession) -> PlannerSnapshot | None:
@@ -140,15 +142,26 @@ async def _travel_snapshot(session: AsyncSession) -> TravelSnapshot | None:
         return None
 
 
+async def _trackers_snapshot(session: AsyncSession) -> TrackerSnapshot | None:
+    try:
+        summary = await trackers_svc.get_summary(session)
+        return TrackerSnapshot(
+            active_trackers=summary.active_trackers,
+            entries_this_week=summary.entries_this_week,
+        )
+    except Exception:
+        return None
+
+
 async def get_overview(session: AsyncSession) -> OverviewResponse:
     # ADR-0002: 한 모듈 실패해도 나머지 응답 반환.
     # 요청당 세션은 1개뿐이라(core/database.py get_db) 여러 모듈을 asyncio.gather로 동시에
     # 조회하면 하나의 AsyncSession을 여러 코루틴이 동시에 사용하게 되어 위험하다
     # (SQLAlchemy AsyncSession은 동시 사용을 지원하지 않음). 순차 실행으로 안전하게 처리한다.
-    _MODULES = ["planner", "finance", "health", "growth", "career", "travel"]
+    _MODULES = ["planner", "finance", "health", "growth", "career", "travel", "trackers"]
     _SNAPSHOT_FNS = [
         _planner_snapshot, _finance_snapshot, _health_snapshot,
-        _growth_snapshot, _career_snapshot, _travel_snapshot,
+        _growth_snapshot, _career_snapshot, _travel_snapshot, _trackers_snapshot,
     ]
 
     failed_modules: list[str] = []
@@ -177,6 +190,7 @@ async def get_overview(session: AsyncSession) -> OverviewResponse:
         growth=snapshots[3],
         career=snapshots[4],
         travel=snapshots[5],
+        trackers=snapshots[6],
         meta=OverviewMeta(
             partial_failure=len(failed_modules) > 0,
             failed_modules=failed_modules,

@@ -238,25 +238,6 @@ Core rules:
 - If a security risk is unclear, mark the task as `blocked` or add `Decision Needed` instead of
   implementing by assumption.
 
-## Live Activity Log
-
-For non-trivial work (roughly: anything that would otherwise warrant a task document, or spans
-more than a couple of files), maintain `.claude/state/activity-log.json` so the user can watch
-progress on the `/devstatus` page without waiting for the whole task to finish:
-
-- Before starting, write the file with a `task` description and a `steps` checklist (each
-  `{"label": ..., "status": "pending"}`), with the first step set to `in_progress`.
-- As each step completes, rewrite the file: mark it `done`, set the next step `in_progress`,
-  and refresh `updated_at`.
-- Commit and push **the log file alone** after each step (`git add
-  .claude/state/activity-log.json && git commit -m "..."`) so the deployed dashboard reflects
-  progress with normal git/deploy latency rather than only at the end of the task.
-  `.claude/hooks/pre-commit-check.sh` skips the pytest/typecheck gate when the log file is the
-  *only* staged change, so these checkpoint commits are fast — do not rely on this fast path for
-  commits that also include real code changes.
-- Skip this for trivial one-shot edits (a single typo fix, a one-line config change) — the
-  overhead isn't worth it for work that completes in one step anyway.
-
 ## Work Principles
 
 - Prioritize improvements that ensure existing site features work correctly end to end.
@@ -287,9 +268,7 @@ Before any broad repository analysis, perform a filesystem inventory:
 **Critical**: The authoritative task inventory comes from the filesystem only. Compacted
 conversation context, chat history, or any cached summary must never be used as task inventory.
 Stale memory may be read as background context but must never override what task files actually
-contain. The `app/modules/devstatus/` module and its `/devstatus` dashboard page render this
-filesystem state live — use it as a quick status check, but the files themselves remain the
-source of truth.
+contain. The task files themselves remain the source of truth.
 
 ### Duplicate Detection
 

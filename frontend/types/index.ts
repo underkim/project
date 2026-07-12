@@ -1,5 +1,36 @@
 export type ItemStatus = 'completed' | 'urgent' | 'on_track' | 'overdue';
 export type BookStatus = 'planned' | 'reading' | 'completed' | 'wishlist';
+export type TrackerValueType = 'number' | 'text' | 'checkbox';
+
+export interface TrackerResponse {
+  id: number;
+  name: string;
+  description: string | null;
+  value_type: TrackerValueType;
+  unit: string | null;
+  color: string;
+  is_archived: boolean;
+  created_at: string;
+}
+
+export interface TrackerEntryResponse {
+  id: number;
+  tracker_id: number;
+  entry_date: string;
+  value: string;
+  note: string | null;
+  created_at: string;
+}
+
+export interface TrackerDetail extends TrackerResponse {
+  entries: TrackerEntryResponse[];
+}
+
+export interface TrackerSummary {
+  active_trackers: number;
+  entries_this_week: number;
+  recent_entries: TrackerEntryResponse[];
+}
 
 // Planner
 export interface RoadmapItemResponse {
@@ -219,6 +250,11 @@ export interface OverviewMeta {
   failed_modules: string[];
 }
 
+export interface TrackerSnapshot {
+  active_trackers: number;
+  entries_this_week: number;
+}
+
 export interface OverviewResponse {
   planner: PlannerSnapshot | null;
   finance: FinanceSnapshot | null;
@@ -226,6 +262,7 @@ export interface OverviewResponse {
   growth: GrowthSnapshot | null;
   career: CareerSnapshot | null;
   travel: TravelSnapshot | null;
+  trackers: TrackerSnapshot | null;
   meta: OverviewMeta;
 }
 
@@ -258,76 +295,6 @@ export interface RestaurantResponse {
   note: string | null;
   is_visited: boolean;
   order_index: number;
-}
-
-// Dev Status (harness / task engineering status)
-export interface TaskCounts {
-  draft: number;
-  approved: number;
-  working: number;
-  blocked: number;
-  implemented: number;
-  reviewed: number;
-  done: number;
-}
-
-export interface TaskSummary {
-  id: string;
-  title: string;
-  status: string;
-  priority: string | null;
-  task_type: string | null;
-  updated_at: string | null;
-}
-
-export interface HookInfo {
-  file: string;
-  events: string[];
-}
-
-export interface SkillInfo {
-  name: string;
-  description: string;
-}
-
-export interface HarnessStatus {
-  permission_rule_count: number;
-  hooks: HookInfo[];
-  skills: SkillInfo[];
-  claudeignore_present: boolean;
-}
-
-export interface DevLogEntry {
-  date: string;
-  summary: string;
-}
-
-export interface GitStatus {
-  branch: string | null;
-  last_commit_hash: string | null;
-  last_commit_message: string | null;
-  last_commit_date: string | null;
-}
-
-export interface DevStatusOverview {
-  task_counts: TaskCounts;
-  active_tasks: TaskSummary[];
-  recent_done: TaskSummary[];
-  harness: HarnessStatus;
-  recent_dev_log: DevLogEntry[];
-  git: GitStatus;
-}
-
-export interface ActivityStep {
-  label: string;
-  status: 'pending' | 'in_progress' | 'done';
-}
-
-export interface ActivityLog {
-  task: string | null;
-  started_at: string | null;
-  updated_at: string | null;
-  steps: ActivityStep[];
 }
 
 export interface TripResponse {
