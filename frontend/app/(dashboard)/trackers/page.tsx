@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Archive, Check, ChevronRight, ListChecks, Plus, Trash2, X } from 'lucide-react';
+import { Archive, Check, ChevronRight, ListChecks, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { trackersApi } from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import type { TrackerDetail, TrackerResponse, TrackerValueType } from '@/types';
@@ -94,9 +94,35 @@ export default function TrackersPage() {
     setSelected(null); await loadTrackers(); showToast('추적 항목을 삭제했습니다.');
   }
 
+  async function editSelected() {
+    if (!selected) return;
+    const nextName = prompt('추적 항목 이름', selected.name);
+    if (nextName === null || !nextName.trim()) return;
+    const nextDescription = prompt('설명 (비워두면 삭제)', selected.description ?? '');
+    if (nextDescription === null) return;
+    const nextUnit = selected.value_type === 'number' ? prompt('단위 (비워두면 삭제)', selected.unit ?? '') : selected.unit;
+    if (nextUnit === null) return;
+    try {
+      await trackersApi.update(selected.id, { name: nextName.trim(), description: nextDescription.trim() || null, unit: nextUnit?.trim() || null });
+      await openTracker(selected.id); await loadTrackers(); showToast('추적 항목을 수정했습니다.');
+    } catch (error) { showToast(error instanceof Error ? error.message : '수정하지 못했습니다.', 'error'); }
+  }
+
   async function deleteEntry(id: number) {
     if (!selected || !confirm('이 기록을 삭제할까요?')) return;
     await trackersApi.removeEntry(id); await openTracker(selected.id); showToast('기록을 삭제했습니다.');
+  }
+
+  async function editEntry(id: number, currentValue: string, currentNote: string | null) {
+    if (!selected) return;
+    const nextValue = selected.value_type === 'checkbox' ? (confirm('완료로 기록할까요?') ? 'true' : 'false') : prompt('새 값', currentValue);
+    if (nextValue === null || !nextValue.trim()) return;
+    const nextNote = prompt('메모 (비워두면 삭제)', currentNote ?? '');
+    if (nextNote === null) return;
+    try {
+      await trackersApi.updateEntry(id, { value: nextValue, note: nextNote.trim() || null });
+      await openTracker(selected.id); showToast('기록을 수정했습니다.');
+    } catch (error) { showToast(error instanceof Error ? error.message : '수정하지 못했습니다.', 'error'); }
   }
 
   return (
@@ -126,14 +152,14 @@ export default function TrackersPage() {
         <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
           <div className="space-y-2">{trackers.map((tracker)=><button key={tracker.id} onClick={()=>openTracker(tracker.id)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left ${selected?.id===tracker.id?'border-slate-400 bg-slate-50':'border-slate-100 hover:border-slate-300'}`}><span className="h-3 w-3 rounded-full" style={{backgroundColor:tracker.color}}/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-slate-800">{tracker.name}</span><span className="text-xs text-slate-400">{valueLabel(tracker.value_type)}{tracker.unit?` · ${tracker.unit}`:''}</span></span><ChevronRight size={15} className="text-slate-300"/></button>)}</div>
           {!selected ? <div className="rounded-2xl bg-slate-50 py-16 text-center text-sm text-slate-500">왼쪽에서 기록할 항목을 선택하세요.</div> : <section className="rounded-2xl border border-slate-200 p-5">
-            <div className="flex items-start justify-between"><div><h2 className="text-lg font-semibold text-slate-900">{selected.name}</h2>{selected.description&&<p className="mt-1 text-sm text-slate-500">{selected.description}</p>}</div><div className="flex"><button onClick={archiveSelected} title="보관" className="rounded-lg p-2 text-slate-400 hover:bg-slate-50"><Archive size={17}/></button><button onClick={deleteSelected} title="완전히 삭제" className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 size={17}/></button></div></div>
+            <div className="flex items-start justify-between"><div><h2 className="text-lg font-semibold text-slate-900">{selected.name}</h2>{selected.description&&<p className="mt-1 text-sm text-slate-500">{selected.description}</p>}</div><div className="flex"><button onClick={editSelected} title="설정 수정" className="rounded-lg p-2 text-slate-400 hover:bg-slate-50"><Pencil size={17}/></button><button onClick={archiveSelected} title="보관" className="rounded-lg p-2 text-slate-400 hover:bg-slate-50"><Archive size={17}/></button><button onClick={deleteSelected} title="완전히 삭제" className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 size={17}/></button></div></div>
             <form onSubmit={addEntry} className="mt-5 grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
               <label className="text-xs text-slate-500">날짜<input type="date" value={entryDate} max={today()} onChange={(e)=>setEntryDate(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" required/></label>
               {selected.value_type==='checkbox' ? <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={entryValue==='true'} onChange={(e)=>setEntryValue(String(e.target.checked))}/><Check size={16}/>오늘 완료했어요</label> : <label className="text-xs text-slate-500">값{selected.unit?` (${selected.unit})`:''}<input type={selected.value_type==='number'?'number':'text'} step="any" value={entryValue} onChange={(e)=>setEntryValue(e.target.value)} maxLength={500} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" required/></label>}
               <label className="text-xs text-slate-500 sm:col-span-2">메모 (선택)<input value={entryNote} onChange={(e)=>setEntryNote(e.target.value)} maxLength={500} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"/></label>
               <button disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50 sm:col-span-2">기록 저장</button>
             </form>
-            <div className="mt-6"><h3 className="text-sm font-semibold text-slate-700">최근 기록</h3>{selected.entries.length===0?<p className="py-8 text-center text-sm text-slate-400">아직 기록이 없습니다.</p>:<ul className="mt-2 divide-y divide-slate-100">{selected.entries.map((entry)=><li key={entry.id} className="flex items-center gap-3 py-3"><span className="w-24 text-xs text-slate-400">{entry.entry_date}</span><span className="flex-1 text-sm text-slate-700">{selected.value_type==='checkbox'?(entry.value==='true'?'완료':'미완료'):`${entry.value}${selected.unit?` ${selected.unit}`:''}`}{entry.note&&<span className="ml-2 text-slate-400">· {entry.note}</span>}</span><button onClick={()=>deleteEntry(entry.id)} aria-label="기록 삭제" className="p-1 text-slate-300 hover:text-red-500"><Trash2 size={15}/></button></li>)}</ul>}</div>
+            <div className="mt-6"><h3 className="text-sm font-semibold text-slate-700">최근 기록</h3>{selected.entries.length===0?<p className="py-8 text-center text-sm text-slate-400">아직 기록이 없습니다.</p>:<ul className="mt-2 divide-y divide-slate-100">{selected.entries.map((entry)=><li key={entry.id} className="flex items-center gap-3 py-3"><span className="w-24 text-xs text-slate-400">{entry.entry_date}</span><span className="flex-1 text-sm text-slate-700">{selected.value_type==='checkbox'?(entry.value==='true'?'완료':'미완료'):`${entry.value}${selected.unit?` ${selected.unit}`:''}`}{entry.note&&<span className="ml-2 text-slate-400">· {entry.note}</span>}</span><button onClick={()=>editEntry(entry.id, entry.value, entry.note)} aria-label="기록 수정" className="p-1 text-slate-300 hover:text-slate-600"><Pencil size={15}/></button><button onClick={()=>deleteEntry(entry.id)} aria-label="기록 삭제" className="p-1 text-slate-300 hover:text-red-500"><Trash2 size={15}/></button></li>)}</ul>}</div>
           </section>}
         </div>
       )}
