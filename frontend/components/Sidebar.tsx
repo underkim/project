@@ -15,14 +15,16 @@ import {
   HelpCircle,
 } from 'lucide-react';
 
-const navItems = [
-  { href: '/', icon: LayoutDashboard, label: '대시보드' },
-  { href: '/planner', icon: CalendarDays, label: '플래너' },
-  { href: '/finance', icon: TrendingUp, label: '재테크' },
-  { href: '/health', icon: Activity, label: '건강' },
-  { href: '/trackers', icon: ListChecks, label: '나의 기록' },
-  { href: '/travel', icon: Plane, label: '여행' },
-  { href: '/help', icon: HelpCircle, label: '가이드' },
+const navGroups = [
+  { label: '오늘', items: [{ href: '/', icon: LayoutDashboard, label: '대시보드' }] },
+  { label: '계획', items: [{ href: '/planner', icon: CalendarDays, label: '플래너' }] },
+  { label: '기록', items: [{ href: '/trackers', icon: ListChecks, label: '나의 기록' }] },
+  { label: '생활 관리', items: [
+    { href: '/finance', icon: TrendingUp, label: '재테크' },
+    { href: '/health', icon: Activity, label: '건강' },
+    { href: '/travel', icon: Plane, label: '여행' },
+  ] },
+  { label: '도움말', items: [{ href: '/help', icon: HelpCircle, label: '가이드' }] },
 ];
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -61,25 +63,16 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* 내비게이션 */}
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                active
-                  ? 'bg-slate-50 text-slate-900 font-medium'
-                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <Icon size={15} className={active ? 'text-slate-700' : 'text-slate-400'} />
-              {label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 pb-3 space-y-4 overflow-y-auto" aria-label="주요 기능">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300">{group.label}</p>
+            <div className="space-y-0.5">{group.items.map(({ href, icon: Icon, label }) => {
+              const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+              return <Link key={href} href={href} onClick={onClose} aria-current={active ? 'page' : undefined} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${active ? 'bg-slate-50 text-slate-900 font-medium' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}><Icon size={15} className={active ? 'text-slate-700' : 'text-slate-400'} />{label}</Link>;
+            })}</div>
+          </div>
+        ))}
       </nav>
 
       {/* 로그아웃 */}
