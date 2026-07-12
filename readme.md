@@ -136,6 +136,9 @@ npm install && npm run dev
 
 ### Docker Compose (전체 스택)
 
+개인 서버에 설치하려면 [Self-Hosting Guide](docs/self-hosting.md)를 먼저 확인하세요. 현재
+배포 모델은 한 설치당 한 명이 사용하는 single-user 방식입니다.
+
 ```bash
 cp .env.example .env
 docker compose up --build

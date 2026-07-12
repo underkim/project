@@ -40,6 +40,8 @@ existing user data.
 ### Decision needed
 
 - Resolved: target a general-purpose service where users configure their own tracking areas.
+- Resolved: prioritize personal, single-user self-hosted installations; multi-user SaaS accounts and
+  tenant isolation are not part of the current product scope.
 - Resolved: remove Dev Status completely from the shipped application.
 - Resolved: replace fixed Career/Growth navigation with configurable trackers while preserving old
   tables until data migration or retirement is separately approved.
