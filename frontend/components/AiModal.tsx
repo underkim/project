@@ -14,6 +14,7 @@ import {
   Check,
   ChevronsDown,
   BarChart2,
+  ShieldAlert,
 } from 'lucide-react';
 import { aiApi } from '@/lib/api';
 import type { AiChatResponse } from '@/lib/api';
@@ -662,6 +663,11 @@ export default function AiModal() {
             </div>
           </div>
 
+          <div className="flex items-start gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2.5 text-[11px] leading-relaxed text-amber-800" role="note">
+            <ShieldAlert size={14} className="mt-0.5 shrink-0" />
+            <p>AI 대화와 관련 Dashboard 정보가 외부 Gemini 서비스로 전송될 수 있습니다. 비밀번호, API key 등 민감정보는 입력하지 마세요.</p>
+          </div>
+
           {/* 메시지 영역 */}
           <div className="relative flex-1 min-h-0">
             <div
@@ -698,7 +704,7 @@ export default function AiModal() {
                       { text: '오늘 러닝 40분', icon: '🏃' },
                       { text: '다음 우선순위 뭐야?', icon: '🎯' },
                       { text: '요즘 생활 분석해줘', icon: '💡' },
-                      { text: '파친코 완독했어', icon: '📚' },
+                      { text: '오늘 운동 40분 기록해줘', icon: '🏃' },
                       { text: '어젯밤 수면 7시간 품질 4점', icon: '😴' },
                     ].map(({ text, icon }) => (
                       <button
