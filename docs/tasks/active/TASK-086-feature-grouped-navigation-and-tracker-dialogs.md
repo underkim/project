@@ -1,6 +1,6 @@
 # TASK-086: Feature-Grouped Navigation and Tracker Dialogs
 
-status: working
+status: implemented
 created_by: claude-code
 created_at: 2026-07-12
 updated_at: 2026-07-12
@@ -66,3 +66,13 @@ browser-native Tracker prompts with consistent, accessible application dialogs.
 - Confirm cancel never writes data.
 - Confirm destructive copy identifies the affected item.
 - Confirm mobile navigation remains usable at small heights.
+
+## 9. Implementation Result
+
+- Grouped Sidebar destinations into Today, Plan, Records, Life Management, and Support sections.
+- Added active-page semantics while preserving all existing routes and mobile close behavior.
+- Added a reusable application dialog and replaced Tracker setting/entry prompts plus archive/delete
+  confirmations with controlled forms and named confirmation dialogs.
+- Added mutation busy states to prevent duplicate dialog submissions.
+- Implementation commit: `895c136`.
+- Validation: frontend ESLint, TypeScript, and production build passed.
